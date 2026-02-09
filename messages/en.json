@@ -1,0 +1,19 @@
+{
+    "common": {
+      "buyNow": "Buy Now",
+      "viewDetails": "View Details",
+      "price": "Price",
+      "orderNow": "Order Now",
+      "confirm": "Confirm",
+      "cancel": "Cancel"
+    },
+    "hero": {
+      "title": "Gayla - Men's Streetwear Fashion",
+      "subtitle": "Discover our exclusive collection"
+    },
+    "catalog": {
+      "title": "Our Collection",
+      "filterBy": "Filter by"
+    }
+  }
+  
