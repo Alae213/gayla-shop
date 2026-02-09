@@ -1,24 +1,34 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { notFound, useParams } from "next/navigation";
 import Image from "next/image";
 import { OrderForm } from "@/components/products/order-form";
 import { formatPrice } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-export default function ProductDetailPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
+interface PageProps {
+  params: Promise<{ slug: string; locale: string }>;
+}
+
+export default function ProductDetailPage({ params }: PageProps) {
   const urlParams = useParams();
   const locale = urlParams.locale as string;
+  const slug = urlParams.slug as string; // ✅ Get slug from useParams instead
+  
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
-  const product = useQuery(api.products.getBySlug, { slug: params.slug });
+  const product = useQuery(api.products.getBySlug, { slug });
+  const incrementViewCount = useMutation(api.products.incrementViewCount);
+
+  // Increment view count when product loads
+  useEffect(() => {
+    if (product && product._id) {
+      incrementViewCount({ id: product._id });
+    }
+  }, [product?._id, incrementViewCount]);
 
   if (product === undefined) {
     return (

@@ -1,8 +1,22 @@
-import type { NextConfig } from "next";
+const createNextIntlPlugin = require('next-intl/plugin');
 
-const nextConfig: NextConfig = {
-  /* config options here */
-  reactCompiler: true,
+// ✅ FIXED: Specify the config file path explicitly
+const withNextIntl = createNextIntlPlugin('./next-intl.config.ts');
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  turbopack: {
+    root: process.cwd(),
+  },
+  
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.convex.cloud",
+      },
+    ],
+  },
 };
 
-export default nextConfig;
+module.exports = withNextIntl(nextConfig);

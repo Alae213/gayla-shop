@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { query, mutation, action, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 
+
 /**
  * List all delivery costs
  * Used by: Admin Delivery Costs tab
@@ -18,6 +19,7 @@ export const list = query({
   },
 });
 
+
 /**
  * Get delivery cost by wilaya ID
  * Used by: Order form - delivery cost calculation
@@ -32,9 +34,22 @@ export const getByWilayaId = query({
       .withIndex("by_wilaya_id", (q) => q.eq("wilayaId", args.wilayaId))
       .first();
 
+    // ✅ NEW: Return default costs if not found in database
+    if (!cost) {
+      return {
+        wilayaId: args.wilayaId,
+        wilayaName: "",
+        domicileCost: 600, // Default: 600 DA for home delivery
+        stopdeskCost: 400, // Default: 400 DA for stopdesk
+        lastFetched: Date.now(),
+        isManualOverride: false,
+      };
+    }
+
     return cost;
   },
 });
+
 
 /**
  * Update delivery cost (manual override)
@@ -83,6 +98,7 @@ export const updateCost = mutation({
     return { success: true };
   },
 });
+
 
 /**
  * Sync costs from ZR Express API
@@ -148,6 +164,7 @@ export const syncCosts = action({
     };
   },
 });
+
 
 /**
  * Create delivery cost entry (internal – only used by syncCosts action)

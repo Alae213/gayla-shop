@@ -286,5 +286,7 @@ export const create = mutation({
   
       return { success: true, isVisible: !product.isVisible };
     },
+
+    
   });
   
