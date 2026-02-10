@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -20,11 +19,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useTranslations } from "next-intl";
-import { toast } from "@/hooks/use-toast";
 import { formatPrice } from "@/lib/utils";
 import { WILAYAS } from "@/lib/constants";
 import { Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const orderSchema = z.object({
   customerName: z.string().min(2, "Name is required"),
@@ -42,9 +46,7 @@ type OrderFormData = z.infer<typeof orderSchema>;
 interface OrderFormProps {
   product: {
     _id: Id<"products">;
-    titleAR: string;
-    titleFR: string;
-    titleEN: string;
+    title: string;
     price: number;
     variants?: Array<{
       size?: string;
@@ -54,17 +56,14 @@ interface OrderFormProps {
 }
 
 export function OrderForm({ product }: OrderFormProps) {
-  const t = useTranslations("order");
-  const params = useParams();
-  const locale = params.locale as string;
-
   const [selectedWilaya, setSelectedWilaya] = useState<string>("");
   const [deliveryType, setDeliveryType] = useState<"Domicile" | "Stopdesk">("Domicile");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [orderNumber, setOrderNumber] = useState<string>("");
 
   const createOrder = useMutation(api.orders.create);
 
-  // Get delivery cost for selected wilaya
   const deliveryCostData = useQuery(
     api.deliveryCosts.getByWilayaId,
     selectedWilaya ? { wilayaId: parseInt(selectedWilaya) } : "skip"
@@ -84,7 +83,7 @@ export function OrderForm({ product }: OrderFormProps) {
     handleSubmit,
     formState: { errors },
     setValue,
-    watch,
+    reset,
   } = useForm<OrderFormData>({
     resolver: zodResolver(orderSchema),
     defaultValues: {
@@ -106,7 +105,7 @@ export function OrderForm({ product }: OrderFormProps) {
         customerCommune: data.customerCommune,
         customerAddress: data.customerAddress,
         deliveryType: data.deliveryType,
-        deliveryCost: deliveryCost, // ✅ FIXED: Added missing property
+        deliveryCost: deliveryCost,
         selectedVariant:
           data.selectedSize || data.selectedColor
             ? {
@@ -114,30 +113,21 @@ export function OrderForm({ product }: OrderFormProps) {
                 color: data.selectedColor,
               }
             : undefined,
-        languagePreference: locale as "ar" | "fr" | "en",
       };
 
       const result = await createOrder(orderData);
 
-      toast({
-        title: t("success"),
-        description: `${t("orderNumber")}: ${result.orderNumber}`,
-      });
-
-      // Reset form or redirect
-      window.scrollTo(0, 0);
+      setOrderNumber(result.orderNumber);
+      setShowSuccessDialog(true);
+      reset();
+      setSelectedWilaya("");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create order",
-        variant: "destructive",
-      });
+      alert(error instanceof Error ? error.message : "Failed to create order");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Get unique sizes and colors from variants
   const sizes = product.variants
     ? Array.from(new Set(product.variants.map((v) => v.size).filter(Boolean)))
     : [];
@@ -146,182 +136,200 @@ export function OrderForm({ product }: OrderFormProps) {
     : [];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("title")}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Customer Info */}
-          <div className="space-y-4">
-            <h3 className="font-semibold text-lg">{t("customerInfo")}</h3>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Order this Product</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Customer Info */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg">Customer Information</h3>
 
-            <div className="space-y-2">
-              <Label htmlFor="customerName">{t("name")}</Label>
-              <Input
-                id="customerName"
-                {...register("customerName")}
-                placeholder={t("name")}
-              />
-              {errors.customerName && (
-                <p className="text-sm text-destructive">{errors.customerName.message}</p>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="customerName">Full Name</Label>
+                <Input
+                  id="customerName"
+                  {...register("customerName")}
+                  placeholder="Full Name"
+                />
+                {errors.customerName && (
+                  <p className="text-sm text-destructive">{errors.customerName.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="customerPhone">Phone Number</Label>
+                <Input
+                  id="customerPhone"
+                  {...register("customerPhone")}
+                  placeholder="0555123456"
+                  type="tel"
+                />
+                {errors.customerPhone && (
+                  <p className="text-sm text-destructive">{errors.customerPhone.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="customerWilaya">Wilaya (Province)</Label>
+                <Select
+                  value={selectedWilaya}
+                  onValueChange={(value) => {
+                    setSelectedWilaya(value);
+                    setValue("customerWilaya", value);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a wilaya" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WILAYAS.map((wilaya) => (
+                      <SelectItem key={wilaya.id} value={wilaya.id.toString()}>
+                        {wilaya.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.customerWilaya && (
+                  <p className="text-sm text-destructive">{errors.customerWilaya.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="customerCommune">City/Commune</Label>
+                <Input
+                  id="customerCommune"
+                  {...register("customerCommune")}
+                  placeholder="City/Commune"
+                />
+                {errors.customerCommune && (
+                  <p className="text-sm text-destructive">{errors.customerCommune.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="customerAddress">Full Address</Label>
+                <Textarea
+                  id="customerAddress"
+                  {...register("customerAddress")}
+                  placeholder="Full Address"
+                  rows={3}
+                />
+                {errors.customerAddress && (
+                  <p className="text-sm text-destructive">{errors.customerAddress.message}</p>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="customerPhone">{t("phone")}</Label>
-              <Input
-                id="customerPhone"
-                {...register("customerPhone")}
-                placeholder="0555123456"
-                type="tel"
-              />
-              {errors.customerPhone && (
-                <p className="text-sm text-destructive">{errors.customerPhone.message}</p>
-              )}
-            </div>
+            {/* Variants */}
+            {(sizes.length > 0 || colors.length > 0) && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Options</h3>
 
-            <div className="space-y-2">
-              <Label htmlFor="customerWilaya">{t("wilaya")}</Label>
+                {sizes.length > 0 && (
+                  <div className="space-y-2">
+                    <Label htmlFor="selectedSize">Size</Label>
+                    <Select onValueChange={(value) => setValue("selectedSize", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sizes.map((size) => (
+                          <SelectItem key={size} value={size!}>
+                            {size}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {colors.length > 0 && (
+                  <div className="space-y-2">
+                    <Label htmlFor="selectedColor">Color</Label>
+                    <Select onValueChange={(value) => setValue("selectedColor", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a color" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {colors.map((color) => (
+                          <SelectItem key={color} value={color!}>
+                            {color}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Delivery Type */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg">Delivery Type</h3>
               <Select
-                value={selectedWilaya}
-                onValueChange={(value) => {
-                  setSelectedWilaya(value);
-                  setValue("customerWilaya", value);
+                value={deliveryType}
+                onValueChange={(value: "Domicile" | "Stopdesk") => {
+                  setDeliveryType(value);
+                  setValue("deliveryType", value);
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={t("wilaya")} />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {WILAYAS.map((wilaya) => (
-                    <SelectItem key={wilaya.id} value={wilaya.id.toString()}>
-                      {locale === "ar" ? wilaya.nameAr : wilaya.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="Domicile">Home Delivery</SelectItem>
+                  <SelectItem value="Stopdesk">Stopdesk Delivery</SelectItem>
                 </SelectContent>
               </Select>
-              {errors.customerWilaya && (
-                <p className="text-sm text-destructive">{errors.customerWilaya.message}</p>
-              )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="customerCommune">{t("commune")}</Label>
-              <Input
-                id="customerCommune"
-                {...register("customerCommune")}
-                placeholder={t("commune")}
-              />
-              {errors.customerCommune && (
-                <p className="text-sm text-destructive">{errors.customerCommune.message}</p>
-              )}
+            {/* Order Summary */}
+            <div className="space-y-2 p-4 bg-muted rounded-lg">
+              <div className="flex justify-between">
+                <span>Product Price:</span>
+                <span className="font-semibold">
+                  {formatPrice(product.price, "en-US")}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Delivery Cost:</span>
+                <span className="font-semibold">
+                  {formatPrice(deliveryCost, "en-US")}
+                </span>
+              </div>
+              <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                <span>Total Amount:</span>
+                <span>{formatPrice(totalAmount, "en-US")}</span>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="customerAddress">{t("address")}</Label>
-              <Textarea
-                id="customerAddress"
-                {...register("customerAddress")}
-                placeholder={t("address")}
-                rows={3}
-              />
-              {errors.customerAddress && (
-                <p className="text-sm text-destructive">{errors.customerAddress.message}</p>
-              )}
-            </div>
-          </div>
+            {/* Submit Button */}
+            <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirm Order
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-          {/* Variants */}
-          {(sizes.length > 0 || colors.length > 0) && (
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg">{t("variants")}</h3>
-
-              {sizes.length > 0 && (
-                <div className="space-y-2">
-                  <Label htmlFor="selectedSize">{t("size")}</Label>
-                  <Select onValueChange={(value) => setValue("selectedSize", value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("size")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sizes.map((size) => (
-                        <SelectItem key={size} value={size!}>
-                          {size}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {colors.length > 0 && (
-                <div className="space-y-2">
-                  <Label htmlFor="selectedColor">{t("color")}</Label>
-                  <Select onValueChange={(value) => setValue("selectedColor", value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("color")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {colors.map((color) => (
-                        <SelectItem key={color} value={color!}>
-                          {color}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Delivery Type */}
-          <div className="space-y-4">
-            <h3 className="font-semibold text-lg">{t("deliveryType")}</h3>
-            <Select
-              value={deliveryType}
-              onValueChange={(value: "Domicile" | "Stopdesk") => {
-                setDeliveryType(value);
-                setValue("deliveryType", value);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Domicile">{t("domicile")}</SelectItem>
-                <SelectItem value="Stopdesk">{t("stopdesk")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Order Summary */}
-          <div className="space-y-2 p-4 bg-muted rounded-lg">
-            <div className="flex justify-between">
-              <span>{t("price")}:</span>
-              <span className="font-semibold">
-                {formatPrice(product.price, locale === "ar" ? "ar-DZ" : "fr-DZ")}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>{t("deliveryCost")}:</span>
-              <span className="font-semibold">
-                {formatPrice(deliveryCost, locale === "ar" ? "ar-DZ" : "fr-DZ")}
-              </span>
-            </div>
-            <div className="flex justify-between text-lg font-bold pt-2 border-t">
-              <span>{t("totalAmount")}:</span>
-              <span>{formatPrice(totalAmount, locale === "ar" ? "ar-DZ" : "fr-DZ")}</span>
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {t("submit")}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Order Created Successfully!</DialogTitle>
+            <DialogDescription>
+              Your order number: <strong>{orderNumber}</strong>
+              <br />
+              <br />
+              You can track your order using this number.
+            </DialogDescription>
+          </DialogHeader>
+          <Button onClick={() => setShowSuccessDialog(false)}>Close</Button>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -5,11 +5,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatPrice(amount: number, locale: string = "fr-DZ"): string {
+export function formatPrice(price: number, locale: string = "en-US") {
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "DZD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
+    minimumFractionDigits: 2,
+  }).format(price);
 }

@@ -9,14 +9,9 @@ import { formatPrice } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 
-interface PageProps {
-  params: Promise<{ slug: string; locale: string }>;
-}
-
-export default function ProductDetailPage({ params }: PageProps) {
-  const urlParams = useParams();
-  const locale = urlParams.locale as string;
-  const slug = urlParams.slug as string; // ✅ Get slug from useParams instead
+export default function ProductDetailPage() {
+  const params = useParams();
+  const slug = params.slug as string;
   
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
@@ -42,21 +37,6 @@ export default function ProductDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  // Get localized content
-  const title =
-    locale === "ar"
-      ? product.titleAR
-      : locale === "en"
-      ? product.titleEN
-      : product.titleFR;
-
-  const description =
-    locale === "ar"
-      ? product.descriptionAR
-      : locale === "en"
-      ? product.descriptionEN
-      : product.descriptionFR;
-
   return (
     <div className="container py-12">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
@@ -67,7 +47,7 @@ export default function ProductDetailPage({ params }: PageProps) {
             {product.images[selectedImageIndex] ? (
               <Image
                 src={product.images[selectedImageIndex].url}
-                alt={title}
+                alt={product.title}
                 fill
                 className="object-cover"
                 priority
@@ -94,7 +74,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                 >
                   <Image
                     src={image.url}
-                    alt={`${title} ${index + 1}`}
+                    alt={`${product.title} ${index + 1}`}
                     fill
                     className="object-cover"
                   />
@@ -107,15 +87,19 @@ export default function ProductDetailPage({ params }: PageProps) {
         {/* Product Info & Order Form */}
         <div className="space-y-6">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">{title}</h1>
+            <h1 className="text-3xl md:text-4xl font-bold mb-2">
+              {product.title}
+            </h1>
             <p className="text-2xl font-bold text-primary">
-              {formatPrice(product.price, locale === "ar" ? "ar-DZ" : "fr-DZ")}
+              {formatPrice(product.price, "en-US")}
             </p>
           </div>
 
-          {description && (
+          {product.description && (
             <div className="prose prose-sm max-w-none">
-              <p className="text-muted-foreground whitespace-pre-wrap">{description}</p>
+              <p className="text-muted-foreground whitespace-pre-wrap">
+                {product.description}
+              </p>
             </div>
           )}
 

@@ -1,33 +1,28 @@
 import { v } from "convex/values";
-import { mutation, query, action } from "./_generated/server";
-import { api } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
+import { mutation, query } from "./_generated/server";
 
-/**
- * Get current authenticated admin user
- * Used by: Admin dashboard to verify session
- */
-export const current = query({
-  args: {},
-  handler: async (ctx) => {
-    return null;
-  },
-});
+// Simple password hashing using Web Crypto API
+async function hashPassword(password: string): Promise<string> {
+  // Simple hash for development (use proper bcrypt in production)
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
-/**
- * Login with email and password
- * Used by: Admin login page
- */
+async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  const passwordHash = await hashPassword(password);
+  return passwordHash === hash;
+}
+
+// Login
 export const login = mutation({
   args: {
     email: v.string(),
     password: v.string(),
   },
   handler: async (ctx, args) => {
-    // Import bcrypt with SYNC methods
-    const bcrypt = require("bcryptjs");
-
-    // Find admin user
     const user = await ctx.db
       .query("adminUsers")
       .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase()))
@@ -37,9 +32,7 @@ export const login = mutation({
       throw new Error("Invalid email or password");
     }
 
-    // Verify password using SYNC method
-    const isValid = bcrypt.compareSync(args.password, user.passwordHash);
-
+    const isValid = await verifyPassword(args.password, user.passwordHash);
     if (!isValid) {
       throw new Error("Invalid email or password");
     }
@@ -57,17 +50,13 @@ export const login = mutation({
   },
 });
 
-/**
- * Verify admin session by user ID
- * Used by: Admin dashboard on load
- */
-export const verifySession = query({
+// Get current user
+export const getCurrentUser = query({
   args: {
     userId: v.id("adminUsers"),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
-
     if (!user) {
       return null;
     }
@@ -81,190 +70,33 @@ export const verifySession = query({
   },
 });
 
-/**
- * Check if admin exists (helper query)
- */
-export const checkAdminExists = query({
-  args: {
-    email: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("adminUsers")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .first();
-
-    return !!user;
-  },
-});
-
-/**
- * Insert admin user (helper mutation)
- */
-export const insertAdmin = mutation({
-  args: {
-    email: v.string(),
-    passwordHash: v.string(),
-    name: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const userId = await ctx.db.insert("adminUsers", {
-      email: args.email,
-      passwordHash: args.passwordHash,
-      name: args.name,
-    });
-
-    return { userId, email: args.email, name: args.name };
-  },
-});
-
-/**
- * Create admin user (only for initial setup)
- * Used by: Setup script (one-time)
- * Uses action to allow async bcrypt
- */
-export const createAdmin = action({
+// Create admin user (for initial setup)
+export const createAdminUser = mutation({
   args: {
     email: v.string(),
     password: v.string(),
     name: v.string(),
   },
-  handler: async (ctx, args): Promise<{ userId: Id<"adminUsers">; email: string; name: string }> => {
-    const bcrypt = require("bcryptjs");
-
-    // Check if admin already exists
-    const existing = await ctx.runQuery(api.auth.checkAdminExists, {
-      email: args.email.toLowerCase(),
-    });
+  handler: async (ctx, args) => {
+    // Check if user already exists
+    const existing = await ctx.db
+      .query("adminUsers")
+      .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase()))
+      .first();
 
     if (existing) {
-      throw new Error("Admin user already exists");
+      throw new Error("User already exists");
     }
 
-    // Validate password strength
-    if (args.password.length < 8) {
-      throw new Error("Password must be at least 8 characters");
-    }
+    const passwordHash = await hashPassword(args.password);
 
-    // Hash password using SYNC method
-    const passwordHash = bcrypt.hashSync(args.password, 10);
-
-    // Create admin user via mutation
-    const result = await ctx.runMutation(api.auth.insertAdmin, {
+    const userId = await ctx.db.insert("adminUsers", {
       email: args.email.toLowerCase(),
       passwordHash,
       name: args.name,
+      lastLogin: Date.now(),
     });
 
-    return result;
-  },
-});
-
-/**
- * Get admin user with password hash (helper query)
- */
-export const getAdminWithPassword = query({
-  args: {
-    userId: v.id("adminUsers"),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.get(args.userId);
-  },
-});
-
-/**
- * Update admin password (helper mutation)
- */
-export const updatePassword = mutation({
-  args: {
-    userId: v.id("adminUsers"),
-    passwordHash: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.userId, {
-      passwordHash: args.passwordHash,
-    });
-
-    return { success: true };
-  },
-});
-
-/**
- * Change admin password
- * Used by: Admin settings page
- */
-export const changePassword = action({
-  args: {
-    userId: v.id("adminUsers"),
-    currentPassword: v.string(),
-    newPassword: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const bcrypt = require("bcryptjs");
-
-    const user = await ctx.runQuery(api.auth.getAdminById, {
-      userId: args.userId,
-    });
-
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    // Get the full user with password hash
-    const fullUser = await ctx.runQuery(api.auth.getAdminWithPassword, {
-      userId: args.userId,
-    });
-
-    if (!fullUser) {
-      throw new Error("User not found");
-    }
-
-    // Verify current password using SYNC method
-    const isValid = bcrypt.compareSync(args.currentPassword, fullUser.passwordHash);
-
-    if (!isValid) {
-      throw new Error("Current password is incorrect");
-    }
-
-    // Validate new password
-    if (args.newPassword.length < 8) {
-      throw new Error("New password must be at least 8 characters");
-    }
-
-    // Hash new password using SYNC method
-    const newPasswordHash = bcrypt.hashSync(args.newPassword, 10);
-
-    // Update password via mutation
-    await ctx.runMutation(api.auth.updatePassword, {
-      userId: args.userId,
-      passwordHash: newPasswordHash,
-    });
-
-    return { success: true };
-  },
-});
-
-/**
- * Get admin user by ID
- * Used by: Admin dashboard
- */
-export const getAdminById = query({
-  args: {
-    userId: v.id("adminUsers"),
-  },
-  handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
-
-    if (!user) {
-      return null;
-    }
-
-    // Don't return password hash
-    return {
-      userId: user._id,
-      email: user.email,
-      name: user.name,
-      lastLogin: user.lastLogin,
-    };
+    return { userId };
   },
 });

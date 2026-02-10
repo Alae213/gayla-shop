@@ -1,32 +1,17 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-/**
- * Gayla Database Schema
- */
-const schema = defineSchema({
-  // Admin users table
-  adminUsers: defineTable({
-    email: v.string(),
-    passwordHash: v.string(),
-    name: v.string(),
-    lastLogin: v.optional(v.number()),
-  }).index("by_email", ["email"]),
-
-  // Products table
+export default defineSchema({
   products: defineTable({
+    title: v.string(),
     slug: v.string(),
-    titleAR: v.string(),
-    titleFR: v.string(),
-    titleEN: v.string(),
-    descriptionAR: v.optional(v.string()),
-    descriptionFR: v.optional(v.string()),
-    descriptionEN: v.optional(v.string()),
+    description: v.optional(v.string()),
     price: v.number(),
+    category: v.string(),
     images: v.array(
       v.object({
-        storageId: v.string(),
         url: v.string(),
+        storageId: v.string(),
       })
     ),
     variants: v.optional(
@@ -37,12 +22,13 @@ const schema = defineSchema({
         })
       )
     ),
-    categories: v.optional(v.array(v.string())),
-    isVisible: v.boolean(),
+    status: v.union(v.literal("Active"), v.literal("Draft"), v.literal("Out of stock")),
     viewCount: v.number(),
-  }).index("by_slug", ["slug"]),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_category", ["category"])
+    .index("by_status", ["status"]),
 
-  // Orders table
   orders: defineTable({
     orderNumber: v.string(),
     status: v.union(
@@ -71,30 +57,9 @@ const schema = defineSchema({
       })
     ),
     totalAmount: v.number(),
-    languagePreference: v.union(
-      v.literal("ar"),
-      v.literal("fr"),
-      v.literal("en")
-    ),
     lastUpdated: v.number(),
   }).index("by_order_number", ["orderNumber"]),
 
-  // Site content (singleton)
-  siteContent: defineTable({
-    heroTitleAR: v.string(),
-    heroTitleFR: v.string(),
-    heroTitleEN: v.string(),
-    heroSubtitleAR: v.string(),
-    heroSubtitleFR: v.string(),
-    heroSubtitleEN: v.string(),
-    heroBackgroundImage: v.object({
-      storageId: v.string(),
-      url: v.string(),
-    }),
-    homepageViewCount: v.number(),
-  }),
-
-  // Delivery costs
   deliveryCosts: defineTable({
     wilayaId: v.number(),
     wilayaName: v.string(),
@@ -103,6 +68,23 @@ const schema = defineSchema({
     lastFetched: v.number(),
     isManualOverride: v.boolean(),
   }).index("by_wilaya_id", ["wilayaId"]),
-});
 
-export default schema;
+  adminUsers: defineTable({
+    email: v.string(),
+    passwordHash: v.string(),
+    name: v.string(),
+    lastLogin: v.optional(v.number()),
+  }).index("by_email", ["email"]),
+
+  siteContent: defineTable({
+    heroTitle: v.string(),
+    heroSubtitle: v.string(),
+    heroBackgroundImage: v.optional(
+      v.object({
+        url: v.string(),
+        storageId: v.string(),
+      })
+    ),
+    homepageViewCount: v.number(),
+  }),
+});
