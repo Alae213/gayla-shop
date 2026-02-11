@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 export const list = query({
   args: {
@@ -52,12 +53,12 @@ export const getById = query({
   },
 });
 
-export const getCountByStatus = query({
-  args: {},
+export const getStats = query({
   handler: async (ctx) => {
     const orders = await ctx.db.query("orders").collect();
 
     const counts = {
+      total: orders.length,
       Pending: 0,
       Confirmed: 0,
       Cancelled: 0,
@@ -68,7 +69,7 @@ export const getCountByStatus = query({
     };
 
     orders.forEach((order) => {
-      counts[order.status]++;
+      counts[order.status as keyof typeof counts]++;
     });
 
     return counts;
@@ -101,7 +102,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.productId);
     if (!product) {
-      throw new Error("Produit non trouvé");
+      throw new Error("Product not found");
     }
 
     let orderNumber = generateOrderNumber();
@@ -160,7 +161,7 @@ export const updateStatus = mutation({
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.id);
     if (!order) {
-      throw new Error("Commande non trouvée");
+      throw new Error("Order not found");
     }
 
     await ctx.db.patch(args.id, {
@@ -199,7 +200,7 @@ export const update = mutation({
 
     const order = await ctx.db.get(id);
     if (!order) {
-      throw new Error("Commande non trouvée");
+      throw new Error("Order not found");
     }
 
     let totalAmount = order.totalAmount;
@@ -213,6 +214,14 @@ export const update = mutation({
       lastUpdated: Date.now(),
     });
 
+    return { success: true };
+  },
+});
+
+export const remove = mutation({
+  args: { id: v.id("orders") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
     return { success: true };
   },
 });

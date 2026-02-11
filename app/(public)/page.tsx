@@ -32,7 +32,7 @@ export default function HomePage() {
               href="#products"
               className="inline-block bg-white text-primary px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition"
             >
-              View Products
+              Shop Now
             </a>
           </div>
         </div>

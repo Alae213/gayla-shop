@@ -8,11 +8,13 @@ export default defineSchema({
     description: v.optional(v.string()),
     price: v.number(),
     category: v.string(),
-    images: v.array(
-      v.object({
-        url: v.string(),
-        storageId: v.string(),
-      })
+    images: v.optional(
+      v.array(
+        v.object({
+          url: v.string(),
+          storageId: v.string(),
+        })
+      )
     ),
     variants: v.optional(
       v.array(
@@ -24,6 +26,8 @@ export default defineSchema({
     ),
     status: v.union(v.literal("Active"), v.literal("Draft"), v.literal("Out of stock")),
     viewCount: v.number(),
+    createdAt: v.optional(v.number()), // ✅ MAKE OPTIONAL
+    updatedAt: v.optional(v.number()), // ✅ MAKE OPTIONAL
   })
     .index("by_slug", ["slug"])
     .index("by_category", ["category"])
@@ -58,7 +62,9 @@ export default defineSchema({
     ),
     totalAmount: v.number(),
     lastUpdated: v.number(),
-  }).index("by_order_number", ["orderNumber"]),
+  })
+    .index("by_order_number", ["orderNumber"])
+    .index("by_status", ["status"]),
 
   deliveryCosts: defineTable({
     wilayaId: v.number(),
@@ -77,8 +83,9 @@ export default defineSchema({
   }).index("by_email", ["email"]),
 
   siteContent: defineTable({
-    heroTitle: v.string(),
-    heroSubtitle: v.string(),
+    heroTitle: v.optional(v.string()),
+    heroSubtitle: v.optional(v.string()),
+    heroCtaText: v.optional(v.string()),
     heroBackgroundImage: v.optional(
       v.object({
         url: v.string(),

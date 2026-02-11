@@ -1,14 +1,11 @@
 "use client";
 
-import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "../globals.css";
 import { ConvexClientProvider } from "@/providers/convex-provider";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { LogOut, LayoutDashboard, Package, ShoppingCart, Settings } from "lucide-react";
-import Link from "next/link";
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -45,7 +42,15 @@ export default function AdminLayout({
     return (
       <html lang="en">
         <body className={inter.className}>
-          <ConvexClientProvider>{children}</ConvexClientProvider>
+          <ConvexClientProvider>
+            {children}
+            <Toaster 
+              position="top-right"
+              richColors
+              closeButton
+              duration={3000}
+            />
+          </ConvexClientProvider>
         </body>
       </html>
     );
@@ -57,9 +62,18 @@ export default function AdminLayout({
       <html lang="en">
         <body className={inter.className}>
           <ConvexClientProvider>
-            <div className="min-h-screen flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-indigo-600 mx-auto"></div>
+                <p className="mt-4 text-gray-600 font-medium">Verifying access...</p>
+              </div>
             </div>
+            <Toaster 
+              position="top-right"
+              richColors
+              closeButton
+              duration={3000}
+            />
           </ConvexClientProvider>
         </body>
       </html>
@@ -70,71 +84,20 @@ export default function AdminLayout({
     <html lang="en">
       <body className={inter.className}>
         <ConvexClientProvider>
-          <div className="min-h-screen flex">
-            {/* Sidebar */}
-            <aside className="w-64 bg-muted border-r">
-              <div className="p-6">
-                <h2 className="text-2xl font-bold">Gayla Admin</h2>
-                <p className="text-sm text-muted-foreground">{adminUser.email}</p>
-              </div>
-
-              <nav className="space-y-2 px-4">
-                <Link href="/admin/dashboard">
-                  <Button
-                    variant={pathname === "/admin/dashboard" ? "secondary" : "ghost"}
-                    className="w-full justify-start"
-                  >
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                    Dashboard
-                  </Button>
-                </Link>
-
-                <Link href="/admin/orders">
-                  <Button
-                    variant={pathname.startsWith("/admin/orders") ? "secondary" : "ghost"}
-                    className="w-full justify-start"
-                  >
-                    <ShoppingCart className="mr-2 h-4 w-4" />
-                    Orders
-                  </Button>
-                </Link>
-
-                <Link href="/admin/products">
-                  <Button
-                    variant={pathname.startsWith("/admin/products") ? "secondary" : "ghost"}
-                    className="w-full justify-start"
-                  >
-                    <Package className="mr-2 h-4 w-4" />
-                    Products
-                  </Button>
-                </Link>
-
-                <Link href="/admin/settings">
-                  <Button
-                    variant={pathname.startsWith("/admin/settings") ? "secondary" : "ghost"}
-                    className="w-full justify-start"
-                  >
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Button>
-                </Link>
-              </nav>
-
-              <div className="absolute bottom-0 w-64 p-4 border-t">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
-                </Button>
-              </div>
-            </aside>
-
+          <div className="min-h-screen flex bg-gray-50">
             {/* Main Content */}
-            <main className="flex-1 p-8">{children}</main>
+            <main className="flex-1 overflow-auto">
+              {children}
+            </main>
           </div>
+
+          {/* Toast Notifications */}
+          <Toaster 
+            position="top-right"
+            richColors
+            closeButton
+            duration={3000}
+          />
         </ConvexClientProvider>
       </body>
     </html>

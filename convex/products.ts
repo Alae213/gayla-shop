@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 export const list = query({
   args: {
@@ -15,21 +16,21 @@ export const list = query({
 
     if (args.status) {
       products = products.filter((p) => p.status === args.status);
-    } else {
-      // Default: only show Active products to public
-      products = products.filter((p) => p.status === "Active");
     }
 
-    products.sort((a, b) => b._creationTime - a._creationTime);
+    // Handle optional createdAt - fallback to _creationTime
+    products.sort((a, b) => {
+      const aTime = a.createdAt || a._creationTime;
+      const bTime = b.createdAt || b._creationTime;
+      return bTime - aTime;
+    });
 
     return products;
   },
 });
 
 export const getBySlug = query({
-  args: {
-    slug: v.string(),
-  },
+  args: { slug: v.string() },
   handler: async (ctx, args) => {
     const product = await ctx.db
       .query("products")
@@ -41,9 +42,7 @@ export const getBySlug = query({
 });
 
 export const getById = query({
-  args: {
-    id: v.id("products"),
-  },
+  args: { id: v.id("products") },
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.id);
     return product;
@@ -51,16 +50,18 @@ export const getById = query({
 });
 
 export const incrementViewCount = mutation({
-  args: {
-    id: v.id("products"),
-  },
+  args: { slug: v.string() },
   handler: async (ctx, args) => {
-    const product = await ctx.db.get(args.id);
+    const product = await ctx.db
+      .query("products")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .first();
+
     if (!product) {
       throw new Error("Product not found");
     }
 
-    await ctx.db.patch(args.id, {
+    await ctx.db.patch(product._id, {
       viewCount: product.viewCount + 1,
     });
 
@@ -92,6 +93,7 @@ export const create = mutation({
     status: v.union(v.literal("Active"), v.literal("Draft"), v.literal("Out of stock")),
   },
   handler: async (ctx, args) => {
+    // Check if slug already exists
     const existing = await ctx.db
       .query("products")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
@@ -101,9 +103,13 @@ export const create = mutation({
       throw new Error("A product with this slug already exists");
     }
 
+    const now = Date.now();
+
     const productId = await ctx.db.insert("products", {
       ...args,
       viewCount: 0,
+      createdAt: now,
+      updatedAt: now,
     });
 
     return productId;
@@ -144,28 +150,29 @@ export const update = mutation({
       throw new Error("Product not found");
     }
 
-    // ✅ FIX: Check if slug exists before querying
-    if (updates.slug && updates.slug !== product.slug) {
+    // Check if slug is being changed and if it already exists
+    if (updates.slug !== undefined && updates.slug !== product.slug) {
       const existing = await ctx.db
         .query("products")
-        .withIndex("by_slug", (q) => q.eq("slug", updates.slug!)) // ✅ Added ! assertion
+        .withIndex("by_slug", (q) => q.eq("slug", updates.slug as string))
         .first();
 
-      if (existing && existing._id !== id) {
+      if (existing) {
         throw new Error("A product with this slug already exists");
       }
     }
 
-    await ctx.db.patch(id, updates);
+    await ctx.db.patch(id, {
+      ...updates,
+      updatedAt: Date.now(),
+    });
 
     return { success: true };
   },
 });
 
 export const remove = mutation({
-  args: {
-    id: v.id("products"),
-  },
+  args: { id: v.id("products") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);
     return { success: true };

@@ -14,6 +14,7 @@ import type * as emails from "../emails.js";
 import type * as files from "../files.js";
 import type * as orders from "../orders.js";
 import type * as products from "../products.js";
+import type * as siteContent from "../siteContent.js";
 
 import type {
   ApiFromModules,
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   files: typeof files;
   orders: typeof orders;
   products: typeof products;
+  siteContent: typeof siteContent;
 }>;
 
 /**
