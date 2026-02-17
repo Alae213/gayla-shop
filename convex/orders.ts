@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
+// List orders with optional status filter
 export const list = query({
   args: {
     status: v.optional(
@@ -29,6 +30,7 @@ export const list = query({
   },
 });
 
+// Get order by order number
 export const getByOrderNumber = query({
   args: {
     orderNumber: v.string(),
@@ -43,6 +45,7 @@ export const getByOrderNumber = query({
   },
 });
 
+// Get order by ID
 export const getById = query({
   args: {
     id: v.id("orders"),
@@ -53,6 +56,7 @@ export const getById = query({
   },
 });
 
+// Get order statistics
 export const getStats = query({
   handler: async (ctx) => {
     const orders = await ctx.db.query("orders").collect();
@@ -76,12 +80,14 @@ export const getStats = query({
   },
 });
 
+// Generate unique order number
 function generateOrderNumber(): string {
   const timestamp = Date.now().toString().slice(-6);
   const random = Math.random().toString(36).substring(2, 6).toUpperCase();
   return `GAY-${timestamp}-${random}`;
 }
 
+// Create new order
 export const create = mutation({
   args: {
     customerName: v.string(),
@@ -132,6 +138,7 @@ export const create = mutation({
       productId: args.productId,
       productName: product.title,
       productPrice: product.price,
+      productSlug: product.slug, // ✅ Added productSlug
       selectedVariant: args.selectedVariant,
       totalAmount,
       lastUpdated: Date.now(),
@@ -145,6 +152,7 @@ export const create = mutation({
   },
 });
 
+// Update order status only
 export const updateStatus = mutation({
   args: {
     id: v.id("orders"),
@@ -173,6 +181,7 @@ export const updateStatus = mutation({
   },
 });
 
+// Update full order details
 export const update = mutation({
   args: {
     id: v.id("orders"),
@@ -203,6 +212,7 @@ export const update = mutation({
       throw new Error("Order not found");
     }
 
+    // Recalculate total if delivery cost changed
     let totalAmount = order.totalAmount;
     if (updates.deliveryCost !== undefined) {
       totalAmount = order.productPrice + updates.deliveryCost;
@@ -218,6 +228,7 @@ export const update = mutation({
   },
 });
 
+// Delete order
 export const remove = mutation({
   args: { id: v.id("orders") },
   handler: async (ctx, args) => {

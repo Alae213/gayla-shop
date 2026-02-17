@@ -6,6 +6,8 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DeliverySettingsModal } from "@/components/admin/delivery-settings-modal";
+import { Settings } from "lucide-react";
 import {
   ToggleGroup,
   ToggleGroupItem,
@@ -22,18 +24,16 @@ import {
   Package,
   LogOut,
   Search,
-  Settings,
   LayoutGrid,
   LayoutList,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-// Import our new components
+// Import components
 import { StatsCards } from "@/components/admin/stats-cards";
 import { HeroEditor } from "@/components/admin/hero-editor";
 import { ProductGrid } from "@/components/admin/product-grid";
-import { ProductModal } from "@/components/admin/product-modal";
 import { OrderKanban } from "@/components/admin/order-kanban";
 import { OrderTable } from "@/components/admin/order-table";
 import { OrderDetailsModal } from "@/components/admin/order-details-modal";
@@ -51,12 +51,10 @@ type OrderStatus =
 
 export default function AdminPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<AdminMode>("build");
+  const [mode, setMode] = useState<AdminMode>("tracking");
   const [trackingView, setTrackingView] = useState<TrackingView>("kanban");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
-  const [selectedProductId, setSelectedProductId] = useState<Id<"products"> | null>(null);
-  const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<Id<"orders"> | null>(null);
 
   // Fetch data
@@ -68,7 +66,6 @@ export default function AdminPage() {
     api.orders.getById,
     selectedOrderId ? { id: selectedOrderId } : "skip"
   );
-  const selectedProduct = products?.find((p) => p._id === selectedProductId);
 
   // Mutations
   const deleteProduct = useMutation(api.products.remove);
@@ -102,14 +99,10 @@ export default function AdminPage() {
     }
   };
 
-  const handleProductSuccess = () => {
-    setSelectedProductId(null);
-    setIsAddProductOpen(false);
-  };
-
   const handleOrderSuccess = () => {
     // Refresh happens automatically via Convex reactivity
   };
+  const [isDeliverySettingsOpen, setIsDeliverySettingsOpen] = useState(false);
 
   // Loading state
   if (siteContent === undefined || products === undefined || orders === undefined) {
@@ -164,6 +157,7 @@ export default function AdminPage() {
                   Tracking Mode
                 </ToggleGroupItem>
               </ToggleGroup>
+
             </div>
 
             {/* Right: Logout */}
@@ -171,6 +165,15 @@ export default function AdminPage() {
               <LogOut className="h-4 w-4" />
               Logout
             </Button>
+            <Button
+  variant="outline"
+  onClick={() => setIsDeliverySettingsOpen(true)}
+  className="gap-2"
+>
+  <Settings className="h-4 w-4" />
+  Delivery Settings
+</Button>
+
           </div>
         </div>
       </div>
@@ -189,9 +192,9 @@ export default function AdminPage() {
             {/* Product Grid */}
             <ProductGrid
               products={products}
-              onEdit={(id) => setSelectedProductId(id)}
+              onEdit={(id) => {}}
               onDelete={handleDeleteProduct}
-              onAdd={() => setIsAddProductOpen(true)}
+              onAdd={() => {}}
             />
           </div>
         )}
@@ -270,23 +273,18 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* Modals */}
-      <ProductModal
-        isOpen={isAddProductOpen || selectedProductId !== null}
-        onClose={() => {
-          setIsAddProductOpen(false);
-          setSelectedProductId(null);
-        }}
-        product={selectedProduct || null}
-        onSuccess={handleProductSuccess}
-      />
-
+      {/* Order Details Modal */}
       <OrderDetailsModal
         isOpen={selectedOrderId !== null}
         onClose={() => setSelectedOrderId(null)}
         order={selectedOrder || null}
         onSuccess={handleOrderSuccess}
       />
+
+<DeliverySettingsModal
+  isOpen={isDeliverySettingsOpen}
+  onClose={() => setIsDeliverySettingsOpen(false)}
+/>
     </div>
   );
 }

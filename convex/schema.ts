@@ -2,6 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  // Products table
   products: defineTable({
     title: v.string(),
     slug: v.string(),
@@ -24,15 +25,20 @@ export default defineSchema({
         })
       )
     ),
-    status: v.union(v.literal("Active"), v.literal("Draft"), v.literal("Out of stock")),
+    status: v.union(
+      v.literal("Active"),
+      v.literal("Draft"),
+      v.literal("Out of stock")
+    ),
     viewCount: v.number(),
-    createdAt: v.optional(v.number()), // ✅ MAKE OPTIONAL
-    updatedAt: v.optional(v.number()), // ✅ MAKE OPTIONAL
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
   })
     .index("by_slug", ["slug"])
     .index("by_category", ["category"])
     .index("by_status", ["status"]),
 
+  // Orders table
   orders: defineTable({
     orderNumber: v.string(),
     status: v.union(
@@ -54,6 +60,7 @@ export default defineSchema({
     productId: v.id("products"),
     productName: v.string(),
     productPrice: v.number(),
+    productSlug: v.optional(v.string()),
     selectedVariant: v.optional(
       v.object({
         size: v.optional(v.string()),
@@ -62,10 +69,13 @@ export default defineSchema({
     ),
     totalAmount: v.number(),
     lastUpdated: v.number(),
+    updatedAt: v.optional(v.number()),
   })
     .index("by_order_number", ["orderNumber"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_customer_phone", ["customerPhone"]),
 
+  // Delivery costs table
   deliveryCosts: defineTable({
     wilayaId: v.number(),
     wilayaName: v.string(),
@@ -75,6 +85,7 @@ export default defineSchema({
     isManualOverride: v.boolean(),
   }).index("by_wilaya_id", ["wilayaId"]),
 
+  // Admin users table
   adminUsers: defineTable({
     email: v.string(),
     passwordHash: v.string(),
@@ -82,6 +93,7 @@ export default defineSchema({
     lastLogin: v.optional(v.number()),
   }).index("by_email", ["email"]),
 
+  // Site content table
   siteContent: defineTable({
     heroTitle: v.optional(v.string()),
     heroSubtitle: v.optional(v.string()),
