@@ -1,8 +1,48 @@
+/* ================================================
+Design System Tokens - Global Styles
+================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* SF Pro Rounded - Local */
+@font-face {
+  font-family: 'SF Pro Rounded';
+  src: url('/fonts/SF-Pro-Rounded-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SF Pro Rounded';
+  src: url('/fonts/SF-Pro-Rounded-Heavy.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Scheherazade New - Local */
+@font-face {
+  font-family: 'Scheherazade New';
+  src: url('/fonts/ScheherazadeNew-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Scheherazade New';
+  src: url('/fonts/ScheherazadeNew-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
+  /* ============================================
+  Existing shadcn tokens (preserved)
+  ============================================ */
   --background: 0 0% 100%;
   --foreground: 222.2 84% 4.9%;
   --card: 0 0% 100%;
@@ -28,8 +68,114 @@
   --chart-3: 197 37% 24%;
   --chart-4: 43 74% 66%;
   --chart-5: 27 87% 67%;
+
+  /* ============================================
+  Color Tokens
+  ============================================ */
+  /* System Colors */
+  --system-50: #f2f2f2; /* Cards & Text Button */
+  --system-100: #ececec; /* inputs & Site Background */
+  --system-200: #e1e1e1; /* Border */
+  --system-300: #828282; /* Labels & Paragraph */
+  --system-400: #404040; /* Primary Text */
+
+  /* Primary Colors */
+  --primary-50: #eaf3ff;
+  --primary-100: #b4caf5;
+  --primary-200: #0066ff;
+  --primary-300: #2e73db;
+
+  /* Error Colors */
+  --error-100: #f2a3a9;
+  --error-200: #fb414e;
+  --error-300: #e33844;
+
+  /* Warning Colors */
+  --warning-100: #ffe8d3;
+  --warning-200: #ffa147;
+  --warning-300: #e4852a;
+
+  /* Success Colors */
+  --success-100: #c0eedf;
+  --success-200: #00bc7d;
+  --success-300: #059866;
+
+  /* ============================================
+  Gradient Tokens
+  ============================================ */
+  --gradient-button: linear-gradient(0deg, #5592C6 0%, #275985 100%);
+  --gradient-popup: linear-gradient(160deg, #353737fa 0%, #1d1e1ffa 100%);
+
+  /* ============================================
+  Additional Shadow Tokens
+  ============================================ */
+  --shadow-inside-shadow:
+    inset 0px 0px 0px 1px #ffffff21,
+    inset 0px 4px 10px 0px #00000040,
+    inset 0px -1px 0px 0px #ffffff1f,
+    inset 0px 2px 1px 0px #0000001a,
+    0px 0px 0px 1px #00000040;
+
+  --shadow-m-shadow:
+    inset 0px 0px 0px 1px #40404026,
+    inset 0px 1.4px 0px 0px #ffffff26,
+    inset 0px 4px 10px 1px #ffffff14,
+    inset 0px -1px 2px 0px #0000001f,
+    0px 1px 2px 0px #0000000d,
+    0px 4px 4px 0px #0000000a,
+    0px 9px 6px 0px #00000008,
+    0px 16px 7px 0px #00000003,
+    0px 25px 7px 0px #00000000;
+
+  --shadow-xl-shadow:
+    inset 0px 0px 1px 1px #ffffff4a,
+    inset 0.2px 4px 10px 0px #ffffff05,
+    inset 0.2px 1px 0px 0px #ffffff40,
+    inset -0.2px -1px 0px 0px #0000004d,
+    0px 12px 26px 0px #0000001a,
+    0px 47px 47px 0px #00000017,
+    0px 107px 64px 0px #0000000d,
+    0px 190px 76px 0px #00000003,
+    0px 297px 83px 0px #00000000,
+    0px 0px 0px 1px #292a2a;
+
+  --shadow-bluebutton:
+    inset 0px 0px 0px 1px #00000030,
+    inset 0px 2px 0px 0.4px #ffffff59,
+    0px 3px 7px 0px #6b97bd38,
+    0px 13px 13px 0px #6b97bd30,
+    0px 28px 17px 0px #6b97bd1c,
+    0px 50px 20px 0px #6b97bd08,
+    0px 78px 22px 0px #6b97bd00;
+
+  /* ============================================
+  Typography Tokens (Updated)
+  ============================================ */
+  --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-covered: 'Covered By Your Grace', cursive, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --font-size-xs: 12px;
+  --font-size-md: 17px;
+  --font-size-lg: 24px;
+  --font-size-xl: 36px;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-extrabold: 800;
+
+  --line-height-tight: 90%;
+  --line-height-snug: 100%;
+  --line-height-normal: 120%;
+  --line-height-relaxed: 150%;
+
+  --letter-spacing-tight: -0.06em;
+  --letter-spacing-snug: -0.02em;
+  --letter-spacing-normal: 0em;
+
+  --body-bg: var(--system-100);
 }
 
+/* Preserve existing dark theme tokens */
 .dark {
   --background: 222.2 84% 4.9%;
   --foreground: 210 40% 98%;
@@ -57,12 +203,63 @@
   --chart-5: 340 75% 55%;
 }
 
+/* Typography Classes */
+.headline-h1 {
+  font-family: var(--font-inter);
+  font-weight: var(--font-weight-extrabold);
+  font-size: var(--font-size-xl);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-tight);
+}
+.headline-h2 {
+  font-family: var(--font-inter);
+  font-weight: var(--font-weight-extrabold);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-normal);
+  letter-spacing: var(--letter-spacing-snug);
+}
+.body-text {
+  font-family: var(--font-inter);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+  letter-spacing: var(--letter-spacing-snug);
+}
+.caption-text {
+  font-family: var(--font-inter);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-xs);
+  line-height: 170%;
+  letter-spacing: var(--letter-spacing-normal);
+}
+.note-text {
+  font-family: var(--font-covered);
+  font-weight: var(--font-weight-regular);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-snug);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+/* ================================================
+Global Base Styles
+================================================ */
 * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
   border-color: hsl(var(--border));
 }
 
 body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  background: var(--body-bg);
+  color: var(--system-400);
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+@keyframes scale-in {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
 }
