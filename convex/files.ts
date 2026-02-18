@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, action } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 
 /**
  * Generate upload URL for file storage
@@ -8,7 +8,6 @@ import { mutation, action } from "./_generated/server";
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
-    // Generate upload URL from Convex file storage
     const uploadUrl = await ctx.storage.generateUploadUrl();
     return uploadUrl;
   },
@@ -18,7 +17,7 @@ export const generateUploadUrl = mutation({
  * Get file URL from storage ID
  * Used by: Display images on frontend
  */
-export const getUrl = mutation({
+export const getUrl = query({
   args: {
     storageId: v.string(),
   },
@@ -38,21 +37,6 @@ export const deleteFile = mutation({
   },
   handler: async (ctx, args) => {
     await ctx.storage.delete(args.storageId);
-    return { success: true };
-  },
-});
-
-/**
- * Upload and process image
- * This action handles the complete flow: upload + get URL
- */
-export const uploadImage = action({
-  args: {
-    // Image will be uploaded as base64 or blob from frontend
-  },
-  handler: async (ctx) => {
-    // This is handled client-side with generateUploadUrl
-    // This is just a placeholder for reference
     return { success: true };
   },
 });
