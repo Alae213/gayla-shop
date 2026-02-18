@@ -65,13 +65,22 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
   const [isSaving, setIsSaving] = useState(false);
   const [productForm, setProductForm] = useState(EMPTY_FORM);
 
+  // Track object URLs created for preview so we can revoke them on unmount
+  const objectUrlsRef = useRef<string[]>([]);
+
   const productFileInputRef = useRef<HTMLInputElement>(null);
   const createProduct = useMutation(api.products.create);
   const updateProduct = useMutation(api.products.update);
-  // Use single canonical upload URL generator
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
 
-  // Reset or populate form whenever modal opens/closes or product changes
+  // Revoke object URLs when modal closes to avoid memory leaks
+  useEffect(() => {
+    return () => {
+      objectUrlsRef.current.forEach(URL.revokeObjectURL);
+      objectUrlsRef.current = [];
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen) {
       if (product) {
@@ -108,7 +117,11 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
           continue;
         }
 
-        // Step 1: Get presigned upload URL
+        // Create a local object URL for immediate preview in the admin UI
+        const previewUrl = URL.createObjectURL(file);
+        objectUrlsRef.current.push(previewUrl);
+
+        // Step 1: Get presigned upload URL from Convex
         const uploadUrl = await generateUploadUrl();
 
         // Step 2: Upload to Convex storage
@@ -120,16 +133,15 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
 
         if (!result.ok) throw new Error(`Upload failed for ${file.name}`);
 
-        // Step 3: Get storageId
+        // Step 3: Get storageId from response
         const { storageId } = await result.json();
 
-        // Step 4: Use ctx.storage.getUrl-compatible URL
-        // Convex returns a signed URL when using getUrl. For display, build the
-        // canonical storage URL from the upload URL origin.
-        const convexUrl = new URL(uploadUrl);
-        const imageUrl = `${convexUrl.origin}/api/storage/${storageId}`;
-
-        uploadedImages.push({ storageId, url: imageUrl });
+        // Store the previewUrl for admin-side display right now.
+        // The server queries (list / getBySlug) will always resolve the real
+        // Convex serving URL via ctx.storage.getUrl(storageId) — so the URL
+        // field in the DB is only used as a fallback and doesn't need to be
+        // correct for public-facing pages.
+        uploadedImages.push({ storageId, url: previewUrl });
       }
 
       if (uploadedImages.length > 0) {
@@ -173,8 +185,14 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
       return;
     }
 
-    // Always generate fresh slug from title before saving
     const finalSlug = product?.slug || generateSlug(productForm.title);
+
+    // Strip out blob: preview URLs before saving — server will resolve real URLs
+    const imagesToSave = productForm.images.map((img) => ({
+      storageId: img.storageId,
+      // Store storageId as url placeholder; server resolves actual URL via getUrl
+      url: img.url.startsWith("blob:") ? img.storageId : img.url,
+    }));
 
     setIsSaving(true);
     try {
@@ -187,7 +205,7 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
           price: productForm.price,
           category: "",
           status: productForm.status,
-          images: productForm.images,
+          images: imagesToSave,
         });
         toast.success("Product updated!");
       } else {
@@ -198,7 +216,7 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
           price: productForm.price,
           category: "",
           status: productForm.status,
-          images: productForm.images,
+          images: imagesToSave,
         });
         toast.success("Product created!");
       }
@@ -206,7 +224,6 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
       onSuccess();
       onClose();
     } catch (error: any) {
-      // If slug collision, append random suffix and retry
       if (error.message?.includes("slug already exists")) {
         try {
           const uniqueSlug = `${finalSlug}-${Math.random().toString(36).slice(2, 6)}`;
@@ -220,7 +237,7 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
               price: productForm.price,
               category: "",
               status: productForm.status,
-              images: productForm.images,
+              images: imagesToSave,
             });
           }
           toast.success(product ? "Product updated!" : "Product created!");
@@ -306,7 +323,6 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
                 </div>
               )}
 
-              {/* Empty placeholders */}
               {Array.from({ length: Math.max(0, 4 - productForm.images.length) }).map((_, i) => (
                 <div
                   key={`empty-${i}`}
@@ -318,7 +334,7 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
             </div>
           </div>
 
-          {/* Title - slug auto-generated from this */}
+          {/* Title */}
           <div>
             <Label htmlFor="title">
               Title <span className="text-red-500">*</span>
@@ -326,10 +342,7 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
             <Input
               id="title"
               value={productForm.title}
-              onChange={(e) => {
-                const title = e.target.value;
-                setProductForm((prev) => ({ ...prev, title }));
-              }}
+              onChange={(e) => setProductForm((prev) => ({ ...prev, title: e.target.value }))}
               placeholder="Classic Cotton T-Shirt"
               className="mt-2"
             />

@@ -2,6 +2,22 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
+/** Resolve image URLs for a product's images array using ctx.storage.getUrl.
+ *  This ensures URLs are always valid regardless of what was stored in the DB.
+ */
+async function resolveImages(
+  ctx: any,
+  images: { url: string; storageId: string }[] | undefined
+) {
+  if (!images || images.length === 0) return [];
+  return Promise.all(
+    images.map(async (img) => ({
+      storageId: img.storageId,
+      url: (await ctx.storage.getUrl(img.storageId)) ?? img.url ?? "",
+    }))
+  );
+}
+
 export const list = query({
   args: {
     category: v.optional(v.string()),
@@ -20,14 +36,19 @@ export const list = query({
       products = products.filter((p) => p.status === args.status);
     }
 
-    // Handle optional createdAt - fallback to _creationTime
     products.sort((a, b) => {
       const aTime = a.createdAt || a._creationTime;
       const bTime = b.createdAt || b._creationTime;
       return bTime - aTime;
     });
 
-    return products;
+    // Resolve every product's images to valid serving URLs
+    return Promise.all(
+      products.map(async (product) => ({
+        ...product,
+        images: await resolveImages(ctx, product.images),
+      }))
+    );
   },
 });
 
@@ -39,7 +60,12 @@ export const getBySlug = query({
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .first();
 
-    return product;
+    if (!product) return null;
+
+    return {
+      ...product,
+      images: await resolveImages(ctx, product.images),
+    };
   },
 });
 
@@ -47,7 +73,12 @@ export const getById = query({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
     const product = await ctx.db.get(args.id);
-    return product;
+    if (!product) return null;
+
+    return {
+      ...product,
+      images: await resolveImages(ctx, product.images),
+    };
   },
 });
 
@@ -57,7 +88,6 @@ export const incrementViewCount = mutation({
     id: v.optional(v.id("products")),
   },
   handler: async (ctx, args) => {
-    // Backwards/forwards compatible: allow either slug or id.
     let product = null as any;
 
     if (args.id) {
@@ -105,7 +135,6 @@ export const create = mutation({
     status: v.union(v.literal("Active"), v.literal("Draft"), v.literal("Out of stock")),
   },
   handler: async (ctx, args) => {
-    // Check if slug already exists
     const existing = await ctx.db
       .query("products")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
@@ -116,7 +145,6 @@ export const create = mutation({
     }
 
     const now = Date.now();
-
     const productId = await ctx.db.insert("products", {
       ...args,
       viewCount: 0,
@@ -164,7 +192,6 @@ export const update = mutation({
       throw new Error("Product not found");
     }
 
-    // Check if slug is being changed and if it already exists
     if (updates.slug !== undefined && updates.slug !== product.slug) {
       const existing = await ctx.db
         .query("products")
