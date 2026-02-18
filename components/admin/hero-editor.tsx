@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Sparkles } from "lucide-react";
+import { Upload, Sparkles, Check } from "lucide-react";
 import { toast } from "sonner";
 
 interface HeroEditorProps {
@@ -19,7 +19,7 @@ interface HeroEditorProps {
       url: string;
       storageId: string;
     };
-  } | null; // ✅ ADD NULL
+  } | null;
   onSave: () => void;
 }
 
@@ -29,12 +29,15 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
   const [heroSubtitle, setHeroSubtitle] = useState("");
   const [heroCtaText, setHeroCtaText] = useState("Shop Now");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const updateSiteContent = useMutation(api.siteContent.update);
   const generateUploadUrl = useMutation(api.siteContent.generateUploadUrl);
 
-  // ✅ UPDATE EFFECT TO HANDLE NULL
+  // Sync local state when siteContent loads from Convex
   useEffect(() => {
     if (siteContent) {
       setHeroTitle(siteContent.heroTitle || "");
@@ -43,18 +46,26 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
     }
   }, [siteContent]);
 
-  const saveHeroChanges = async () => {
-    try {
-      await updateSiteContent({
-        heroTitle,
-        heroSubtitle,
-        heroCtaText,
-      });
-      onSave();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to save changes");
-    }
-  };
+  // Debounced save — fires 500ms after the user stops typing
+  const debouncedSave = useCallback(
+    (title: string, subtitle: string, ctaText: string) => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      setSaveStatus("saving");
+      debounceTimer.current = setTimeout(async () => {
+        try {
+          await updateSiteContent({ heroTitle: title, heroSubtitle: subtitle, heroCtaText: ctaText });
+          setSaveStatus("saved");
+          onSave();
+          // Reset to idle after 2s
+          setTimeout(() => setSaveStatus("idle"), 2000);
+        } catch (error: any) {
+          setSaveStatus("idle");
+          toast.error(error.message || "Failed to save changes");
+        }
+      }, 500);
+    },
+    [updateSiteContent, onSave]
+  );
 
   const handleHeroBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -67,7 +78,10 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
 
     setIsUploadingImage(true);
     try {
+      // Step 1: Get a presigned upload URL from Convex
       const uploadUrl = await generateUploadUrl();
+
+      // Step 2: Upload file directly to Convex storage
       const result = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": file.type },
@@ -76,15 +90,16 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
 
       if (!result.ok) throw new Error("Upload failed");
 
+      // Step 3: Get the storageId from the response
       const { storageId } = await result.json();
-      const imageUrl = new URL(uploadUrl);
-      imageUrl.pathname = `/api/storage/${storageId}`;
 
+      // Step 4: Build the correct Convex serving URL
+      const convexUrl = new URL(uploadUrl);
+      const imageUrl = `${convexUrl.origin}/api/storage/${storageId}`;
+
+      // Step 5: Persist to DB
       await updateSiteContent({
-        heroBackgroundImage: {
-          storageId,
-          url: imageUrl.toString(),
-        },
+        heroBackgroundImage: { storageId, url: imageUrl },
       });
 
       toast.success("Hero background updated!");
@@ -94,10 +109,11 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
       console.error(error);
     } finally {
       setIsUploadingImage(false);
+      // Reset file input so same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  // ✅ HANDLE NULL CASE
   if (!siteContent) {
     return (
       <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
@@ -116,13 +132,31 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
           <Sparkles className="h-6 w-6 text-indigo-600" />
           Hero Section
         </h2>
-        <Button
-          variant={editingHero ? "default" : "outline"}
-          onClick={() => setEditingHero(!editingHero)}
-          size="sm"
-        >
-          {editingHero ? "Close" : "Edit"}
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Save status indicator */}
+          {editingHero && saveStatus !== "idle" && (
+            <span className="text-xs flex items-center gap-1 text-gray-500">
+              {saveStatus === "saving" ? (
+                <>
+                  <div className="animate-spin rounded-full h-3 w-3 border-2 border-gray-300 border-t-indigo-600" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="h-3 w-3 text-green-500" />
+                  <span className="text-green-600">Saved</span>
+                </>
+              )}
+            </span>
+          )}
+          <Button
+            variant={editingHero ? "default" : "outline"}
+            onClick={() => setEditingHero(!editingHero)}
+            size="sm"
+          >
+            {editingHero ? "Close" : "Edit"}
+          </Button>
+        </div>
       </div>
 
       {editingHero ? (
@@ -133,8 +167,9 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
               id="heroTitle"
               value={heroTitle}
               onChange={(e) => {
-                setHeroTitle(e.target.value);
-                saveHeroChanges();
+                const val = e.target.value;
+                setHeroTitle(val);
+                debouncedSave(val, heroSubtitle, heroCtaText);
               }}
               placeholder="Welcome to Gayla"
               className="mt-2"
@@ -147,8 +182,9 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
               id="heroSubtitle"
               value={heroSubtitle}
               onChange={(e) => {
-                setHeroSubtitle(e.target.value);
-                saveHeroChanges();
+                const val = e.target.value;
+                setHeroSubtitle(val);
+                debouncedSave(heroTitle, val, heroCtaText);
               }}
               placeholder="Discover premium streetwear"
               className="mt-2"
@@ -161,8 +197,9 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
               id="heroCtaText"
               value={heroCtaText}
               onChange={(e) => {
-                setHeroCtaText(e.target.value);
-                saveHeroChanges();
+                const val = e.target.value;
+                setHeroCtaText(val);
+                debouncedSave(heroTitle, heroSubtitle, val);
               }}
               placeholder="Shop Now"
               className="mt-2"
@@ -171,6 +208,11 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
 
           <div>
             <Label>Hero Background Image</Label>
+            {siteContent.heroBackgroundImage && (
+              <p className="text-xs text-green-600 mt-1 mb-2">
+                ✓ Background image is set
+              </p>
+            )}
             <div className="mt-2">
               <input
                 ref={fileInputRef}
@@ -187,13 +229,13 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
               >
                 {isUploadingImage ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-indigo-600 mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-indigo-600 mr-2" />
                     Uploading...
                   </>
                 ) : (
                   <>
                     <Upload className="h-4 w-4 mr-2" />
-                    Upload Background Image
+                    {siteContent.heroBackgroundImage ? "Change Background Image" : "Upload Background Image"}
                   </>
                 )}
               </Button>
@@ -213,6 +255,16 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
           <div>
             <p className="text-sm text-gray-500 mb-1">CTA Button</p>
             <Badge variant="secondary">{heroCtaText}</Badge>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 mb-1">Background Image</p>
+            <p className="text-sm">
+              {siteContent.heroBackgroundImage ? (
+                <span className="text-green-600 font-medium">✓ Image set</span>
+              ) : (
+                <span className="text-gray-400">Not set</span>
+              )}
+            </p>
           </div>
         </div>
       )}
