@@ -6,7 +6,7 @@ import { notFound, useParams } from "next/navigation";
 import { OrderForm } from "@/components/products/order-form";
 import { formatPrice } from "@/lib/utils";
 import { Loader2, ImageIcon } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -17,12 +17,16 @@ export default function ProductDetailPage() {
   const product = useQuery(api.products.getBySlug, { slug });
   const incrementViewCount = useMutation(api.products.incrementViewCount);
 
+  // Guard so we only call incrementViewCount once per page mount,
+  // even if the effect re-fires during HMR or React Strict Mode.
+  const hasIncremented = useRef(false);
+
   useEffect(() => {
-    if (product?._id) {
+    if (product?._id && !hasIncremented.current) {
+      hasIncremented.current = true;
       incrementViewCount({ id: product._id });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product?._id]);
+  }, [product?._id, incrementViewCount]);
 
   if (product === undefined) {
     return (
