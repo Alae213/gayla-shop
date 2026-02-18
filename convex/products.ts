@@ -5,7 +5,9 @@ import { Id } from "./_generated/dataModel";
 export const list = query({
   args: {
     category: v.optional(v.string()),
-    status: v.optional(v.union(v.literal("Active"), v.literal("Draft"), v.literal("Out of stock"))),
+    status: v.optional(
+      v.union(v.literal("Active"), v.literal("Draft"), v.literal("Out of stock"))
+    ),
   },
   handler: async (ctx, args) => {
     let products = await ctx.db.query("products").collect();
@@ -50,19 +52,29 @@ export const getById = query({
 });
 
 export const incrementViewCount = mutation({
-  args: { slug: v.string() },
+  args: {
+    slug: v.optional(v.string()),
+    id: v.optional(v.id("products")),
+  },
   handler: async (ctx, args) => {
-    const product = await ctx.db
-      .query("products")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .first();
+    // Backwards/forwards compatible: allow either slug or id.
+    let product = null as any;
+
+    if (args.id) {
+      product = await ctx.db.get(args.id);
+    } else if (args.slug) {
+      product = await ctx.db
+        .query("products")
+        .withIndex("by_slug", (q) => q.eq("slug", args.slug as string))
+        .first();
+    }
 
     if (!product) {
       throw new Error("Product not found");
     }
 
     await ctx.db.patch(product._id, {
-      viewCount: product.viewCount + 1,
+      viewCount: (product.viewCount || 0) + 1,
     });
 
     return { success: true };
@@ -140,7 +152,9 @@ export const update = mutation({
         })
       )
     ),
-    status: v.optional(v.union(v.literal("Active"), v.literal("Draft"), v.literal("Out of stock"))),
+    status: v.optional(
+      v.union(v.literal("Active"), v.literal("Draft"), v.literal("Out of stock"))
+    ),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
