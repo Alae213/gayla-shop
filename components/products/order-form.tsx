@@ -4,9 +4,6 @@ import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,8 +17,8 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice } from "@/lib/utils";
-import { WILAYAS } from "@/lib/constants";
-import { Loader2 } from "lucide-react";
+import { WILAYAS, COMMUNES_BY_WILAYA } from "@/lib/constants";
+import { Loader2, Home, Building2, CheckCircle2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -29,19 +26,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-const orderSchema = z.object({
-  customerName: z.string().min(2, "Name is required"),
-  customerPhone: z.string().min(10, "Valid phone number required"),
-  customerWilaya: z.string().min(1, "Wilaya is required"),
-  customerCommune: z.string().min(1, "Commune is required"),
-  customerAddress: z.string().min(5, "Address is required"),
-  deliveryType: z.enum(["Domicile", "Stopdesk"]),
-  selectedSize: z.string().optional(),
-  selectedColor: z.string().optional(),
-});
-
-type OrderFormData = z.infer<typeof orderSchema>;
 
 interface OrderFormProps {
   product: {
@@ -55,85 +39,125 @@ interface OrderFormProps {
   };
 }
 
+type DeliveryType = "Stopdesk" | "Domicile";
+
+function phoneValid(v: string) {
+  return /^0[5-7][0-9]{8}$/.test(v.replace(/\s/g, ""));
+}
+
 export function OrderForm({ product }: OrderFormProps) {
-  const [selectedWilaya, setSelectedWilaya] = useState<string>("");
-  const [deliveryType, setDeliveryType] = useState<"Domicile" | "Stopdesk">("Domicile");
+  // ── Form state ────────────────────────────────────────────────
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [deliveryType, setDeliveryType] = useState<DeliveryType>("Stopdesk");
+  const [wilayaId, setWilayaId] = useState("");
+  const [commune, setCommune] = useState("");
+  const [address, setAddress] = useState("");
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedColor, setSelectedColor] = useState("");
+
+  // ── UI state ──────────────────────────────────────────────────
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const [orderNumber, setOrderNumber] = useState<string>("");
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [orderNumber, setOrderNumber] = useState("");
 
+  // ── Convex ────────────────────────────────────────────────────
   const createOrder = useMutation(api.orders.create);
-
   const deliveryCostData = useQuery(
     api.deliveryCosts.getByWilayaId,
-    selectedWilaya ? { wilayaId: parseInt(selectedWilaya) } : "skip"
+    wilayaId ? { wilayaId: parseInt(wilayaId) } : "skip"
   );
 
   const deliveryCost =
-    deliveryCostData && deliveryType === "Domicile"
-      ? deliveryCostData.domicileCost
-      : deliveryCostData && deliveryType === "Stopdesk"
-      ? deliveryCostData.stopdeskCost
+    deliveryCostData
+      ? deliveryType === "Domicile"
+        ? deliveryCostData.domicileCost
+        : deliveryCostData.stopdeskCost
       : 0;
 
   const totalAmount = product.price + deliveryCost;
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    setValue,
-    reset,
-  } = useForm<OrderFormData>({
-    resolver: zodResolver(orderSchema),
-    defaultValues: {
-      deliveryType: "Domicile",
-    },
-  });
-
-  const onSubmit = async (data: OrderFormData) => {
-    try {
-      setIsSubmitting(true);
-
-      const wilaya = WILAYAS.find((w) => w.id.toString() === data.customerWilaya);
-
-      const orderData = {
-        productId: product._id,
-        customerName: data.customerName,
-        customerPhone: data.customerPhone,
-        customerWilaya: wilaya?.name || "",
-        customerCommune: data.customerCommune,
-        customerAddress: data.customerAddress,
-        deliveryType: data.deliveryType,
-        deliveryCost: deliveryCost,
-        selectedVariant:
-          data.selectedSize || data.selectedColor
-            ? {
-                size: data.selectedSize,
-                color: data.selectedColor,
-              }
-            : undefined,
-      };
-
-      const result = await createOrder(orderData);
-
-      setOrderNumber(result.orderNumber);
-      setShowSuccessDialog(true);
-      reset();
-      setSelectedWilaya("");
-    } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to create order");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
+  // ── Variants ──────────────────────────────────────────────────
   const sizes = product.variants
     ? Array.from(new Set(product.variants.map((v) => v.size).filter(Boolean)))
     : [];
   const colors = product.variants
     ? Array.from(new Set(product.variants.map((v) => v.color).filter(Boolean)))
     : [];
+
+  // ── Communes filtered by wilaya ───────────────────────────────
+  const availableCommunes = wilayaId
+    ? (COMMUNES_BY_WILAYA[parseInt(wilayaId)] || [])
+    : [];
+
+  // ── Validation ────────────────────────────────────────────────
+  function validate(): boolean {
+    const newErrors: Record<string, string> = {};
+
+    if (!customerName.trim() || customerName.trim().length < 2)
+      newErrors.customerName = "Full name is required";
+
+    if (!phoneValid(customerPhone))
+      newErrors.customerPhone = "Enter a valid Algerian phone number (e.g. 0555 123 456)";
+
+    if (!wilayaId)
+      newErrors.wilaya = "Please select a wilaya";
+
+    if (deliveryType === "Domicile") {
+      if (!commune)
+        newErrors.commune = "Please select a baladia";
+      if (!address.trim() || address.trim().length < 5)
+        newErrors.address = "Please enter your full address";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }
+
+  // ── Submit ────────────────────────────────────────────────────
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!validate()) return;
+
+    setIsSubmitting(true);
+    try {
+      const wilayaObj = WILAYAS.find((w) => w.id.toString() === wilayaId);
+
+      const result = await createOrder({
+        productId: product._id,
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.replace(/\s/g, ""),
+        customerWilaya: wilayaObj?.name || "",
+        customerCommune: commune,
+        customerAddress: deliveryType === "Domicile" ? address.trim() : "",
+        deliveryType,
+        deliveryCost,
+        selectedVariant:
+          selectedSize || selectedColor
+            ? { size: selectedSize || undefined, color: selectedColor || undefined }
+            : undefined,
+      });
+
+      setOrderNumber(result.orderNumber);
+      setShowSuccess(true);
+
+      // Reset form
+      setCustomerName("");
+      setCustomerPhone("");
+      setDeliveryType("Stopdesk");
+      setWilayaId("");
+      setCommune("");
+      setAddress("");
+      setSelectedSize("");
+      setSelectedColor("");
+      setErrors({});
+    } catch (error) {
+      setErrors({ submit: error instanceof Error ? error.message : "Failed to create order. Please try again." });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <>
@@ -142,123 +166,144 @@ export function OrderForm({ product }: OrderFormProps) {
           <CardTitle>Order this Product</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Customer Info */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg">Customer Information</h3>
+          <form onSubmit={handleSubmit} className="space-y-5">
 
-              <div className="space-y-2">
-                <Label htmlFor="customerName">Full Name</Label>
-                <Input
-                  id="customerName"
-                  {...register("customerName")}
-                  placeholder="Full Name"
-                />
-                {errors.customerName && (
-                  <p className="text-sm text-destructive">{errors.customerName.message}</p>
-                )}
+            {/* 1. Full Name */}
+            <div className="space-y-1">
+              <Label htmlFor="customerName">Full Name <span className="text-red-500">*</span></Label>
+              <Input
+                id="customerName"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Ahmed Benali"
+              />
+              {errors.customerName && <p className="text-sm text-destructive">{errors.customerName}</p>}
+            </div>
+
+            {/* 2. Phone */}
+            <div className="space-y-1">
+              <Label htmlFor="customerPhone">Phone Number <span className="text-red-500">*</span></Label>
+              <Input
+                id="customerPhone"
+                type="tel"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="0555 123 456"
+              />
+              {errors.customerPhone && <p className="text-sm text-destructive">{errors.customerPhone}</p>}
+            </div>
+
+            {/* 3. Delivery Type */}
+            <div className="space-y-1">
+              <Label>Delivery Type <span className="text-red-500">*</span></Label>
+              <div className="grid grid-cols-2 gap-3 mt-1">
+                <button
+                  type="button"
+                  onClick={() => { setDeliveryType("Stopdesk"); setCommune(""); setAddress(""); }}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-colors ${
+                    deliveryType === "Stopdesk"
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-muted hover:border-primary/40"
+                  }`}
+                >
+                  <Building2 className="h-4 w-4" />
+                  Stopdesk
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setDeliveryType("Domicile"); }}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-colors ${
+                    deliveryType === "Domicile"
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-muted hover:border-primary/40"
+                  }`}
+                >
+                  <Home className="h-4 w-4" />
+                  Home Delivery
+                </button>
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="customerPhone">Phone Number</Label>
-                <Input
-                  id="customerPhone"
-                  {...register("customerPhone")}
-                  placeholder="0555123456"
-                  type="tel"
-                />
-                {errors.customerPhone && (
-                  <p className="text-sm text-destructive">{errors.customerPhone.message}</p>
-                )}
-              </div>
+            {/* 4. Wilaya */}
+            <div className="space-y-1">
+              <Label>Wilaya <span className="text-red-500">*</span></Label>
+              <Select
+                value={wilayaId}
+                onValueChange={(v) => { setWilayaId(v); setCommune(""); }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a wilaya..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-[260px]">
+                  {WILAYAS.map((w) => (
+                    <SelectItem key={w.id} value={w.id.toString()}>
+                      {w.id.toString().padStart(2, "0")} - {w.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.wilaya && <p className="text-sm text-destructive">{errors.wilaya}</p>}
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="customerWilaya">Wilaya (Province)</Label>
+            {/* 5. Baladia (Home only) */}
+            {deliveryType === "Domicile" && (
+              <div className="space-y-1">
+                <Label>Baladia <span className="text-red-500">*</span></Label>
                 <Select
-                  value={selectedWilaya}
-                  onValueChange={(value) => {
-                    setSelectedWilaya(value);
-                    setValue("customerWilaya", value);
-                  }}
+                  value={commune}
+                  onValueChange={setCommune}
+                  disabled={!wilayaId}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a wilaya" />
+                    <SelectValue placeholder={wilayaId ? "Select a baladia..." : "Select wilaya first"} />
                   </SelectTrigger>
-                  <SelectContent>
-                    {WILAYAS.map((wilaya) => (
-                      <SelectItem key={wilaya.id} value={wilaya.id.toString()}>
-                        {wilaya.name}
-                      </SelectItem>
+                  <SelectContent className="max-h-[260px]">
+                    {availableCommunes.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.customerWilaya && (
-                  <p className="text-sm text-destructive">{errors.customerWilaya.message}</p>
-                )}
+                {errors.commune && <p className="text-sm text-destructive">{errors.commune}</p>}
               </div>
+            )}
 
-              <div className="space-y-2">
-                <Label htmlFor="customerCommune">City/Commune</Label>
-                <Input
-                  id="customerCommune"
-                  {...register("customerCommune")}
-                  placeholder="City/Commune"
-                />
-                {errors.customerCommune && (
-                  <p className="text-sm text-destructive">{errors.customerCommune.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="customerAddress">Full Address</Label>
+            {/* 6. Full Address (Home only) */}
+            {deliveryType === "Domicile" && (
+              <div className="space-y-1">
+                <Label htmlFor="address">Full Address <span className="text-red-500">*</span></Label>
                 <Textarea
-                  id="customerAddress"
-                  {...register("customerAddress")}
-                  placeholder="Full Address"
+                  id="address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Street, building, apartment..."
                   rows={3}
                 />
-                {errors.customerAddress && (
-                  <p className="text-sm text-destructive">{errors.customerAddress.message}</p>
-                )}
+                {errors.address && <p className="text-sm text-destructive">{errors.address}</p>}
               </div>
-            </div>
+            )}
 
             {/* Variants */}
             {(sizes.length > 0 || colors.length > 0) && (
               <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Options</h3>
-
+                <p className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Options</p>
                 {sizes.length > 0 && (
-                  <div className="space-y-2">
-                    <Label htmlFor="selectedSize">Size</Label>
-                    <Select onValueChange={(value) => setValue("selectedSize", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a size" />
-                      </SelectTrigger>
+                  <div className="space-y-1">
+                    <Label>Size</Label>
+                    <Select value={selectedSize} onValueChange={setSelectedSize}>
+                      <SelectTrigger><SelectValue placeholder="Select size" /></SelectTrigger>
                       <SelectContent>
-                        {sizes.map((size) => (
-                          <SelectItem key={size} value={size!}>
-                            {size}
-                          </SelectItem>
-                        ))}
+                        {sizes.map((s) => <SelectItem key={s} value={s!}>{s}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                 )}
-
                 {colors.length > 0 && (
-                  <div className="space-y-2">
-                    <Label htmlFor="selectedColor">Color</Label>
-                    <Select onValueChange={(value) => setValue("selectedColor", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a color" />
-                      </SelectTrigger>
+                  <div className="space-y-1">
+                    <Label>Color</Label>
+                    <Select value={selectedColor} onValueChange={setSelectedColor}>
+                      <SelectTrigger><SelectValue placeholder="Select color" /></SelectTrigger>
                       <SelectContent>
-                        {colors.map((color) => (
-                          <SelectItem key={color} value={color!}>
-                            {color}
-                          </SelectItem>
-                        ))}
+                        {colors.map((c) => <SelectItem key={c} value={c!}>{c}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -266,68 +311,60 @@ export function OrderForm({ product }: OrderFormProps) {
               </div>
             )}
 
-            {/* Delivery Type */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg">Delivery Type</h3>
-              <Select
-                value={deliveryType}
-                onValueChange={(value: "Domicile" | "Stopdesk") => {
-                  setDeliveryType(value);
-                  setValue("deliveryType", value);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Domicile">Home Delivery</SelectItem>
-                  <SelectItem value="Stopdesk">Stopdesk Delivery</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* Order Summary */}
-            <div className="space-y-2 p-4 bg-muted rounded-lg">
-              <div className="flex justify-between">
-                <span>Product Price:</span>
-                <span className="font-semibold">
-                  {formatPrice(product.price, "en-US")}
-                </span>
+            {wilayaId && (
+              <div className="space-y-2 p-4 bg-muted rounded-lg text-sm">
+                <div className="flex justify-between">
+                  <span>Product Price:</span>
+                  <span className="font-semibold">{formatPrice(product.price, "en-US")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Delivery Cost:</span>
+                  <span className="font-semibold">
+                    {deliveryCostData === undefined
+                      ? "..."
+                      : formatPrice(deliveryCost, "en-US")}
+                  </span>
+                </div>
+                <div className="flex justify-between text-base font-bold pt-2 border-t">
+                  <span>Total:</span>
+                  <span>{formatPrice(totalAmount, "en-US")}</span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span>Delivery Cost:</span>
-                <span className="font-semibold">
-                  {formatPrice(deliveryCost, "en-US")}
-                </span>
-              </div>
-              <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                <span>Total Amount:</span>
-                <span>{formatPrice(totalAmount, "en-US")}</span>
-              </div>
-            </div>
+            )}
 
-            {/* Submit Button */}
+            {/* Global submit error */}
+            {errors.submit && (
+              <p className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">{errors.submit}</p>
+            )}
+
+            {/* Submit */}
             <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Confirm Order
+              {isSubmitting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Placing Order...</>
+              ) : (
+                "Confirm Order"
+              )}
             </Button>
           </form>
         </CardContent>
       </Card>
 
       {/* Success Dialog */}
-      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+      <Dialog open={showSuccess} onOpenChange={setShowSuccess}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Order Created Successfully!</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
+              Order Confirmed!
+            </DialogTitle>
             <DialogDescription>
-              Your order number: <strong>{orderNumber}</strong>
-              <br />
-              <br />
+              Your order number is: <strong className="text-foreground">{orderNumber}</strong>
+              <br /><br />
               You can track your order using this number.
             </DialogDescription>
           </DialogHeader>
-          <Button onClick={() => setShowSuccessDialog(false)}>Close</Button>
+          <Button onClick={() => setShowSuccess(false)}>Close</Button>
         </DialogContent>
       </Dialog>
     </>

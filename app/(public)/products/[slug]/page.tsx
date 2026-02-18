@@ -3,27 +3,26 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { notFound, useParams } from "next/navigation";
-import Image from "next/image";
 import { OrderForm } from "@/components/products/order-form";
 import { formatPrice } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
+import { Loader2, ImageIcon } from "lucide-react";
 import { useState, useEffect } from "react";
 
 export default function ProductDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
-  
+
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   const product = useQuery(api.products.getBySlug, { slug });
   const incrementViewCount = useMutation(api.products.incrementViewCount);
 
-  // Increment view count when product loads
   useEffect(() => {
-    if (product && product._id) {
+    if (product?._id) {
       incrementViewCount({ id: product._id });
     }
-  }, [product?._id, incrementViewCount]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?._id]);
 
   if (product === undefined) {
     return (
@@ -37,29 +36,31 @@ export default function ProductDetailPage() {
     notFound();
   }
 
+  const currentImage = product.images?.[selectedImageIndex]?.url;
+
   return (
     <div className="container py-12">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
         {/* Product Images */}
         <div className="space-y-4">
           {/* Main Image */}
-          <div className="aspect-square relative overflow-hidden rounded-lg bg-muted">
-            {product.images[selectedImageIndex] ? (
-              <Image
-                src={product.images[selectedImageIndex].url}
+          <div className="aspect-square relative overflow-hidden rounded-lg bg-muted flex items-center justify-center">
+            {currentImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={currentImage}
                 alt={product.title}
-                fill
-                className="object-cover"
-                priority
+                className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                No Image
+              <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                <ImageIcon className="h-16 w-16 opacity-30" />
+                <span className="text-sm">No Image</span>
               </div>
             )}
           </div>
 
-          {/* Thumbnail Images */}
+          {/* Thumbnails */}
           {product.images.length > 1 && (
             <div className="grid grid-cols-4 gap-2">
               {product.images.map((image, index) => (
@@ -72,11 +73,12 @@ export default function ProductDetailPage() {
                       : "border-transparent hover:border-primary/50"
                   }`}
                 >
-                  <Image
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
                     src={image.url}
                     alt={`${product.title} ${index + 1}`}
-                    fill
-                    className="object-cover"
+                    className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                 </button>
               ))}

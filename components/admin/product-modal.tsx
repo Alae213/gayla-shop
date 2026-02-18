@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/select";
 import { Plus, X, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
-import Image from "next/image";
 
 interface Product {
   _id: Id<"products">;
@@ -49,10 +48,17 @@ const EMPTY_FORM = {
   slug: "",
   description: "",
   price: 0,
-  category: "",
   status: "Active" as "Active" | "Draft" | "Out of stock",
   images: [] as { url: string; storageId: string }[],
 };
+
+function generateSlug(title: string) {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\u0600-\u06FF]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
 
 export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductModalProps) {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -62,34 +68,26 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
   const productFileInputRef = useRef<HTMLInputElement>(null);
   const createProduct = useMutation(api.products.create);
   const updateProduct = useMutation(api.products.update);
-  const generateUploadUrl = useMutation(api.siteContent.generateUploadUrl);
+  // Use single canonical upload URL generator
+  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
 
   // Reset or populate form whenever modal opens/closes or product changes
   useEffect(() => {
     if (isOpen) {
       if (product) {
-        // Edit mode — populate with existing product data
         setProductForm({
           title: product.title,
           slug: product.slug,
           description: product.description || "",
           price: product.price,
-          category: product.category,
           status: product.status,
           images: product.images || [],
         });
       } else {
-        // Add mode — always start with clean empty form
         setProductForm(EMPTY_FORM);
       }
     }
   }, [isOpen, product]);
-
-  const generateSlug = (title: string) =>
-    title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
 
   const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -105,15 +103,15 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
 
     try {
       for (const file of Array.from(files)) {
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error(`${file.name} is too large (max 5MB)`);
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error(`${file.name} is too large (max 10MB)`);
           continue;
         }
 
         // Step 1: Get presigned upload URL
         const uploadUrl = await generateUploadUrl();
 
-        // Step 2: Upload file to Convex storage
+        // Step 2: Upload to Convex storage
         const result = await fetch(uploadUrl, {
           method: "POST",
           headers: { "Content-Type": file.type },
@@ -122,22 +120,23 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
 
         if (!result.ok) throw new Error(`Upload failed for ${file.name}`);
 
-        // Step 3: Get storageId from Convex response
+        // Step 3: Get storageId
         const { storageId } = await result.json();
 
-        // Step 4: Build the correct Convex serving URL (origin only, no query params)
+        // Step 4: Use ctx.storage.getUrl-compatible URL
+        // Convex returns a signed URL when using getUrl. For display, build the
+        // canonical storage URL from the upload URL origin.
         const convexUrl = new URL(uploadUrl);
         const imageUrl = `${convexUrl.origin}/api/storage/${storageId}`;
 
         uploadedImages.push({ storageId, url: imageUrl });
       }
 
-      setProductForm((prev) => ({
-        ...prev,
-        images: [...prev.images, ...uploadedImages],
-      }));
-
       if (uploadedImages.length > 0) {
+        setProductForm((prev) => ({
+          ...prev,
+          images: [...prev.images, ...uploadedImages],
+        }));
         toast.success(
           uploadedImages.length === 1
             ? "Image uploaded!"
@@ -149,7 +148,6 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
       console.error(error);
     } finally {
       setIsUploadingImage(false);
-      // Reset so the same file can be re-selected if needed
       if (productFileInputRef.current) productFileInputRef.current.value = "";
     }
   };
@@ -166,10 +164,6 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
       toast.error("Title is required");
       return;
     }
-    if (!productForm.slug.trim()) {
-      toast.error("Slug is required");
-      return;
-    }
     if (productForm.price <= 0) {
       toast.error("Price must be greater than 0");
       return;
@@ -179,16 +173,19 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
       return;
     }
 
+    // Always generate fresh slug from title before saving
+    const finalSlug = product?.slug || generateSlug(productForm.title);
+
     setIsSaving(true);
     try {
       if (product) {
         await updateProduct({
           id: product._id,
           title: productForm.title,
-          slug: productForm.slug,
+          slug: finalSlug,
           description: productForm.description || undefined,
           price: productForm.price,
-          category: productForm.category,
+          category: "",
           status: productForm.status,
           images: productForm.images,
         });
@@ -196,10 +193,10 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
       } else {
         await createProduct({
           title: productForm.title,
-          slug: productForm.slug,
+          slug: finalSlug,
           description: productForm.description || undefined,
           price: productForm.price,
-          category: productForm.category,
+          category: "",
           status: productForm.status,
           images: productForm.images,
         });
@@ -209,7 +206,32 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
       onSuccess();
       onClose();
     } catch (error: any) {
-      toast.error(error.message || "Failed to save product");
+      // If slug collision, append random suffix and retry
+      if (error.message?.includes("slug already exists")) {
+        try {
+          const uniqueSlug = `${finalSlug}-${Math.random().toString(36).slice(2, 6)}`;
+          if (product) {
+            await updateProduct({ id: product._id, slug: uniqueSlug });
+          } else {
+            await createProduct({
+              title: productForm.title,
+              slug: uniqueSlug,
+              description: productForm.description || undefined,
+              price: productForm.price,
+              category: "",
+              status: productForm.status,
+              images: productForm.images,
+            });
+          }
+          toast.success(product ? "Product updated!" : "Product created!");
+          onSuccess();
+          onClose();
+        } catch (e2: any) {
+          toast.error(e2.message || "Failed to save product");
+        }
+      } else {
+        toast.error(error.message || "Failed to save product");
+      }
     } finally {
       setIsSaving(false);
     }
@@ -217,13 +239,13 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{product ? "Edit Product" : "Add New Product"}</DialogTitle>
           <DialogDescription>
             {product
               ? "Update the product details below."
-              : "Fill in the product details. Title, slug, price, and at least one image are required."}
+              : "Fill in the details. Title, price, and at least one image are required."}
           </DialogDescription>
         </DialogHeader>
 
@@ -232,18 +254,16 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
           <div>
             <Label>
               Product Images{" "}
-              <span className="text-gray-400 text-xs font-normal">
-                ({productForm.images.length}/5)
-              </span>
+              <span className="text-gray-400 text-xs font-normal">({productForm.images.length}/5)</span>
             </Label>
             <div className="mt-2 grid grid-cols-5 gap-3">
               {productForm.images.map((image, index) => (
                 <div key={index} className="relative aspect-square">
-                  <Image
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
                     src={image.url}
                     alt={`Product ${index + 1}`}
-                    fill
-                    className="object-cover rounded-lg border border-gray-200"
+                    className="w-full h-full object-cover rounded-lg border border-gray-200"
                   />
                   <Button
                     size="icon"
@@ -265,9 +285,7 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
               {productForm.images.length < 5 && (
                 <div
                   className="aspect-square border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
-                  onClick={() =>
-                    !isUploadingImage && productFileInputRef.current?.click()
-                  }
+                  onClick={() => !isUploadingImage && productFileInputRef.current?.click()}
                 >
                   <input
                     ref={productFileInputRef}
@@ -288,10 +306,8 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
                 </div>
               )}
 
-              {/* Empty placeholders to keep grid shape */}
-              {Array.from({
-                length: Math.max(0, 4 - productForm.images.length),
-              }).map((_, i) => (
+              {/* Empty placeholders */}
+              {Array.from({ length: Math.max(0, 4 - productForm.images.length) }).map((_, i) => (
                 <div
                   key={`empty-${i}`}
                   className="aspect-square border border-dashed border-gray-100 rounded-lg bg-gray-50 flex items-center justify-center"
@@ -302,7 +318,7 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
             </div>
           </div>
 
-          {/* Title */}
+          {/* Title - slug auto-generated from this */}
           <div>
             <Label htmlFor="title">
               Title <span className="text-red-500">*</span>
@@ -312,35 +328,16 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
               value={productForm.title}
               onChange={(e) => {
                 const title = e.target.value;
-                setProductForm((prev) => ({
-                  ...prev,
-                  title,
-                  // Only auto-generate slug when creating a new product
-                  slug: !product ? generateSlug(title) : prev.slug,
-                }));
+                setProductForm((prev) => ({ ...prev, title }));
               }}
               placeholder="Classic Cotton T-Shirt"
               className="mt-2"
             />
-          </div>
-
-          {/* Slug */}
-          <div>
-            <Label htmlFor="slug">
-              Slug <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="slug"
-              value={productForm.slug}
-              onChange={(e) =>
-                setProductForm((prev) => ({ ...prev, slug: e.target.value }))
-              }
-              placeholder="classic-cotton-tshirt"
-              className="mt-2"
-            />
-            <p className="text-xs text-gray-400 mt-1">
-              Used in the product URL — must be unique
-            </p>
+            {productForm.title && (
+              <p className="text-xs text-gray-400 mt-1">
+                Slug: <span className="font-mono">{product?.slug || generateSlug(productForm.title) || "—"}</span>
+              </p>
+            )}
           </div>
 
           {/* Price */}
@@ -354,26 +351,9 @@ export function ProductModal({ isOpen, onClose, product, onSuccess }: ProductMod
               min={0}
               value={productForm.price === 0 ? "" : productForm.price}
               onChange={(e) =>
-                setProductForm((prev) => ({
-                  ...prev,
-                  price: parseFloat(e.target.value) || 0,
-                }))
+                setProductForm((prev) => ({ ...prev, price: parseFloat(e.target.value) || 0 }))
               }
               placeholder="2500"
-              className="mt-2"
-            />
-          </div>
-
-          {/* Category */}
-          <div>
-            <Label htmlFor="category">Category</Label>
-            <Input
-              id="category"
-              value={productForm.category}
-              onChange={(e) =>
-                setProductForm((prev) => ({ ...prev, category: e.target.value }))
-              }
-              placeholder="Clothing"
               className="mt-2"
             />
           </div>
