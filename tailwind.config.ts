@@ -50,11 +50,46 @@ const config: Config = {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
+        // Design System Tokens
+        system: {
+          50: "var(--system-50)",
+          100: "var(--system-100)",
+          200: "var(--system-200)",
+          300: "var(--system-300)",
+          400: "var(--system-400)",
+        },
+        brand: {
+          50: "var(--primary-50)",
+          100: "var(--primary-100)",
+          200: "var(--primary-200)",
+          300: "var(--primary-300)",
+        },
+        success: {
+          100: "var(--success-100)",
+          200: "var(--success-200)",
+          300: "var(--success-300)",
+        },
+        error: {
+          100: "var(--error-100)",
+          200: "var(--error-200)",
+          300: "var(--error-300)",
+        },
+        warning: {
+          100: "var(--warning-100)",
+          200: "var(--warning-200)",
+          300: "var(--warning-300)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        "inside": "var(--shadow-inside-shadow)",
+        "m": "var(--shadow-m-shadow)",
+        "xl-brand": "var(--shadow-xl-shadow)",
+        "blue-btn": "var(--shadow-bluebutton)",
       },
       typography: {
         DEFAULT: {
