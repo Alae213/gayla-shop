@@ -41,14 +41,20 @@ export default defineSchema({
   // Orders table
   orders: defineTable({
     orderNumber: v.string(),
+    // ─── Core status ───────────────────────────────────────────────────────────
+    // Keep legacy literals so existing documents stay valid.
+    // New statuses added: Called 01, Called 02, Retour.
     status: v.union(
       v.literal("Pending"),
       v.literal("Confirmed"),
       v.literal("Cancelled"),
-      v.literal("Called no respond"),
+      v.literal("Called no respond"), // legacy — kept for existing data
+      v.literal("Called 01"),
+      v.literal("Called 02"),
       v.literal("Packaged"),
       v.literal("Shipped"),
-      v.literal("Delivered")
+      v.literal("Delivered"),
+      v.literal("Retour")
     ),
     customerName: v.string(),
     customerPhone: v.string(),
@@ -70,6 +76,54 @@ export default defineSchema({
     totalAmount: v.number(),
     lastUpdated: v.number(),
     updatedAt: v.optional(v.number()),
+
+    // ─── Call tracking ─────────────────────────────────────────────────────────
+    callAttempts: v.optional(v.number()), // 0 | 1 | 2
+    callLog: v.optional(
+      v.array(
+        v.object({
+          timestamp: v.number(),
+          outcome: v.union(
+            v.literal("answered"),
+            v.literal("no_answer")
+          ),
+          note: v.optional(v.string()),
+        })
+      )
+    ),
+
+    // ─── Status history / audit trail ──────────────────────────────────────────
+    statusHistory: v.optional(
+      v.array(
+        v.object({
+          status: v.string(),
+          timestamp: v.number(),
+          reason: v.optional(v.string()),
+        })
+      )
+    ),
+
+    // ─── Admin notes ───────────────────────────────────────────────────────────
+    adminNotes: v.optional(
+      v.array(
+        v.object({
+          text: v.string(),
+          timestamp: v.number(),
+        })
+      )
+    ),
+
+    // ─── Fraud / ban ───────────────────────────────────────────────────────────
+    fraudScore: v.optional(v.number()),  // default 0 — increments on retour / cancel patterns
+    isBanned: v.optional(v.boolean()),   // default false
+
+    // ─── Courier integration ───────────────────────────────────────────────────
+    courierSentAt: v.optional(v.number()),
+    courierTrackingId: v.optional(v.string()),
+    courierError: v.optional(v.string()),
+
+    // ─── Retour ────────────────────────────────────────────────────────────────
+    retourReason: v.optional(v.string()),
   })
     .index("by_order_number", ["orderNumber"])
     .index("by_status", ["status"])
