@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
-// ─── Shared status union ────────────────────────────────────────────────
+// ─── Shared status union ───────────────────────────────────────────────────────────────────
 const orderStatusValidator = v.union(
   v.literal("Pending"),
   v.literal("Confirmed"),
@@ -15,7 +15,7 @@ const orderStatusValidator = v.union(
   v.literal("Retour")
 );
 
-// ─── Internal helpers ──────────────────────────────────────────────────────────────
+// ─── Internal helpers ──────────────────────────────────────────────────────────────────
 
 function pushStatusHistory(
   order: any,
@@ -60,19 +60,15 @@ function generateOrderNumber(): string {
   return `GAY-${timestamp}-${random}`;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────────
 // QUERIES
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────────
 
 export const list = query({
-  args: {
-    status: v.optional(orderStatusValidator),
-  },
+  args: { status: v.optional(orderStatusValidator) },
   handler: async (ctx, args) => {
     let orders = await ctx.db.query("orders").collect();
-    if (args.status) {
-      orders = orders.filter((o) => o.status === args.status);
-    }
+    if (args.status) orders = orders.filter((o) => o.status === args.status);
     orders.sort((a, b) => b._creationTime - a._creationTime);
     return orders;
   },
@@ -123,57 +119,29 @@ export const getStats = query({
         counts["Called 02"] +
         counts["Confirmed"],
       readyToShip: counts["Packaged"],
-      inTransit:   counts["Shipped"],
-      completed:   counts["Delivered"] + counts["Retour"] + counts["Cancelled"],
+      inTransit: counts["Shipped"],
+      completed: counts["Delivered"] + counts["Retour"] + counts["Cancelled"],
     };
   },
 });
 
-/**
- * Metadata for the Archive header:
- * – total terminal orders (Delivered / Retour / Cancelled)
- * – how many are older than 60 days (eligible for next auto-purge)
- * – _creationTime of the oldest terminal order (for the purge-horizon label)
- */
-export const getArchiveInfo = query({
-  handler: async (ctx) => {
-    const TERMINAL = ["Delivered", "Retour", "Cancelled"];
-    const cutoff   = Date.now() - 60 * 24 * 60 * 60 * 1000;
-
-    const all      = await ctx.db.query("orders").collect();
-    const terminal = all.filter((o) => TERMINAL.includes(o.status));
-
-    const eligibleForPurge = terminal.filter((o) => o._creationTime < cutoff).length;
-    const oldest =
-      terminal.length > 0
-        ? Math.min(...terminal.map((o) => o._creationTime))
-        : null;
-
-    return {
-      total:              terminal.length,
-      eligibleForPurge,
-      oldestCreationTime: oldest,
-    };
-  },
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MUTATIONS
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────────
+// MUTATIONS — existing
+// ──────────────────────────────────────────────────────────────────────────────
 
 export const create = mutation({
   args: {
-    customerName:    v.string(),
-    customerPhone:   v.string(),
-    customerWilaya:  v.string(),
+    customerName: v.string(),
+    customerPhone: v.string(),
+    customerWilaya: v.string(),
     customerCommune: v.string(),
     customerAddress: v.string(),
-    deliveryType:    v.union(v.literal("Domicile"), v.literal("Stopdesk")),
-    deliveryCost:    v.number(),
-    productId:       v.id("products"),
+    deliveryType: v.union(v.literal("Domicile"), v.literal("Stopdesk")),
+    deliveryCost: v.number(),
+    productId: v.id("products"),
     selectedVariant: v.optional(
       v.object({
-        size:  v.optional(v.string()),
+        size: v.optional(v.string()),
         color: v.optional(v.string()),
       })
     ),
@@ -200,35 +168,35 @@ export const create = mutation({
       attempts++;
     }
 
-    const totalAmount     = product.price + args.deliveryCost;
-    const now             = Date.now();
-    const initialStatus   = isBanned ? "Cancelled" : "Pending";
+    const totalAmount = product.price + args.deliveryCost;
+    const now = Date.now();
+    const initialStatus = isBanned ? "Cancelled" : "Pending";
 
     const orderId = await ctx.db.insert("orders", {
       orderNumber,
-      status:          initialStatus,
-      customerName:    args.customerName,
-      customerPhone:   args.customerPhone,
-      customerWilaya:  args.customerWilaya,
+      status: initialStatus,
+      customerName: args.customerName,
+      customerPhone: args.customerPhone,
+      customerWilaya: args.customerWilaya,
       customerCommune: args.customerCommune,
       customerAddress: args.customerAddress,
-      deliveryType:    args.deliveryType,
-      deliveryCost:    args.deliveryCost,
-      productId:       args.productId,
-      productName:     product.title,
-      productPrice:    product.price,
-      productSlug:     product.slug,
+      deliveryType: args.deliveryType,
+      deliveryCost: args.deliveryCost,
+      productId: args.productId,
+      productName: product.title,
+      productPrice: product.price,
+      productSlug: product.slug,
       selectedVariant: args.selectedVariant,
       totalAmount,
-      lastUpdated:     now,
-      callAttempts:    0,
-      callLog:         [],
-      adminNotes:      [],
-      fraudScore:      0,
+      lastUpdated: now,
+      callAttempts: 0,
+      callLog: [],
+      adminNotes: [],
+      fraudScore: 0,
       isBanned,
       statusHistory: [
         {
-          status:    initialStatus,
+          status: initialStatus,
           timestamp: now,
           ...(isBanned ? { reason: "Auto-cancelled — banned customer" } : {}),
         },
@@ -241,7 +209,7 @@ export const create = mutation({
 
 export const updateStatus = mutation({
   args: {
-    id:     v.id("orders"),
+    id: v.id("orders"),
     status: orderStatusValidator,
     reason: v.optional(v.string()),
   },
@@ -249,48 +217,34 @@ export const updateStatus = mutation({
     const order = await ctx.db.get(args.id);
     if (!order) throw new Error("Order not found");
     const statusHistory = pushStatusHistory(order, args.status, args.reason);
-    await ctx.db.patch(args.id, {
-      status: args.status,
-      statusHistory,
-      lastUpdated: Date.now(),
-    });
+    await ctx.db.patch(args.id, { status: args.status, statusHistory, lastUpdated: Date.now() });
     return { success: true };
   },
 });
 
 export const update = mutation({
   args: {
-    id:              v.id("orders"),
-    customerName:    v.optional(v.string()),
-    customerPhone:   v.optional(v.string()),
-    customerWilaya:  v.optional(v.string()),
+    id: v.id("orders"),
+    customerName: v.optional(v.string()),
+    customerPhone: v.optional(v.string()),
+    customerWilaya: v.optional(v.string()),
     customerCommune: v.optional(v.string()),
     customerAddress: v.optional(v.string()),
-    deliveryType:    v.optional(v.union(v.literal("Domicile"), v.literal("Stopdesk"))),
-    deliveryCost:    v.optional(v.number()),
-    status:          v.optional(orderStatusValidator),
+    deliveryType: v.optional(v.union(v.literal("Domicile"), v.literal("Stopdesk"))),
+    deliveryCost: v.optional(v.number()),
+    status: v.optional(orderStatusValidator),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
     const order = await ctx.db.get(id);
     if (!order) throw new Error("Order not found");
-
     let totalAmount = order.totalAmount;
-    if (updates.deliveryCost !== undefined) {
-      totalAmount = order.productPrice + updates.deliveryCost;
-    }
-
+    if (updates.deliveryCost !== undefined) totalAmount = order.productPrice + updates.deliveryCost;
     let statusHistory = order.statusHistory;
     if (updates.status && updates.status !== order.status) {
       statusHistory = pushStatusHistory(order, updates.status);
     }
-
-    await ctx.db.patch(id, {
-      ...updates,
-      totalAmount,
-      statusHistory,
-      lastUpdated: Date.now(),
-    });
+    await ctx.db.patch(id, { ...updates, totalAmount, statusHistory, lastUpdated: Date.now() });
     return { success: true };
   },
 });
@@ -303,67 +257,50 @@ export const remove = mutation({
   },
 });
 
+// ──────────────────────────────────────────────────────────────────────────────
+// MUTATIONS — Phase 1
+// ──────────────────────────────────────────────────────────────────────────────
+
 export const logCallAttempt = mutation({
   args: {
     orderId: v.id("orders"),
     outcome: v.union(v.literal("answered"), v.literal("no_answer")),
-    note:    v.optional(v.string()),
+    note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("Order not found");
-
-    // G-backend guard: reject if already answered or already 2 failed attempts
-    const hasAnswered    = (order.callLog ?? []).some((e: any) => e.outcome === "answered");
     const currentAttempts = order.callAttempts ?? 0;
-
-    if (hasAnswered) {
-      throw new Error("Call already answered — use Actions to confirm or cancel.");
-    }
-    if (currentAttempts >= 2) {
-      throw new Error("Maximum call attempts reached — use Actions to confirm or cancel.");
-    }
-
     const newAttempts = currentAttempts + 1;
-    const callLog     = pushCallLog(order, args.outcome, args.note);
-
+    const callLog = pushCallLog(order, args.outcome, args.note);
     let newStatus: string = order.status;
     if (args.outcome === "no_answer") {
       if (currentAttempts === 0) newStatus = "Called 01";
       else if (currentAttempts === 1) newStatus = "Called 02";
     }
-
     const statusHistory =
       newStatus !== order.status
         ? pushStatusHistory(order, newStatus, args.note)
         : (order.statusHistory ?? []);
-
     await ctx.db.patch(order._id, {
       callAttempts: newAttempts,
       callLog,
-      status:       newStatus as any,
+      status: newStatus as any,
       statusHistory,
-      lastUpdated:  Date.now(),
+      lastUpdated: Date.now(),
     });
-
     return { success: true, newStatus, callAttempts: newAttempts };
   },
 });
 
 export const addNote = mutation({
-  args: {
-    orderId: v.id("orders"),
-    text:    v.string(),
-  },
+  args: { orderId: v.id("orders"), text: v.string() },
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("Order not found");
-    const updatedNotes = [
-      ...(order.adminNotes ?? []),
-      { text: args.text, timestamp: Date.now() },
-    ];
+    const notes = order.adminNotes ?? [];
     await ctx.db.patch(order._id, {
-      adminNotes:  updatedNotes,
+      adminNotes: [...notes, { text: args.text, timestamp: Date.now() }],
       lastUpdated: Date.now(),
     });
     return { success: true };
@@ -371,10 +308,7 @@ export const addNote = mutation({
 });
 
 export const banCustomer = mutation({
-  args: {
-    phone:    v.string(),
-    isBanned: v.boolean(),
-  },
+  args: { phone: v.string(), isBanned: v.boolean() },
   handler: async (ctx, args) => {
     const orders = await ctx.db
       .query("orders")
@@ -388,101 +322,102 @@ export const banCustomer = mutation({
 });
 
 export const markRetour = mutation({
-  args: {
-    orderId: v.id("orders"),
-    reason:  v.string(),
-  },
+  args: { orderId: v.id("orders"), reason: v.string() },
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("Order not found");
     const statusHistory = pushStatusHistory(order, "Retour", args.reason);
     await ctx.db.patch(order._id, {
-      status:       "Retour",
+      status: "Retour",
       retourReason: args.reason,
-      fraudScore:   (order.fraudScore ?? 0) + 1,
+      fraudScore: (order.fraudScore ?? 0) + 1,
       statusHistory,
-      lastUpdated:  Date.now(),
+      lastUpdated: Date.now(),
     });
     return { success: true };
   },
 });
 
 export const markCourierSent = mutation({
-  args: {
-    orderId:    v.id("orders"),
-    trackingId: v.string(),
-  },
+  args: { orderId: v.id("orders"), trackingId: v.string() },
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("Order not found");
     const statusHistory = pushStatusHistory(order, "Packaged");
     await ctx.db.patch(order._id, {
-      status:           "Packaged",
+      status: "Packaged",
       courierTrackingId: args.trackingId,
-      courierSentAt:    Date.now(),
-      courierError:     undefined,
+      courierSentAt: Date.now(),
+      courierError: undefined,
       statusHistory,
-      lastUpdated:      Date.now(),
+      lastUpdated: Date.now(),
     });
     return { success: true };
   },
 });
 
 export const markCourierFailed = mutation({
-  args: {
-    orderId: v.id("orders"),
-    error:   v.string(),
-  },
+  args: { orderId: v.id("orders"), error: v.string() },
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("Order not found");
-    const statusHistory = pushStatusHistory(
-      order,
-      order.status,
-      `Courier send failed: ${args.error}`
-    );
-    await ctx.db.patch(order._id, {
-      courierError: args.error,
-      statusHistory,
-      lastUpdated:  Date.now(),
-    });
+    const statusHistory = pushStatusHistory(order, order.status, `Courier send failed: ${args.error}`);
+    await ctx.db.patch(order._id, { courierError: args.error, statusHistory, lastUpdated: Date.now() });
     return { success: true };
   },
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ARCHIVE MANAGEMENT  (Phase E)
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────────
+// ARCHIVE CLEANUP (Phase E)
+// ──────────────────────────────────────────────────────────────────────────────
+
+const TERMINAL_STATUSES = ["Delivered", "Retour", "Cancelled"] as const;
+const SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000;
 
 /**
- * Delete all terminal orders (Delivered / Retour / Cancelled) older than
- * `olderThanDays` days (default 60).
- *
- * Called by:
- *   – convex/crons.ts  daily at 02:00 UTC (automatic clean)
- *   – Admin “Force Clean” button in the Archive view (manual trigger)
+ * Preview how many orders are eligible for purge + oldest terminal order info.
+ * Used by the archive stat bar and the Force Clean confirm panel.
  */
-export const purgeOldArchive = mutation({
-  args: {
-    olderThanDays: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const days    = args.olderThanDays ?? 60;
-    const cutoff  = Date.now() - days * 24 * 60 * 60 * 1000;
-    const TERMINAL = ["Delivered", "Retour", "Cancelled"];
-
-    const all      = await ctx.db.query("orders").collect();
-    const toDelete = all.filter(
-      (o) => TERMINAL.includes(o.status) && o._creationTime < cutoff,
+export const getArchiveCleanupPreview = query({
+  handler: async (ctx) => {
+    const orders = await ctx.db.query("orders").collect();
+    const terminal = orders.filter((o) =>
+      (TERMINAL_STATUSES as readonly string[]).includes(o.status)
     );
 
+    if (terminal.length === 0) {
+      return { eligibleCount: 0, totalTerminal: 0, oldestCreationTime: null };
+    }
+
+    const cutoff = Date.now() - SIXTY_DAYS_MS;
+    const eligible = terminal.filter((o) => o._creationTime < cutoff);
+    const oldest = Math.min(...terminal.map((o) => o._creationTime));
+
+    return {
+      eligibleCount: eligible.length,
+      totalTerminal: terminal.length,
+      oldestCreationTime: oldest,
+    };
+  },
+});
+
+/**
+ * Delete all terminal orders (Delivered / Retour / Cancelled) older than 60 days.
+ * Called automatically by the daily cron (convex/crons.ts) and manually by
+ * the Force Clean button in the archive UI.
+ */
+export const purgeOldArchive = mutation({
+  handler: async (ctx) => {
+    const cutoff = Date.now() - SIXTY_DAYS_MS;
+    const orders = await ctx.db.query("orders").collect();
+    const toDelete = orders.filter(
+      (o) =>
+        (TERMINAL_STATUSES as readonly string[]).includes(o.status) &&
+        o._creationTime < cutoff
+    );
     for (const order of toDelete) {
       await ctx.db.delete(order._id);
     }
-
-    return {
-      deleted:    toDelete.length,
-      cutoffDate: new Date(cutoff).toISOString(),
-    };
+    return { deleted: toDelete.length };
   },
 });
