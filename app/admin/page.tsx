@@ -26,24 +26,26 @@ import {
   Search,
   LayoutGrid,
   LayoutList,
+  Archive,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 // Components
-import { StatsCards } from "@/components/admin/stats-cards";
-import { HeroEditor } from "@/components/admin/hero-editor";
-import { ProductGrid } from "@/components/admin/product-grid";
-import { ProductModal } from "@/components/admin/product-modal";
-import { OrderKanban } from "@/components/admin/order-kanban";
-import { OrderTable } from "@/components/admin/order-table";
-// Phase 2: OrderDetailsModal replaced with OrderDrawer
-import { OrderDrawer } from "@/components/admin/order-drawer";
+import { StatsCards }          from "@/components/admin/stats-cards";
+import { HeroEditor }          from "@/components/admin/hero-editor";
+import { ProductGrid }         from "@/components/admin/product-grid";
+import { ProductModal }        from "@/components/admin/product-modal";
+import { OrderKanban }         from "@/components/admin/order-kanban";
+import { OrderTable }          from "@/components/admin/order-table";
+import { OrderArchive }        from "@/components/admin/order-archive";
+import { OrderDrawer }         from "@/components/admin/order-drawer";
 
-type AdminMode = "build" | "tracking";
-type TrackingView = "kanban" | "table";
+// ─── Types ────────────────────────────────────────────────────────────────────────────
 
-// Updated to include Phase 1 new statuses
+type AdminMode    = "build" | "tracking";
+type TrackingView = "kanban" | "table" | "archive";
+
 type OrderStatus =
   | "Pending"
   | "Confirmed"
@@ -56,43 +58,48 @@ type OrderStatus =
   | "Delivered"
   | "Retour";
 
+/** Terminal statuses shown only in the Archive tab, never on the active board. */
+const TERMINAL_STATUSES: OrderStatus[] = ["Delivered", "Retour", "Cancelled"];
+
+// ─── Page ────────────────────────────────────────────────────────────────────────────
+
 export default function AdminPage() {
   const router = useRouter();
 
-  // ─── Mode State ───────────────────────────────────────────────────────────────
-  const [mode, setMode] = useState<AdminMode>("build");
+  // ─ Mode & View state ─────────────────────────────────────────────────────────────
+  const [mode,         setMode]         = useState<AdminMode>("build");
   const [trackingView, setTrackingView] = useState<TrackingView>("kanban");
 
-  // ─── Order State ─────────────────────────────────────────────────────────────
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
+  // ─ Order state ────────────────────────────────────────────────────────────────────
+  const [searchQuery,    setSearchQuery]    = useState("");
+  const [statusFilter,   setStatusFilter]   = useState<OrderStatus | "all">("all");
   const [selectedOrderId, setSelectedOrderId] = useState<Id<"orders"> | null>(null);
 
-  // ─── Product Modal State ───────────────────────────────────────────────────────
+  // ─ Product modal state ──────────────────────────────────────────────────────────
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  const [editingProductId, setEditingProductId] = useState<Id<"products"> | null>(null);
+  const [editingProductId,   setEditingProductId]   = useState<Id<"products"> | null>(null);
 
-  // ─── Delivery Settings State ──────────────────────────────────────────────────
+  // ─ Delivery settings state ──────────────────────────────────────────────────────
   const [isDeliverySettingsOpen, setIsDeliverySettingsOpen] = useState(false);
 
-  // ─── Convex Queries ───────────────────────────────────────────────────────────
-  const siteContent = useQuery(api.siteContent.get);
-  const products = useQuery(api.products.list, {});
-  const orders = useQuery(api.orders.list, {});
-  const orderStats = useQuery(api.orders.getStats);
-  const selectedOrder = useQuery(
+  // ─ Convex queries ────────────────────────────────────────────────────────────────
+  const siteContent    = useQuery(api.siteContent.get);
+  const products       = useQuery(api.products.list, {});
+  const orders         = useQuery(api.orders.list, {});
+  const orderStats     = useQuery(api.orders.getStats);
+  const selectedOrder  = useQuery(
     api.orders.getById,
-    selectedOrderId ? { id: selectedOrderId } : "skip"
+    selectedOrderId ? { id: selectedOrderId } : "skip",
   );
   const editingProduct = useQuery(
     api.products.getById,
-    editingProductId ? { id: editingProductId } : "skip"
+    editingProductId ? { id: editingProductId } : "skip",
   );
 
-  // ─── Mutations ──────────────────────────────────────────────────────────────────
+  // ─ Mutations ─────────────────────────────────────────────────────────────────────
   const deleteProduct = useMutation(api.products.remove);
 
-  // ─── Handlers ──────────────────────────────────────────────────────────────────
+  // ─ Handlers ──────────────────────────────────────────────────────────────────────
   const handleAddProduct = () => {
     setEditingProductId(null);
     setIsProductModalOpen(true);
@@ -123,7 +130,7 @@ export default function AdminPage() {
     router.push("/admin/login");
   };
 
-  // ─── Filter Orders ───────────────────────────────────────────────────────────
+  // ─ Filter orders ─────────────────────────────────────────────────────────────────
   const filteredOrders = orders?.filter((order) => {
     const matchesSearch =
       order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -134,12 +141,17 @@ export default function AdminPage() {
     return matchesSearch && matchesStatus;
   });
 
-  // ─── Loading State ─────────────────────────────────────────────────────────────
-  if (
-    siteContent === undefined ||
-    products === undefined ||
-    orders === undefined
-  ) {
+  // Active pipeline — feeds Kanban and Table views
+  const activeOrders  = filteredOrders?.filter(
+    (o) => !TERMINAL_STATUSES.includes(o.status as OrderStatus),
+  );
+  // Archive — feeds the Archive tab
+  const archiveOrders = filteredOrders?.filter(
+    (o) => TERMINAL_STATUSES.includes(o.status as OrderStatus),
+  );
+
+  // ─ Loading ───────────────────────────────────────────────────────────────────────
+  if (siteContent === undefined || products === undefined || orders === undefined) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center">
@@ -155,7 +167,8 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* ── Top Bar ───────────────────────────────────────────────────────────── */}
+
+      {/* ══ Top Bar ═════════════════════════════════════════════════════════════════ */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -217,10 +230,10 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* ── Main Content ─────────────────────────────────────────────────────────── */}
+      {/* ══ Main Content ═══════════════════════════════════════════════════════════ */}
       <div className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* ── BUILD MODE ─────────────────────────────────────────────────────────── */}
+        {/* ══ BUILD MODE ═════════════════════════════════════════════════════════ */}
         {mode === "build" && (
           <div className="space-y-8">
             <StatsCards mode="build" siteContent={siteContent} products={products} />
@@ -234,16 +247,17 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ── TRACKING MODE ────────────────────────────────────────────────────────── */}
+        {/* ══ TRACKING MODE ══════════════════════════════════════════════════════ */}
         {mode === "tracking" && (
           <div className="space-y-6">
             <StatsCards mode="tracking" orderStats={orderStats} />
 
-            {/* Toolbar */}
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 flex items-center justify-between gap-4">
+            {/* ─ Toolbar ──────────────────────────────────────────────────────────────── */}
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 flex items-center justify-between gap-4 flex-wrap">
+
               {/* Search */}
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <div className="relative flex-1 min-w-[200px] max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   type="text"
                   placeholder="Search by name, phone or order #..."
@@ -253,7 +267,7 @@ export default function AdminPage() {
                 />
               </div>
 
-              {/* Status Filter — updated to include Phase 1 statuses */}
+              {/* Status filter */}
               <Select
                 value={statusFilter}
                 onValueChange={(value) =>
@@ -269,15 +283,15 @@ export default function AdminPage() {
                   <SelectItem value="Called 01">📞 Called 01</SelectItem>
                   <SelectItem value="Called 02">📞 Called 02</SelectItem>
                   <SelectItem value="Confirmed">✓ Confirmed</SelectItem>
-                  <SelectItem value="Cancelled">✕ Cancelled</SelectItem>
                   <SelectItem value="Packaged">📦 Packaged</SelectItem>
                   <SelectItem value="Shipped">🚚 Shipped</SelectItem>
                   <SelectItem value="Delivered">✓✓ Delivered</SelectItem>
                   <SelectItem value="Retour">↩ Retour</SelectItem>
+                  <SelectItem value="Cancelled">✕ Cancelled</SelectItem>
                 </SelectContent>
               </Select>
 
-              {/* View Toggle */}
+              {/* View toggle — 3 options: Kanban / Table / Archive */}
               <ToggleGroup
                 type="single"
                 value={trackingView}
@@ -286,26 +300,45 @@ export default function AdminPage() {
                 }
                 className="border border-gray-200 rounded-lg p-1"
               >
-                <ToggleGroupItem value="kanban" className="gap-2">
+                <ToggleGroupItem value="kanban" className="gap-1.5 text-xs">
                   <LayoutGrid className="h-4 w-4" />
                   Kanban
                 </ToggleGroupItem>
-                <ToggleGroupItem value="table" className="gap-2">
+                <ToggleGroupItem value="table" className="gap-1.5 text-xs">
                   <LayoutList className="h-4 w-4" />
                   Table
+                </ToggleGroupItem>
+                <ToggleGroupItem value="archive" className="gap-1.5 text-xs">
+                  <Archive className="h-4 w-4" />
+                  Archive
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
 
-            {/* Kanban or Table */}
-            {trackingView === "kanban" ? (
+            {/* ─ Active pipeline views (kanban + table) ─────────────────────────── */}
+            {trackingView === "kanban" && (
               <OrderKanban
-                orders={filteredOrders || []}
+                orders={activeOrders ?? []}
                 onOrderClick={(id) => setSelectedOrderId(id)}
               />
-            ) : (
+            )}
+
+            {trackingView === "table" && (
               <OrderTable
-                orders={filteredOrders || []}
+                orders={activeOrders ?? []}
+                onOrderClick={(id) => setSelectedOrderId(id)}
+              />
+            )}
+
+            {/* ─ Archive tab ───────────────────────────────────────────────────────────── */}
+            {trackingView === "archive" && (
+              <OrderArchive
+                orders={archiveOrders ?? []}
+                stats={{
+                  Delivered: orderStats?.Delivered,
+                  Retour:    orderStats?.Retour,
+                  Cancelled: orderStats?.Cancelled,
+                }}
                 onOrderClick={(id) => setSelectedOrderId(id)}
               />
             )}
@@ -313,8 +346,7 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* ── Overlays ───────────────────────────────────────────────────────────── */}
-
+      {/* ══ Overlays ═══════════════════════════════════════════════════════════════ */}
       <ProductModal
         isOpen={isProductModalOpen}
         onClose={handleCloseProductModal}
@@ -322,8 +354,7 @@ export default function AdminPage() {
         onSuccess={() => {}}
       />
 
-      {/* Phase 2: Right-side drawer — replaces the blocking center modal.
-          modal={false} inside OrderDrawer keeps the Kanban board interactive. */}
+      {/* Phase 2: right-side drawer — modal={false} keeps the board interactive */}
       <OrderDrawer
         isOpen={selectedOrderId !== null}
         onClose={() => setSelectedOrderId(null)}
