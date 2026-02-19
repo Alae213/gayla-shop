@@ -8,6 +8,7 @@ import { formatPrice } from "@/lib/utils";
 import { Loader2, ImageIcon } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -45,12 +46,12 @@ export default function ProductDetailPage() {
 
   return (
     <div className="container py-12">
-      <nav className="mb-6 text-sm text-muted-foreground flex gap-2">
-        <a href="/" className="hover:text-foreground">Home</a>
+      <nav className="mb-6 flex gap-2 caption-text text-system-300">
+        <Link href="/" className="hover:text-system-400">Home</Link>
         <span>/</span>
-        <a href="/products" className="hover:text-foreground">Products</a>
+        <Link href="/products" className="hover:text-system-400">Products</Link>
         <span>/</span>
-        <span className="text-foreground">{product.title}</span>
+        <span className="text-system-400">{product.title}</span>
       </nav>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
@@ -68,9 +69,9 @@ export default function ProductDetailPage() {
                 priority
               />
             ) : (
-              <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+              <div className="flex flex-col items-center justify-center gap-2 text-system-300">
                 <ImageIcon className="h-16 w-16 opacity-30" />
-                <span className="text-sm">No Image</span>
+                <span className="caption-text">No Image</span>
               </div>
             )}
           </div>
@@ -106,10 +107,10 @@ export default function ProductDetailPage() {
         {/* Product Info & Order Form */}
         <div className="space-y-6">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">
+            <h1 className="headline-h1 mb-2">
               {product.title}
             </h1>
-            <p className="text-2xl font-bold text-primary">
+            <p className="body-text font-bold text-brand-200">
               {formatPrice(product.price, "en-US")}
             </p>
           </div>
