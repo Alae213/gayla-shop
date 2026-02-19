@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Sheet,
   SheetContent,
@@ -35,6 +36,14 @@ import {
   User,
   Home,
   Clock,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+  Info,
+  PhoneCall,
+  PhoneOff,
+  Shield,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -70,18 +79,10 @@ export interface Order {
   selectedVariant?: { size?: string; color?: string };
   totalAmount: number;
   lastUpdated: number;
-  // Phase 1 fields — optional (may not exist on older documents)
+  // Phase 1 fields — optional on older documents
   callAttempts?: number;
-  callLog?: Array<{
-    timestamp: number;
-    outcome: "answered" | "no_answer";
-    note?: string;
-  }>;
-  statusHistory?: Array<{
-    status: string;
-    timestamp: number;
-    reason?: string;
-  }>;
+  callLog?: Array<{ timestamp: number; outcome: "answered" | "no_answer"; note?: string }>;
+  statusHistory?: Array<{ status: string; timestamp: number; reason?: string }>;
   adminNotes?: Array<{ text: string; timestamp: number }>;
   fraudScore?: number;
   isBanned?: boolean;
@@ -98,165 +99,267 @@ interface OrderDrawerProps {
   onSuccess: () => void;
 }
 
-// ─── Status config ──────────────────────────────────────────────────────────────────
+// ─── Status display config ─────────────────────────────────────────────────────────
 
-const statusConfig: Record<
-  OrderStatus,
-  { color: string; bgColor: string; icon: string }
-> = {
-  Pending: {
-    color: "text-yellow-700",
-    bgColor: "bg-yellow-50 border-yellow-200",
-    icon: "⏳",
-  },
-  Confirmed: {
-    color: "text-blue-700",
-    bgColor: "bg-blue-50 border-blue-200",
-    icon: "✓",
-  },
-  "Called no respond": {
-    color: "text-orange-700",
-    bgColor: "bg-orange-50 border-orange-200",
-    icon: "📞",
-  },
-  "Called 01": {
-    color: "text-orange-700",
-    bgColor: "bg-orange-50 border-orange-200",
-    icon: "📞",
-  },
-  "Called 02": {
-    color: "text-red-700",
-    bgColor: "bg-red-50 border-red-200",
-    icon: "📞",
-  },
-  Cancelled: {
-    color: "text-red-700",
-    bgColor: "bg-red-50 border-red-200",
-    icon: "✕",
-  },
-  Packaged: {
-    color: "text-purple-700",
-    bgColor: "bg-purple-50 border-purple-200",
-    icon: "📦",
-  },
-  Shipped: {
-    color: "text-indigo-700",
-    bgColor: "bg-indigo-50 border-indigo-200",
-    icon: "🚚",
-  },
-  Delivered: {
-    color: "text-green-700",
-    bgColor: "bg-green-50 border-green-200",
-    icon: "✓✓",
-  },
-  Retour: {
-    color: "text-slate-700",
-    bgColor: "bg-slate-50 border-slate-200",
-    icon: "↩",
-  },
+const STATUS_CFG: Record<OrderStatus, { color: string; bg: string; icon: string }> = {
+  Pending:            { color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200",  icon: "⏳" },
+  Confirmed:          { color: "text-blue-700",   bg: "bg-blue-50 border-blue-200",      icon: "✓" },
+  "Called no respond":{ color: "text-orange-700", bg: "bg-orange-50 border-orange-200",  icon: "📞" },
+  "Called 01":        { color: "text-orange-700", bg: "bg-orange-50 border-orange-200",  icon: "📞" },
+  "Called 02":        { color: "text-red-700",    bg: "bg-red-50 border-red-200",        icon: "📞" },
+  Cancelled:          { color: "text-red-700",    bg: "bg-red-50 border-red-200",        icon: "✕" },
+  Packaged:           { color: "text-purple-700", bg: "bg-purple-50 border-purple-200",  icon: "📦" },
+  Shipped:            { color: "text-indigo-700", bg: "bg-indigo-50 border-indigo-200",  icon: "🚚" },
+  Delivered:          { color: "text-green-700",  bg: "bg-green-50 border-green-200",    icon: "✓✓" },
+  Retour:             { color: "text-slate-700",  bg: "bg-slate-50 border-slate-200",    icon: "↩" },
 };
 
-// ─── Component ──────────────────────────────────────────────────────────────────────────
+// ─── Guided action definitions ─────────────────────────────────────────────────────
 
-export function OrderDrawer({
-  isOpen,
-  onClose,
-  order,
-  onSuccess,
-}: OrderDrawerProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+const CANCEL_REASONS = [
+  "No answer after 2 attempts",
+  "Customer refused",
+  "Duplicate order",
+  "Wrong address",
+  "Suspicious order",
+  "Customer request",
+];
 
-  const [formData, setFormData] = useState({
-    customerName: "",
-    customerPhone: "",
-    customerWilaya: "",
-    customerCommune: "",
-    customerAddress: "",
-    status: "Pending" as OrderStatus,
-    deliveryCost: 0,
+const RETOUR_REASONS = [
+  "Customer not at home",
+  "Customer refused delivery",
+  "Wrong address",
+  "Package damaged",
+  "Customer unreachable",
+  "Wrong item ordered",
+];
+
+type ActionBtn = {
+  toStatus: OrderStatus;
+  label: string;
+  icon: string;
+  /** Tailwind classes for the button */
+  cls: string;
+  requiresReason: boolean;
+  reasons?: string[];
+  /** Use markRetour mutation instead of updateStatus */
+  useRetour?: boolean;
+};
+
+const STATUS_ACTIONS: Partial<Record<OrderStatus, ActionBtn[]>> = {
+  Pending: [
+    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white", requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300", requiresReason: true, reasons: CANCEL_REASONS },
+  ],
+  "Called no respond": [
+    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white", requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300", requiresReason: true, reasons: CANCEL_REASONS },
+  ],
+  "Called 01": [
+    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white", requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300", requiresReason: true, reasons: CANCEL_REASONS },
+  ],
+  "Called 02": [
+    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white", requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300", requiresReason: true, reasons: CANCEL_REASONS },
+  ],
+  Confirmed: [
+    { toStatus: "Packaged",  label: "Mark as Packaged", icon: "📦", cls: "bg-purple-600 hover:bg-purple-700 text-white", requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",     icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300", requiresReason: true, reasons: CANCEL_REASONS },
+  ],
+  Packaged: [
+    { toStatus: "Shipped",   label: "Mark as Shipped",  icon: "🚚", cls: "bg-indigo-600 hover:bg-indigo-700 text-white", requiresReason: false },
+  ],
+  Shipped: [
+    { toStatus: "Delivered", label: "Mark as Delivered", icon: "✅", cls: "bg-green-600 hover:bg-green-700 text-white", requiresReason: false },
+    { toStatus: "Retour",    label: "Mark as Retour",    icon: "↩", cls: "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300", requiresReason: true, reasons: RETOUR_REASONS, useRetour: true },
+  ],
+  // Terminal states — no actions
+  Delivered: [],
+  Cancelled: [],
+  Retour:    [],
+};
+
+/** Statuses where the call-log section is visible */
+const CALL_LOG_STATUSES: OrderStatus[] = [
+  "Pending", "Called no respond", "Called 01", "Called 02",
+];
+
+// ─── Component ────────────────────────────────────────────────────────────────────────────
+
+export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerProps) {
+
+  // ─ Edit form state ───────────────────────────────────────────────────────────
+  const [isEditing,  setIsEditing]  = useState(false);
+  const [isSaving,   setIsSaving]   = useState(false);
+  const [formData,   setFormData]   = useState({
+    customerName: "", customerPhone: "", customerWilaya: "",
+    customerCommune: "", customerAddress: "", deliveryCost: 0,
   });
 
-  const updateOrder = useMutation(api.orders.update);
-  const updateOrderStatus = useMutation(api.orders.updateStatus);
+  // ─ Action / call-log state ────────────────────────────────────────────────────
+  const [pendingAction,   setPendingAction]   = useState<ActionBtn | null>(null);
+  const [actionReason,    setActionReason]    = useState("");
+  const [isActioning,     setIsActioning]     = useState(false);
+  const [isLoggingCall,   setIsLoggingCall]   = useState(false);
+
+  // ─ Notes state ───────────────────────────────────────────────────────────────
+  const [newNote,       setNewNote]       = useState("");
+  const [isSavingNote,  setIsSavingNote]  = useState(false);
+
+  // ─ UI state ───────────────────────────────────────────────────────────────────
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [isBanning,      setIsBanning]      = useState(false);
+
+  // ─ Mutations ──────────────────────────────────────────────────────────────────
+  const updateOrder        = useMutation(api.orders.update);
+  const updateOrderStatus  = useMutation(api.orders.updateStatus);
+  const logCallAttempt     = useMutation(api.orders.logCallAttempt);
+  const addNote            = useMutation(api.orders.addNote);
+  const banCustomer        = useMutation(api.orders.banCustomer);
+  const markRetour         = useMutation(api.orders.markRetour);
 
   // Sync form when order changes
   useEffect(() => {
     if (order) {
       setFormData({
-        customerName: order.customerName,
-        customerPhone: order.customerPhone,
-        customerWilaya: order.customerWilaya,
+        customerName:    order.customerName,
+        customerPhone:   order.customerPhone,
+        customerWilaya:  order.customerWilaya,
         customerCommune: order.customerCommune,
         customerAddress: order.customerAddress,
-        status: order.status,
-        deliveryCost: order.deliveryCost,
+        deliveryCost:    order.deliveryCost,
       });
     }
   }, [order]);
 
-  // Reset editing state whenever drawer closes
+  // Reset all transient state when drawer closes
   useEffect(() => {
-    if (!isOpen) setIsEditing(false);
+    if (!isOpen) {
+      setIsEditing(false);
+      setPendingAction(null);
+      setActionReason("");
+      setNewNote("");
+      setIsTimelineOpen(false);
+    }
   }, [isOpen]);
 
   if (!order) return null;
 
-  const config = statusConfig[order.status] ?? statusConfig["Pending"];
+  const cfg          = STATUS_CFG[order.status] ?? STATUS_CFG["Pending"];
+  const callAttempts = order.callAttempts ?? 0;
+  const fraudScore   = order.fraudScore   ?? 0;
+  const isBanned     = order.isBanned     ?? false;
+  const actionBtns   = STATUS_ACTIONS[order.status] ?? [];
+  const showCallLog  = CALL_LOG_STATUSES.includes(order.status);
+
+  // ─ Handlers ──────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
       await updateOrder({
-        id: order._id,
-        customerName: formData.customerName,
-        customerPhone: formData.customerPhone,
-        customerWilaya: formData.customerWilaya,
+        id:              order._id,
+        customerName:    formData.customerName,
+        customerPhone:   formData.customerPhone,
+        customerWilaya:  formData.customerWilaya,
         customerCommune: formData.customerCommune,
         customerAddress: formData.customerAddress,
-        status: formData.status,
-        deliveryCost: formData.deliveryCost,
+        deliveryCost:    formData.deliveryCost,
       });
-      toast.success("Order updated successfully!");
+      toast.success("Order updated!");
       setIsEditing(false);
       onSuccess();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update order");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update order");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleStatusChange = async (newStatus: OrderStatus) => {
+  const handleCallLog = async (outcome: "answered" | "no_answer") => {
+    setIsLoggingCall(true);
     try {
-      await updateOrderStatus({ id: order._id, status: newStatus });
-      setFormData((prev) => ({ ...prev, status: newStatus }));
-      toast.success(`Status updated to ${newStatus}`);
+      await logCallAttempt({ orderId: order._id, outcome });
+      toast.success(
+        outcome === "answered"
+          ? "📞 Logged — customer answered. Confirm or cancel below."
+          : `📞 No answer logged (${callAttempts + 1}/2).`,
+      );
       onSuccess();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update status");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to log call");
+    } finally {
+      setIsLoggingCall(false);
     }
   };
 
-  const formatDate = (timestamp: number) =>
-    new Date(timestamp).toLocaleString("en-US", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
+  const handleConfirmAction = async () => {
+    if (!pendingAction) return;
+    if (pendingAction.requiresReason && !actionReason) return;
+    setIsActioning(true);
+    try {
+      if (pendingAction.useRetour) {
+        await markRetour({ orderId: order._id, reason: actionReason });
+      } else {
+        await updateOrderStatus({
+          id: order._id,
+          status: pendingAction.toStatus,
+          ...(actionReason ? { reason: actionReason } : {}),
+        });
+      }
+      toast.success(`Order marked as ${pendingAction.toStatus}`);
+      setPendingAction(null);
+      setActionReason("");
+      onSuccess();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update status");
+    } finally {
+      setIsActioning(false);
+    }
+  };
 
-  const formatCurrency = (amount: number) =>
-    `${amount.toLocaleString()} DA`;
+  const handleSaveNote = async () => {
+    if (!newNote.trim()) return;
+    setIsSavingNote(true);
+    try {
+      await addNote({ orderId: order._id, text: newNote.trim() });
+      setNewNote("");
+      toast.success("Note saved");
+      onSuccess();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to save note");
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  const handleToggleBan = async () => {
+    setIsBanning(true);
+    try {
+      await banCustomer({ phone: order.customerPhone, isBanned: !isBanned });
+      toast.success(!isBanned ? "🚫 Customer banned" : "✅ Customer unbanned");
+      onSuccess();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update ban");
+    } finally {
+      setIsBanning(false);
+    }
+  };
+
+  const fmt  = (ts: number) => new Date(ts).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+  const curr = (n: number)  => `${n.toLocaleString()} DA`;
+
+  // ─ Render ────────────────────────────────────────────────────────────────────────────
 
   return (
-    // modal={false} → no overlay, no focus-trap, no scroll-lock
-    // The Kanban board stays fully visible and interactive behind the drawer.
     <Sheet open={isOpen} onOpenChange={onClose} modal={false}>
       <SheetContent
         side="right"
         hideClose
         className="w-[520px] max-w-[95vw] sm:max-w-[520px] p-0 flex flex-col border-l border-gray-200 shadow-2xl"
       >
-        {/* ── Sticky Header ─────────────────────────────────────────────────────────────── */}
+        {/* ══ STICKY HEADER ══════════════════════════════════════════════════════ */}
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4 flex items-start justify-between shrink-0">
           <SheetHeader className="gap-1">
             <SheetTitle className="flex items-center gap-2 text-xl font-bold text-gray-900">
@@ -264,121 +367,195 @@ export function OrderDrawer({
               Order #{order.orderNumber}
             </SheetTitle>
             <SheetDescription className="flex items-center gap-2 text-sm text-gray-500 flex-wrap">
-              <span>Created {formatDate(order._creationTime)}</span>
+              <span>{fmt(order._creationTime)}</span>
               <span className="text-gray-300">•</span>
-              <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${
-                  config.bgColor
-                } ${config.color}`}
-              >
-                {config.icon} {order.status}
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${cfg.bg} ${cfg.color}`}>
+                {cfg.icon} {order.status}
               </span>
+              {isBanned && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border bg-red-100 border-red-300 text-red-700">
+                  🚫 Banned
+                </span>
+              )}
             </SheetDescription>
           </SheetHeader>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="shrink-0 text-gray-400 hover:text-gray-700 -mt-1 ml-4"
-          >
+          <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0 text-gray-400 hover:text-gray-700 -mt-1 ml-4">
             <X className="h-5 w-5" />
           </Button>
         </div>
 
-        {/* ── Scrollable Body ────────────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+        {/* ══ SCROLLABLE BODY ══════════════════════════════════════════════════════ */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
-          {/* ─ Status Section ─────────────────────────────────────────────────── */}
-          <div className="space-y-3">
-            <Label className="text-base font-semibold text-gray-900">
-              Order Status
-            </Label>
-            {/* Note: This dropdown will be replaced with guided action buttons in Phase 3 */}
-            <Select
-              value={formData.status}
-              onValueChange={(v) => handleStatusChange(v as OrderStatus)}
-            >
-              <SelectTrigger
-                className={`${config.bgColor} border-2 ${config.color} font-medium`}
-              >
-                <div className="flex items-center gap-2">
-                  <span>{config.icon}</span>
-                  <SelectValue />
+          {/* ── Banned banner ─────────────────────────────────────────────────────── */}
+          {isBanned && (
+            <div className="flex items-start gap-3 bg-red-50 border-2 border-red-200 rounded-xl p-4">
+              <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-red-800 text-sm">Banned customer</p>
+                <p className="text-xs text-red-600 mt-0.5">Future orders from this number will be auto-cancelled.</p>
+              </div>
+            </div>
+          )}
+
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* § 1  CALL LOG — shown only for pre-confirmation statuses              */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {showCallLog && (
+            <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
+                  <PhoneCall className="h-4 w-4 text-orange-600" />
+                  Call Log
+                </h3>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                  callAttempts >= 2 ? "bg-red-100 text-red-700" :
+                  callAttempts === 1 ? "bg-orange-100 text-orange-700" :
+                  "bg-gray-100 text-gray-600"
+                }`}>
+                  {callAttempts} / 2
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  size="sm" disabled={isLoggingCall}
+                  onClick={() => handleCallLog("answered")}
+                  className="bg-green-600 hover:bg-green-700 text-white gap-1.5"
+                >
+                  <PhoneCall className="h-3.5 w-3.5" /> Answered
+                </Button>
+                <Button
+                  size="sm" disabled={isLoggingCall}
+                  onClick={() => handleCallLog("no_answer")}
+                  className="bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
+                >
+                  <PhoneOff className="h-3.5 w-3.5" /> No Answer
+                </Button>
+              </div>
+
+              {callAttempts >= 2 && order.status !== "Confirmed" && (
+                <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
+                  <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-700 font-medium">
+                    2 no-answer attempts — confirm, cancel, or try once more above.
+                  </p>
                 </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Pending">
-                  <div className="flex items-center gap-2">⏳ Pending</div>
-                </SelectItem>
-                <SelectItem value="Called 01">
-                  <div className="flex items-center gap-2">📞 Called 01 — No Answer</div>
-                </SelectItem>
-                <SelectItem value="Called 02">
-                  <div className="flex items-center gap-2">📞 Called 02 — No Answer</div>
-                </SelectItem>
-                <SelectItem value="Confirmed">
-                  <div className="flex items-center gap-2">✓ Confirmed</div>
-                </SelectItem>
-                <SelectItem value="Cancelled">
-                  <div className="flex items-center gap-2">✕ Cancelled</div>
-                </SelectItem>
-                <SelectItem value="Packaged">
-                  <div className="flex items-center gap-2">📦 Packaged</div>
-                </SelectItem>
-                <SelectItem value="Shipped">
-                  <div className="flex items-center gap-2">🚚 Shipped</div>
-                </SelectItem>
-                <SelectItem value="Delivered">
-                  <div className="flex items-center gap-2">✓✓ Delivered</div>
-                </SelectItem>
-                <SelectItem value="Retour">
-                  <div className="flex items-center gap-2">↩ Retour</div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+              )}
+
+              {order.callLog && order.callLog.length > 0 && (
+                <div className="space-y-1 border-t border-orange-200 pt-3">
+                  {[...order.callLog].reverse().map((entry, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs">
+                      <span className={entry.outcome === "answered" ? "text-green-700 font-medium" : "text-red-600"}>
+                        {entry.outcome === "answered" ? "✅ Answered" : "❌ No Answer"}
+                        {entry.note ? ` — ${entry.note}` : ""}
+                      </span>
+                      <span className="text-gray-400">{fmt(entry.timestamp)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* § 2  GUIDED ACTIONS                                                    */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Actions</p>
+
+            {actionBtns.length > 0 ? (
+              <>
+                {!pendingAction && (
+                  <div className="flex flex-wrap gap-2">
+                    {actionBtns.map((btn) => (
+                      <Button
+                        key={btn.toStatus}
+                        size="sm"
+                        className={`gap-1.5 ${btn.cls}`}
+                        onClick={() => { setPendingAction(btn); setActionReason(""); }}
+                      >
+                        <span>{btn.icon}</span> {btn.label}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Inline confirm / reason panel */}
+                {pendingAction && (
+                  <div className="border-2 border-amber-200 bg-amber-50 rounded-xl p-4 space-y-3">
+                    <p className="text-sm font-semibold text-amber-900">
+                      {pendingAction.icon} {pendingAction.label}
+                    </p>
+
+                    {pendingAction.requiresReason && (
+                      <Select value={actionReason} onValueChange={setActionReason}>
+                        <SelectTrigger className="bg-white text-sm">
+                          <SelectValue placeholder="Select a reason…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {pendingAction.reasons?.map((r) => (
+                            <SelectItem key={r} value={r}>{r}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+
+                    <p className="text-sm text-amber-800">Confirm this action?</p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleConfirmAction}
+                        disabled={isActioning || (pendingAction.requiresReason && !actionReason)}
+                        className="bg-amber-600 hover:bg-amber-700 text-white"
+                      >
+                        {isActioning ? "Updating…" : "Yes, continue"}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => { setPendingAction(null); setActionReason(""); }}>
+                        Back
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-400 text-center">
+                {cfg.icon} Terminal state — no further actions.
+              </div>
+            )}
           </div>
 
           <Separator />
 
-          {/* ─ Product Information ────────────────────────────────────────── */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* § 3  ORDERED PRODUCT                                                   */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
           <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border-2 border-indigo-100">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-lg text-gray-900 flex items-center gap-2">
-                <Package className="h-5 w-5 text-indigo-600" />
-                Ordered Product
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                <Package className="h-5 w-5 text-indigo-600" /> Ordered Product
               </h3>
-              <Badge variant="secondary" className="text-xs">
-                Read-only
-              </Badge>
+              <Badge variant="secondary" className="text-xs">Read-only</Badge>
             </div>
 
             <div className="space-y-3">
-              {/* Product name + variant chips */}
               <div className="flex justify-between items-start">
                 <div className="flex-1 mr-4">
-                  <p className="text-sm text-gray-500 mb-1">Product Name</p>
-                  <p className="font-medium text-gray-900">{order.productName}</p>
-                  {order.selectedVariant &&
-                    (order.selectedVariant.size || order.selectedVariant.color) && (
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        {order.selectedVariant.size && (
-                          <Badge variant="outline" className="text-xs">
-                            Size: {order.selectedVariant.size}
-                          </Badge>
-                        )}
-                        {order.selectedVariant.color && (
-                          <Badge variant="outline" className="text-xs">
-                            Color: {order.selectedVariant.color}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
+                  <p className="text-xs text-gray-500 mb-1">Product</p>
+                  <p className="font-semibold text-gray-900">{order.productName}</p>
+                  {order.selectedVariant && (order.selectedVariant.size || order.selectedVariant.color) ? (
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      {order.selectedVariant.size  && <Badge variant="outline" className="text-xs">Size: {order.selectedVariant.size}</Badge>}
+                      {order.selectedVariant.color && <Badge variant="outline" className="text-xs">Color: {order.selectedVariant.color}</Badge>}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400 mt-1">No variants</p>
+                  )}
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm text-gray-500 mb-1">Unit Price</p>
-                  <p className="font-bold text-gray-900 text-lg">
-                    {formatCurrency(order.productPrice)}
-                  </p>
+                  <p className="text-xs text-gray-500 mb-1">Unit Price</p>
+                  <p className="font-bold text-gray-900 text-lg">{curr(order.productPrice)}</p>
                 </div>
               </div>
 
@@ -386,59 +563,36 @@ export function OrderDrawer({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-500 mb-1 flex items-center gap-1">
-                    <Truck className="h-3 w-3" /> Delivery Type
-                  </p>
-                  <Badge variant="outline" className="text-sm">
-                    {order.deliveryType}
-                  </Badge>
+                  <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Truck className="h-3 w-3" /> Type</p>
+                  <Badge variant="outline">{order.deliveryType}</Badge>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 mb-1 flex items-center gap-1">
-                    <DollarSign className="h-3 w-3" /> Delivery Cost
-                  </p>
+                  <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><DollarSign className="h-3 w-3" /> Delivery</p>
                   {isEditing ? (
-                    <Input
-                      type="number"
-                      value={formData.deliveryCost}
-                      onChange={(e) =>
-                        setFormData((p) => ({
-                          ...p,
-                          deliveryCost: parseInt(e.target.value) || 0,
-                        }))
-                      }
-                      className="h-8 w-32"
-                    />
+                    <Input type="number" value={formData.deliveryCost}
+                      onChange={(e) => setFormData((p) => ({ ...p, deliveryCost: parseInt(e.target.value) || 0 }))}
+                      className="h-8 w-28" />
                   ) : (
-                    <p className="font-medium text-gray-900">
-                      {formatCurrency(order.deliveryCost)}
-                    </p>
+                    <p className="font-medium text-gray-900 text-sm">{curr(order.deliveryCost)}</p>
                   )}
                 </div>
               </div>
 
               <Separator className="bg-indigo-200" />
 
-              {/* Order Summary — grouped (Issue #13) */}
               <div className="bg-white rounded-lg p-4 border-2 border-indigo-200 space-y-2">
-                <div className="flex justify-between items-center text-sm text-gray-600">
-                  <span>Products</span>
-                  <span>{formatCurrency(order.productPrice)}</span>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Products</span><span>{curr(order.productPrice)}</span>
                 </div>
-                <div className="flex justify-between items-center text-sm text-gray-600">
+                <div className="flex justify-between text-sm text-gray-600">
                   <span>Shipping</span>
-                  <span>
-                    + {formatCurrency(isEditing ? formData.deliveryCost : order.deliveryCost)}
-                  </span>
+                  <span>+ {curr(isEditing ? formData.deliveryCost : order.deliveryCost)}</span>
                 </div>
                 <Separator className="my-1" />
                 <div className="flex justify-between items-center">
                   <span className="font-semibold text-gray-900">Total COD</span>
                   <span className="font-bold text-xl text-gray-900">
-                    {formatCurrency(
-                      order.productPrice +
-                        (isEditing ? formData.deliveryCost : order.deliveryCost)
-                    )}
+                    {curr(order.productPrice + (isEditing ? formData.deliveryCost : order.deliveryCost))}
                   </span>
                 </div>
               </div>
@@ -447,59 +601,33 @@ export function OrderDrawer({
 
           <Separator />
 
-          {/* ─ Customer Information ───────────────────────────────────────── */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* § 4  CUSTOMER                                                           */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-lg text-gray-900 flex items-center gap-2">
-                <User className="h-5 w-5 text-indigo-600" />
-                Customer Information
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                <User className="h-5 w-5 text-indigo-600" /> Customer
               </h3>
               {!isEditing ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsEditing(true)}
-                  className="gap-2"
-                >
-                  <Edit2 className="h-4 w-4" /> Edit
+                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="gap-1.5">
+                  <Edit2 className="h-3.5 w-3.5" /> Edit
                 </Button>
               ) : (
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <Button variant="outline" size="sm" className="gap-1.5"
                     onClick={() => {
                       setIsEditing(false);
-                      setFormData({
-                        customerName: order.customerName,
-                        customerPhone: order.customerPhone,
-                        customerWilaya: order.customerWilaya,
-                        customerCommune: order.customerCommune,
-                        customerAddress: order.customerAddress,
-                        status: order.status,
-                        deliveryCost: order.deliveryCost,
-                      });
-                    }}
-                    className="gap-2"
-                  >
-                    <X className="h-4 w-4" /> Cancel
+                      setFormData({ customerName: order.customerName, customerPhone: order.customerPhone,
+                        customerWilaya: order.customerWilaya, customerCommune: order.customerCommune,
+                        customerAddress: order.customerAddress, deliveryCost: order.deliveryCost });
+                    }}>
+                    <X className="h-3.5 w-3.5" /> Cancel
                   </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="gap-2"
-                  >
-                    {isSaving ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4" /> Save
-                      </>
-                    )}
+                  <Button size="sm" onClick={handleSave} disabled={isSaving} className="gap-1.5">
+                    {isSaving
+                      ? <><div className="animate-spin h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent" /> Saving&hellip;</>
+                      : <><Save className="h-3.5 w-3.5" /> Save</>}
                   </Button>
                 </div>
               )}
@@ -509,170 +637,219 @@ export function OrderDrawer({
               <div className="space-y-4 bg-gray-50 rounded-xl p-5 border-2 border-gray-200">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="customerName">
-                      <span className="flex items-center gap-1">
-                        <User className="h-3 w-3" /> Name
-                      </span>
-                    </Label>
-                    <Input
-                      id="customerName"
-                      value={formData.customerName}
-                      onChange={(e) =>
-                        setFormData((p) => ({ ...p, customerName: e.target.value }))
-                      }
-                      className="mt-2"
-                    />
+                    <Label htmlFor="cn" className="text-xs flex items-center gap-1"><User className="h-3 w-3" /> Name</Label>
+                    <Input id="cn" value={formData.customerName} onChange={(e) => setFormData((p) => ({ ...p, customerName: e.target.value }))} className="mt-1.5" />
                   </div>
                   <div>
-                    <Label htmlFor="customerPhone">
-                      <span className="flex items-center gap-1">
-                        <Phone className="h-3 w-3" /> Phone
-                      </span>
-                    </Label>
-                    <Input
-                      id="customerPhone"
-                      value={formData.customerPhone}
-                      onChange={(e) =>
-                        setFormData((p) => ({ ...p, customerPhone: e.target.value }))
-                      }
-                      className="mt-2"
-                    />
+                    <Label htmlFor="cp" className="text-xs flex items-center gap-1"><Phone className="h-3 w-3" /> Phone</Label>
+                    <Input id="cp" value={formData.customerPhone} onChange={(e) => setFormData((p) => ({ ...p, customerPhone: e.target.value }))} className="mt-1.5" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="customerWilaya">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" /> Wilaya
-                      </span>
-                    </Label>
-                    <Input
-                      id="customerWilaya"
-                      value={formData.customerWilaya}
-                      onChange={(e) =>
-                        setFormData((p) => ({ ...p, customerWilaya: e.target.value }))
-                      }
-                      className="mt-2"
-                    />
+                    <Label htmlFor="cw" className="text-xs flex items-center gap-1"><MapPin className="h-3 w-3" /> Wilaya</Label>
+                    <Input id="cw" value={formData.customerWilaya} onChange={(e) => setFormData((p) => ({ ...p, customerWilaya: e.target.value }))} className="mt-1.5" />
                   </div>
                   <div>
-                    <Label htmlFor="customerCommune">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" /> Commune
-                      </span>
-                    </Label>
-                    <Input
-                      id="customerCommune"
-                      value={formData.customerCommune}
-                      onChange={(e) =>
-                        setFormData((p) => ({ ...p, customerCommune: e.target.value }))
-                      }
-                      className="mt-2"
-                    />
+                    <Label htmlFor="cc" className="text-xs flex items-center gap-1"><MapPin className="h-3 w-3" /> Commune</Label>
+                    <Input id="cc" value={formData.customerCommune} onChange={(e) => setFormData((p) => ({ ...p, customerCommune: e.target.value }))} className="mt-1.5" />
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="customerAddress">
-                    <span className="flex items-center gap-1">
-                      <Home className="h-3 w-3" /> Full Address
-                    </span>
-                  </Label>
-                  <Input
-                    id="customerAddress"
-                    value={formData.customerAddress}
-                    onChange={(e) =>
-                      setFormData((p) => ({ ...p, customerAddress: e.target.value }))
-                    }
-                    className="mt-2"
-                  />
+                  <Label htmlFor="ca" className="text-xs flex items-center gap-1"><Home className="h-3 w-3" /> Address</Label>
+                  <Input id="ca" value={formData.customerAddress} onChange={(e) => setFormData((p) => ({ ...p, customerAddress: e.target.value }))} className="mt-1.5" />
                 </div>
               </div>
             ) : (
-              <div className="space-y-4 bg-gray-50 rounded-xl p-5 border-2 border-gray-200">
-                <div className="flex items-start gap-3">
-                  <User className="h-5 w-5 text-gray-400 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm text-gray-500">Customer Name</p>
-                    <p className="font-medium text-gray-900">{order.customerName}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <Phone className="h-5 w-5 text-gray-400 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm text-gray-500">Phone Number</p>
-                    <a
-                      href={`tel:${order.customerPhone}`}
-                      className="font-medium text-indigo-600 hover:underline"
-                    >
-                      {order.customerPhone}
-                    </a>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <MapPin className="h-5 w-5 text-gray-400 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm text-gray-500">Location</p>
-                    <p className="font-medium text-gray-900">
-                      {order.customerWilaya}, {order.customerCommune}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <Home className="h-5 w-5 text-gray-400 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm text-gray-500">Delivery Address</p>
-                    <p className="font-medium text-gray-900">{order.customerAddress}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <Truck className="h-5 w-5 text-gray-400 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm text-gray-500">Delivery Type</p>
-                    <Badge variant="outline" className="mt-1">
-                      {order.deliveryType}
-                    </Badge>
-                  </div>
-                </div>
+              <div className="space-y-3 bg-gray-50 rounded-xl p-5 border-2 border-gray-200">
+                <Row icon={<User />}     label="Name"     value={order.customerName} />
+                <Row icon={<Phone />}    label="Phone"    value={
+                  <a href={`tel:${order.customerPhone}`} className="font-medium text-indigo-600 hover:underline">{order.customerPhone}</a>
+                } />
+                <Row icon={<MapPin />}   label="Location" value={`${order.customerWilaya}, ${order.customerCommune}`} />
+                <Row icon={<Home />}     label="Address"  value={order.customerAddress} />
+                <Row icon={<Truck />}    label="Delivery" value={<Badge variant="outline">{order.deliveryType}</Badge>} />
               </div>
             )}
           </div>
 
           <Separator />
 
-          {/* ─ Timeline ───────────────────────────────────────────────────────── */}
-          <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-            <div className="flex items-center gap-2 mb-3">
-              <Clock className="h-4 w-4 text-gray-400" />
-              <h4 className="font-medium text-sm text-gray-700">Timeline</h4>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <div>
-                <p className="text-gray-500">Created</p>
-                <p className="font-medium text-gray-900 mt-1">
-                  {formatDate(order._creationTime)}
-                </p>
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* § 5  CUSTOMER RISK (fraud score + ban toggle)                          */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+              <Shield className="h-4 w-4 text-gray-500" /> Customer Risk
+            </h3>
+
+            <div className="flex items-center justify-between">
+              {/* Fraud score */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Fraud score:</span>
+                <span className={`font-bold text-sm ${
+                  fraudScore >= 3 ? "text-red-600" : fraudScore >= 1 ? "text-orange-500" : "text-green-600"
+                }`}>{fraudScore}</span>
+                <span className={`text-xs ${
+                  fraudScore >= 3 ? "text-red-500" : fraudScore >= 1 ? "text-orange-400" : "text-green-500"
+                }`}>
+                  {fraudScore >= 3 ? "— High Risk" : fraudScore >= 1 ? "— Caution" : "— Safe"}
+                </span>
+                {/* CSS tooltip */}
+                <span className="relative group cursor-help">
+                  <Info className="h-3.5 w-3.5 text-gray-400" />
+                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 rounded-lg bg-gray-900 p-2 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 z-50">
+                    Increments when orders from this phone are cancelled or returned repeatedly.
+                  </span>
+                </span>
               </div>
-              <div>
-                <p className="text-gray-500">Last Updated</p>
-                <p className="font-medium text-gray-900 mt-1">
-                  {formatDate(order.lastUpdated)}
-                </p>
+
+              {/* Ban toggle */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">{isBanned ? "Banned" : "Active"}</span>
+                <button
+                  onClick={handleToggleBan}
+                  disabled={isBanning}
+                  title={isBanned ? "Click to unban" : "Click to ban this customer"}
+                  className={`relative inline-flex h-6 w-11 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-400 disabled:opacity-60 ${
+                    isBanned ? "bg-red-500" : "bg-gray-300"
+                  }`}
+                >
+                  <span className={`mt-0.5 inline-block h-5 w-5 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${
+                    isBanned ? "translate-x-5" : "translate-x-0.5"
+                  }`} />
+                </button>
               </div>
             </div>
+
+            {/* Courier error bubble */}
+            {order.courierError && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-2">
+                <AlertTriangle className="h-3.5 w-3.5 text-red-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-700">Courier error: {order.courierError}</p>
+              </div>
+            )}
           </div>
+
+          <Separator />
+
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* § 6  INTERNAL NOTES                                                    */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+              <FileText className="h-4 w-4 text-gray-500" />
+              Internal Notes
+              <span className="text-xs text-gray-400 font-normal">— not visible to customer</span>
+            </h3>
+
+            <div className="space-y-2">
+              <Textarea
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                placeholder="Add a private note about this order or customer…"
+                className="resize-none text-sm"
+                rows={3}
+              />
+              <Button size="sm" onClick={handleSaveNote} disabled={isSavingNote || !newNote.trim()} className="gap-1.5">
+                {isSavingNote
+                  ? <><div className="animate-spin h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent" /> Saving&hellip;</>
+                  : "Save Note"}
+              </Button>
+            </div>
+
+            {order.adminNotes && order.adminNotes.length > 0 && (
+              <div className="space-y-2 border-t border-gray-100 pt-3">
+                {[...order.adminNotes].reverse().map((n, i) => (
+                  <div key={i} className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="text-sm text-gray-800">{n.text}</p>
+                    <p className="text-xs text-gray-400 mt-1">{fmt(n.timestamp)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* § 7  STATUS HISTORY (collapsible)                                       */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          <div>
+            <button
+              onClick={() => setIsTimelineOpen((p) => !p)}
+              className="w-full flex items-center justify-between text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors py-1"
+            >
+              <span className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-gray-400" />
+                Status History
+                {(order.statusHistory?.length ?? 0) > 0 && (
+                  <span className="bg-gray-100 text-gray-500 text-xs px-1.5 py-0.5 rounded-full font-normal">
+                    {order.statusHistory!.length}
+                  </span>
+                )}
+              </span>
+              {isTimelineOpen ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+            </button>
+
+            {isTimelineOpen && (
+              <div className="mt-3 pl-4 border-l-2 border-gray-200 space-y-3">
+                {order.statusHistory && order.statusHistory.length > 0 ? (
+                  [...order.statusHistory].reverse().map((entry, i) => {
+                    const ec = STATUS_CFG[entry.status as OrderStatus];
+                    return (
+                      <div key={i} className="relative">
+                        <div className="absolute -left-[1.3rem] mt-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-gray-400 shadow-sm" />
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${
+                              ec ? `${ec.bg} ${ec.color}` : "bg-gray-100 text-gray-600 border-gray-200"
+                            }`}>
+                              {ec?.icon} {entry.status}
+                            </span>
+                            {entry.reason && <p className="text-xs text-gray-400 mt-0.5 ml-1">{entry.reason}</p>}
+                          </div>
+                          <span className="text-xs text-gray-400 shrink-0">{fmt(entry.timestamp)}</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-xs text-gray-400 py-2">No history yet.</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="h-2" />
         </div>
 
-        {/* ── Sticky Footer ────────────────────────────────────────────────────────── */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 shrink-0 flex justify-end">
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
+        {/* ══ STICKY FOOTER ══════════════════════════════════════════════════════ */}
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 shrink-0 flex items-center justify-between">
+          <p className="text-xs text-gray-400 font-mono">{order.orderNumber}</p>
+          <Button variant="outline" onClick={onClose}>Close</Button>
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+// ─── Small helper: read-only row in customer view ─────────────────────────────────
+
+function Row({
+  icon, label, value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 shrink-0 text-gray-400 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>
+      <div>
+        <p className="text-xs text-gray-500">{label}</p>
+        <div className="font-medium text-gray-900 text-sm mt-0.5">{value}</div>
+      </div>
+    </div>
   );
 }
