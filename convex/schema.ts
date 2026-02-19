@@ -47,6 +47,7 @@ export default defineSchema({
     deliveryType:     v.union(v.literal("Stopdesk"), v.literal("Domicile")),
     deliveryCost:     v.number(),
     totalAmount:      v.optional(v.number()),
+    quantity:         v.optional(v.number()),
     status: v.optional(
       v.union(
         v.literal("Pending"),
@@ -103,6 +104,7 @@ export default defineSchema({
     stopdeskCost:     v.number(),
     domicileCost:     v.number(),
     isManualOverride: v.optional(v.boolean()),
+    lastFetched:      v.optional(v.number()),
     updatedAt:        v.optional(v.number()),
   })
     .index("by_wilayaId", ["wilayaId"]),
