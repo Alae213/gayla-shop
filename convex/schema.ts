@@ -103,7 +103,7 @@ export default defineSchema({
     stopdeskCost:     v.number(),
     domicileCost:     v.number(),
     isManualOverride: v.optional(v.boolean()),
-    updatedAt:        v.number(),
+    updatedAt:        v.optional(v.number()),
   })
     .index("by_wilayaId", ["wilayaId"]),
 
