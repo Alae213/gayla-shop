@@ -136,31 +136,31 @@ const SAFE_STATUSES: OrderStatus[] = ["Confirmed", "Packaged", "Shipped", "Deliv
 
 const STATUS_ACTIONS: Partial<Record<OrderStatus, ActionBtn[]>> = {
   Pending: [
-    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                                            requiresReason: false },
-    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                      requiresReason: true, reasons: CANCEL_REASONS },
+    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                                         requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                   requiresReason: true, reasons: CANCEL_REASONS },
   ],
   "Called no respond": [
-    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                                            requiresReason: false },
-    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                      requiresReason: true, reasons: CANCEL_REASONS },
+    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                                         requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                   requiresReason: true, reasons: CANCEL_REASONS },
   ],
   "Called 01": [
-    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                                            requiresReason: false },
-    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                      requiresReason: true, reasons: CANCEL_REASONS },
+    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                                         requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                   requiresReason: true, reasons: CANCEL_REASONS },
   ],
   "Called 02": [
-    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                                            requiresReason: false },
-    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                      requiresReason: true, reasons: CANCEL_REASONS },
+    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                                         requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                   requiresReason: true, reasons: CANCEL_REASONS },
   ],
   Confirmed: [
-    { toStatus: "Packaged",  label: "Mark as Packaged", icon: "📦", cls: "bg-purple-600 hover:bg-purple-700 text-white",                                    requiresReason: false },
-    { toStatus: "Cancelled", label: "Cancel Order",     icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                    requiresReason: true, reasons: CANCEL_REASONS },
+    { toStatus: "Packaged",  label: "Mark as Packaged", icon: "📦", cls: "bg-purple-600 hover:bg-purple-700 text-white",                                 requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",     icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                 requiresReason: true, reasons: CANCEL_REASONS },
   ],
   Packaged: [
-    { toStatus: "Shipped",   label: "Mark as Shipped",  icon: "🚚", cls: "bg-indigo-600 hover:bg-indigo-700 text-white",                                   requiresReason: false },
+    { toStatus: "Shipped",   label: "Mark as Shipped",  icon: "🚚", cls: "bg-indigo-600 hover:bg-indigo-700 text-white",                                requiresReason: false },
   ],
   Shipped: [
-    { toStatus: "Delivered", label: "Mark as Delivered", icon: "✅", cls: "bg-green-600 hover:bg-green-700 text-white",                                        requiresReason: false },
-    { toStatus: "Retour",    label: "Mark as Retour",    icon: "↩",  cls: "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300",          requiresReason: true, reasons: RETOUR_REASONS, useRetour: true },
+    { toStatus: "Delivered", label: "Mark as Delivered", icon: "✅", cls: "bg-green-600 hover:bg-green-700 text-white",                                      requiresReason: false },
+    { toStatus: "Retour",    label: "Mark as Retour",    icon: "↩",  cls: "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300",       requiresReason: true, reasons: RETOUR_REASONS, useRetour: true },
   ],
   // Terminal states — no actions
   Delivered: [],
@@ -177,7 +177,7 @@ const CALL_LOG_STATUSES: OrderStatus[] = [
 
 export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerProps) {
 
-  // ─ Edit form state ─────────────────────────────────────────────────────────────────
+  // ─ Edit form state ──────────────────────────────────────────────────────────────
   const [isEditing,  setIsEditing]  = useState(false);
   const [isSaving,   setIsSaving]   = useState(false);
   const [formData,   setFormData]   = useState({
@@ -185,24 +185,24 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     customerCommune: "", customerAddress: "", deliveryCost: 0,
   });
 
-  // ─ Action state ────────────────────────────────────────────────────────────────────
+  // ─ Action state ────────────────────────────────────────────────────────────────
   const [pendingAction,  setPendingAction]  = useState<ActionBtn | null>(null);
   const [actionReason,   setActionReason]   = useState("");
   const [isActioning,    setIsActioning]    = useState(false);
   const [isLoggingCall,  setIsLoggingCall]  = useState(false);
 
-  // ─ Notes state ──────────────────────────────────────────────────────────────────────
+  // ─ Notes state ───────────────────────────────────────────────────────────────
   const [newNote,      setNewNote]      = useState("");
   const [isSavingNote, setIsSavingNote] = useState(false);
 
-  // ─ UI state ───────────────────────────────────────────────────────────────────────
+  // ─ UI state ─────────────────────────────────────────────────────────────────
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [isBanning,      setIsBanning]      = useState(false);
 
   // Ref for auto-focusing the reason Select when the amber panel opens (B3)
   const reasonSelectRef = useRef<HTMLButtonElement>(null);
 
-  // ─ Mutations ──────────────────────────────────────────────────────────────────────
+  // ─ Mutations ─────────────────────────────────────────────────────────────────
   const updateOrder       = useMutation(api.orders.update);
   const updateOrderStatus = useMutation(api.orders.updateStatus);
   const logCallAttempt    = useMutation(api.orders.logCallAttempt);
@@ -258,7 +258,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
    */
   const primaryAction = !pendingAction && actionBtns.length > 0 ? actionBtns[0] : null;
 
-  // ─ Handlers ──────────────────────────────────────────────────────────────────────
+  // ─ Handlers ─────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -308,7 +308,6 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     const isSafe = !btn.requiresReason && SAFE_STATUSES.includes(btn.toStatus);
 
     if (isSafe) {
-      // Execute immediately — no pre-confirmation needed
       const previousStatus = order.status;
       setIsActioning(true);
       try {
@@ -335,7 +334,6 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
         setIsActioning(false);
       }
     } else {
-      // Destructive — open amber confirm panel (B3 auto-focus handled by useEffect)
       setPendingAction(btn);
       setActionReason("");
     }
@@ -399,7 +397,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     new Date(ts).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
   const curr = (n: number) => `${n.toLocaleString()} DA`;
 
-  // ─ Render ────────────────────────────────────────────────────────────────────────────
+  // ─ Render ───────────────────────────────────────────────────────────────────────────
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose} modal={false}>
@@ -409,7 +407,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
         className="w-[520px] max-w-[95vw] sm:max-w-[520px] p-0 flex flex-col border-l border-gray-200 shadow-2xl"
       >
 
-        {/* ══ STICKY HEADER ════════════════════════════════════════════════════════════ */}
+        {/* ══ STICKY HEADER ══════════════════════════════════════════════════════════ */}
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4 flex items-start justify-between shrink-0">
           <SheetHeader className="gap-1">
             <SheetTitle className="flex items-center gap-2 text-xl font-bold text-gray-900">
@@ -437,7 +435,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
           </Button>
         </div>
 
-        {/* ══ SCROLLABLE BODY ═════════════════════════════════════════════════════════════ */}
+        {/* ══ SCROLLABLE BODY ═══════════════════════════════════════════════════════════ */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
           {/* Banned banner */}
@@ -453,16 +451,16 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
             </div>
           )}
 
-          {/* ══════════════════════════════════════════════════════════════════ */}
-          {/* § 1  ACTIONS — MOVED TO TOP (B1)                                       */}
-          {/* Admin’s primary task: zero scrolling required to act on any order      */}
-          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* ════════════════════════════════════════════════════════════════ */}
+          {/* § 1  ACTIONS                                                              */}
+          {/* D5: <h3> so screen-reader heading nav includes this landmark          */}
+          {/* ════════════════════════════════════════════════════════════════ */}
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Actions</p>
+            {/* D5 — was <p>, now <h3> */}
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Actions</h3>
 
             {actionBtns.length > 0 ? (
               <>
-                {/* Action buttons (hidden while confirm panel is open) */}
                 {!pendingAction && (
                   <div className="flex flex-wrap gap-2">
                     {actionBtns.map((btn) => (
@@ -479,14 +477,12 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                   </div>
                 )}
 
-                {/* Amber confirm panel — destructive transitions only (B2) */}
                 {pendingAction && (
                   <div className="border-2 border-amber-200 bg-amber-50 rounded-xl p-4 space-y-3">
                     <p className="text-sm font-semibold text-amber-900">
                       {pendingAction.icon} {pendingAction.label}
                     </p>
 
-                    {/* Reason dropdown — auto-focused via useEffect (B3) */}
                     {pendingAction.requiresReason && (
                       <Select value={actionReason} onValueChange={setActionReason}>
                         <SelectTrigger ref={reasonSelectRef} className="bg-white text-sm">
@@ -532,9 +528,9 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* ══════════════════════════════════════════════════════════════════ */}
-          {/* § 2  ORDERED PRODUCT                                                       */}
-          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* ════════════════════════════════════════════════════════════════ */}
+          {/* § 2  ORDERED PRODUCT                                                        */}
+          {/* ════════════════════════════════════════════════════════════════ */}
           <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border-2 border-indigo-100">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -621,9 +617,9 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* ══════════════════════════════════════════════════════════════════ */}
-          {/* § 3  CUSTOMER                                                               */}
-          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* ════════════════════════════════════════════════════════════════ */}
+          {/* § 3  CUSTOMER                                                                */}
+          {/* ════════════════════════════════════════════════════════════════ */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -640,9 +636,12 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                     onClick={() => {
                       setIsEditing(false);
                       setFormData({
-                        customerName: order.customerName, customerPhone: order.customerPhone,
-                        customerWilaya: order.customerWilaya, customerCommune: order.customerCommune,
-                        customerAddress: order.customerAddress, deliveryCost: order.deliveryCost,
+                        customerName:    order.customerName,
+                        customerPhone:   order.customerPhone,
+                        customerWilaya:  order.customerWilaya,
+                        customerCommune: order.customerCommune,
+                        customerAddress: order.customerAddress,
+                        deliveryCost:    order.deliveryCost,
                       });
                     }}
                   >
@@ -706,8 +705,8 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
               </div>
             ) : (
               <div className="space-y-3 bg-gray-50 rounded-xl p-5 border-2 border-gray-200">
-                <Row icon={<User />}  label="Name"     value={order.customerName} />
-                <Row icon={<Phone />} label="Phone"    value={
+                <Row icon={<User />}   label="Name"     value={order.customerName} />
+                <Row icon={<Phone />}  label="Phone"    value={
                   <a href={`tel:${order.customerPhone}`}
                     className="font-medium text-indigo-600 hover:underline">
                     {order.customerPhone}
@@ -722,15 +721,15 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* ════════════════════════════════════════════════════════════════ */}
           {/* § 4  CUSTOMER RISK                                                           */}
-          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* ════════════════════════════════════════════════════════════════ */}
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
             <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <Shield className="h-4 w-4 text-gray-500" /> Customer Risk
             </h3>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between gap-4">
               {/* Fraud score */}
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">Fraud score:</span>
@@ -750,24 +749,34 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                 </span>
               </div>
 
-              {/* Ban toggle */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">{isBanned ? "Banned" : "Active"}</span>
-                <button
-                  onClick={handleToggleBan}
-                  disabled={isBanning}
-                  title={isBanned ? "Click to unban" : "Click to ban this customer"}
-                  className={`relative inline-flex h-6 w-11 rounded-full transition-colors duration-200
-                    focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-400
-                    disabled:opacity-60 ${
-                    isBanned ? "bg-red-500" : "bg-gray-300"
-                  }`}
-                >
-                  <span className={`mt-0.5 inline-block h-5 w-5 rounded-full bg-white shadow-sm
-                    transform transition-transform duration-200 ${
-                    isBanned ? "translate-x-5" : "translate-x-0.5"
-                  }`} />
-                </button>
+              {/* D2 — Ban toggle with always-visible consequence sentence */}
+              <div className="flex flex-col items-end gap-1.5 shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">{isBanned ? "Banned" : "Active"}</span>
+                  <button
+                    onClick={handleToggleBan}
+                    disabled={isBanning}
+                    aria-label={isBanned ? "Unban this customer" : "Ban this customer"}
+                    className={`relative inline-flex h-6 w-11 rounded-full transition-colors duration-200
+                      focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-400
+                      disabled:opacity-60 ${
+                      isBanned ? "bg-red-500" : "bg-gray-300"
+                    }`}
+                  >
+                    <span className={`mt-0.5 inline-block h-5 w-5 rounded-full bg-white shadow-sm
+                      transform transition-transform duration-200 ${
+                      isBanned ? "translate-x-5" : "translate-x-0.5"
+                    }`} />
+                  </button>
+                </div>
+                {/* D2: always-visible consequence label (replaces invisible title=) */}
+                <p className={`text-xs max-w-[160px] text-right leading-snug ${
+                  isBanned ? "text-red-600" : "text-gray-400"
+                }`}>
+                  {isBanned
+                    ? "Future orders from this number are auto-cancelled."
+                    : "Banning blocks all future orders from this number."}
+                </p>
               </div>
             </div>
 
@@ -780,10 +789,9 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
             )}
           </div>
 
-          {/* ══════════════════════════════════════════════════════════════════ */}
-          {/* § 5  CALL LOG — MOVED BELOW RISK (B1)                                    */}
-          {/* Visible only during the outreach phase; irrelevant once confirmed      */}
-          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* ════════════════════════════════════════════════════════════════ */}
+          {/* § 5  CALL LOG — visible only during the outreach phase                  */}
+          {/* ════════════════════════════════════════════════════════════════ */}
           {showCallLog && (
             <>
               <Separator />
@@ -804,20 +812,21 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                   </span>
                 </div>
 
+                {/* D3: 'Log: Answered' / 'Log: No Answer' — verb makes action unambiguous */}
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     size="sm" disabled={isLoggingCall}
                     onClick={() => handleCallLog("answered")}
                     className="bg-green-600 hover:bg-green-700 text-white gap-1.5"
                   >
-                    <PhoneCall className="h-3.5 w-3.5" /> Answered
+                    <PhoneCall className="h-3.5 w-3.5" /> Log: Answered
                   </Button>
                   <Button
                     size="sm" disabled={isLoggingCall}
                     onClick={() => handleCallLog("no_answer")}
                     className="bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
                   >
-                    <PhoneOff className="h-3.5 w-3.5" /> No Answer
+                    <PhoneOff className="h-3.5 w-3.5" /> Log: No Answer
                   </Button>
                 </div>
 
@@ -853,9 +862,9 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* ══════════════════════════════════════════════════════════════════ */}
-          {/* § 6  INTERNAL NOTES                                                          */}
-          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* ════════════════════════════════════════════════════════════════ */}
+          {/* § 6  INTERNAL NOTES                                                           */}
+          {/* ════════════════════════════════════════════════════════════════ */}
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <FileText className="h-4 w-4 text-gray-500" />
@@ -897,9 +906,9 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* ══════════════════════════════════════════════════════════════════ */}
-          {/* § 7  STATUS HISTORY (collapsible — unchanged)                              */}
-          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* ════════════════════════════════════════════════════════════════ */}
+          {/* § 7  STATUS HISTORY (collapsible)                                           */}
+          {/* ════════════════════════════════════════════════════════════════ */}
           <div>
             <button
               onClick={() => setIsTimelineOpen((p) => !p)}
@@ -954,13 +963,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
           <div className="h-2" />
         </div>
 
-        {/* ══ STICKY FOOTER ════════════════════════════════════════════════════════════ */}
-        {/*
-         * B4 — Footer is now an action bar.
-         * Left: primary action button (first in the list) so the admin can act
-         *       without scrolling back up. Falls back to order # for terminal states.
-         * Right: Close button.
-         */}
+        {/* ══ STICKY FOOTER ══════════════════════════════════════════════════════════ */}
         <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 shrink-0 flex items-center justify-between gap-3">
           {primaryAction ? (
             <Button
@@ -982,7 +985,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
   );
 }
 
-// ─── Read-only row helper ──────────────────────────────────────────────────────────────────────
+// ─── Read-only row helper ──────────────────────────────────────────────────────────────────
 
 function Row({
   icon, label, value,
