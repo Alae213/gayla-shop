@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -25,25 +25,9 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import {
-  Phone,
-  MapPin,
-  Package,
-  Truck,
-  DollarSign,
-  Edit2,
-  Save,
-  X,
-  User,
-  Home,
-  Clock,
-  ChevronDown,
-  ChevronUp,
-  AlertTriangle,
-  Info,
-  PhoneCall,
-  PhoneOff,
-  Shield,
-  FileText,
+  Phone, MapPin, Package, Truck, DollarSign, Edit2, Save, X,
+  User, Home, Clock, ChevronDown, ChevronUp, AlertTriangle,
+  Info, PhoneCall, PhoneOff, Shield, FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -99,7 +83,7 @@ interface OrderDrawerProps {
   onSuccess: () => void;
 }
 
-// ─── Status display config ─────────────────────────────────────────────────────────
+// ─── Status display config ────────────────────────────────────────────────────────────────
 
 const STATUS_CFG: Record<OrderStatus, { color: string; bg: string; icon: string }> = {
   Pending:            { color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200",  icon: "⏳" },
@@ -114,7 +98,7 @@ const STATUS_CFG: Record<OrderStatus, { color: string; bg: string; icon: string 
   Retour:             { color: "text-slate-700",  bg: "bg-slate-50 border-slate-200",    icon: "↩" },
 };
 
-// ─── Guided action definitions ─────────────────────────────────────────────────────
+// ─── Action definitions ─────────────────────────────────────────────────────────────────
 
 const CANCEL_REASONS = [
   "No answer after 2 attempts",
@@ -138,41 +122,45 @@ type ActionBtn = {
   toStatus: OrderStatus;
   label: string;
   icon: string;
-  /** Tailwind classes for the button */
   cls: string;
   requiresReason: boolean;
   reasons?: string[];
-  /** Use markRetour mutation instead of updateStatus */
   useRetour?: boolean;
 };
 
+/**
+ * Safe transitions execute immediately + show an undo snackbar (Phase B).
+ * Destructive transitions still require the amber confirm panel + reason.
+ */
+const SAFE_STATUSES: OrderStatus[] = ["Confirmed", "Packaged", "Shipped", "Delivered"];
+
 const STATUS_ACTIONS: Partial<Record<OrderStatus, ActionBtn[]>> = {
   Pending: [
-    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white", requiresReason: false },
-    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300", requiresReason: true, reasons: CANCEL_REASONS },
+    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                                            requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                      requiresReason: true, reasons: CANCEL_REASONS },
   ],
   "Called no respond": [
-    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white", requiresReason: false },
-    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300", requiresReason: true, reasons: CANCEL_REASONS },
+    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                                            requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                      requiresReason: true, reasons: CANCEL_REASONS },
   ],
   "Called 01": [
-    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white", requiresReason: false },
-    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300", requiresReason: true, reasons: CANCEL_REASONS },
+    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                                            requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                      requiresReason: true, reasons: CANCEL_REASONS },
   ],
   "Called 02": [
-    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white", requiresReason: false },
-    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300", requiresReason: true, reasons: CANCEL_REASONS },
+    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                                            requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                      requiresReason: true, reasons: CANCEL_REASONS },
   ],
   Confirmed: [
-    { toStatus: "Packaged",  label: "Mark as Packaged", icon: "📦", cls: "bg-purple-600 hover:bg-purple-700 text-white", requiresReason: false },
-    { toStatus: "Cancelled", label: "Cancel Order",     icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300", requiresReason: true, reasons: CANCEL_REASONS },
+    { toStatus: "Packaged",  label: "Mark as Packaged", icon: "📦", cls: "bg-purple-600 hover:bg-purple-700 text-white",                                    requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",     icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                    requiresReason: true, reasons: CANCEL_REASONS },
   ],
   Packaged: [
-    { toStatus: "Shipped",   label: "Mark as Shipped",  icon: "🚚", cls: "bg-indigo-600 hover:bg-indigo-700 text-white", requiresReason: false },
+    { toStatus: "Shipped",   label: "Mark as Shipped",  icon: "🚚", cls: "bg-indigo-600 hover:bg-indigo-700 text-white",                                   requiresReason: false },
   ],
   Shipped: [
-    { toStatus: "Delivered", label: "Mark as Delivered", icon: "✅", cls: "bg-green-600 hover:bg-green-700 text-white", requiresReason: false },
-    { toStatus: "Retour",    label: "Mark as Retour",    icon: "↩", cls: "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300", requiresReason: true, reasons: RETOUR_REASONS, useRetour: true },
+    { toStatus: "Delivered", label: "Mark as Delivered", icon: "✅", cls: "bg-green-600 hover:bg-green-700 text-white",                                        requiresReason: false },
+    { toStatus: "Retour",    label: "Mark as Retour",    icon: "↩",  cls: "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300",          requiresReason: true, reasons: RETOUR_REASONS, useRetour: true },
   ],
   // Terminal states — no actions
   Delivered: [],
@@ -180,7 +168,7 @@ const STATUS_ACTIONS: Partial<Record<OrderStatus, ActionBtn[]>> = {
   Retour:    [],
 };
 
-/** Statuses where the call-log section is visible */
+/** Statuses where the Call Log block is visible (pre-confirmation phase). */
 const CALL_LOG_STATUSES: OrderStatus[] = [
   "Pending", "Called no respond", "Called 01", "Called 02",
 ];
@@ -189,7 +177,7 @@ const CALL_LOG_STATUSES: OrderStatus[] = [
 
 export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerProps) {
 
-  // ─ Edit form state ───────────────────────────────────────────────────────────
+  // ─ Edit form state ─────────────────────────────────────────────────────────────────
   const [isEditing,  setIsEditing]  = useState(false);
   const [isSaving,   setIsSaving]   = useState(false);
   const [formData,   setFormData]   = useState({
@@ -197,27 +185,30 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     customerCommune: "", customerAddress: "", deliveryCost: 0,
   });
 
-  // ─ Action / call-log state ────────────────────────────────────────────────────
-  const [pendingAction,   setPendingAction]   = useState<ActionBtn | null>(null);
-  const [actionReason,    setActionReason]    = useState("");
-  const [isActioning,     setIsActioning]     = useState(false);
-  const [isLoggingCall,   setIsLoggingCall]   = useState(false);
+  // ─ Action state ────────────────────────────────────────────────────────────────────
+  const [pendingAction,  setPendingAction]  = useState<ActionBtn | null>(null);
+  const [actionReason,   setActionReason]   = useState("");
+  const [isActioning,    setIsActioning]    = useState(false);
+  const [isLoggingCall,  setIsLoggingCall]  = useState(false);
 
-  // ─ Notes state ───────────────────────────────────────────────────────────────
-  const [newNote,       setNewNote]       = useState("");
-  const [isSavingNote,  setIsSavingNote]  = useState(false);
+  // ─ Notes state ──────────────────────────────────────────────────────────────────────
+  const [newNote,      setNewNote]      = useState("");
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
-  // ─ UI state ───────────────────────────────────────────────────────────────────
+  // ─ UI state ───────────────────────────────────────────────────────────────────────
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [isBanning,      setIsBanning]      = useState(false);
 
-  // ─ Mutations ──────────────────────────────────────────────────────────────────
-  const updateOrder        = useMutation(api.orders.update);
-  const updateOrderStatus  = useMutation(api.orders.updateStatus);
-  const logCallAttempt     = useMutation(api.orders.logCallAttempt);
-  const addNote            = useMutation(api.orders.addNote);
-  const banCustomer        = useMutation(api.orders.banCustomer);
-  const markRetour         = useMutation(api.orders.markRetour);
+  // Ref for auto-focusing the reason Select when the amber panel opens (B3)
+  const reasonSelectRef = useRef<HTMLButtonElement>(null);
+
+  // ─ Mutations ──────────────────────────────────────────────────────────────────────
+  const updateOrder       = useMutation(api.orders.update);
+  const updateOrderStatus = useMutation(api.orders.updateStatus);
+  const logCallAttempt    = useMutation(api.orders.logCallAttempt);
+  const addNote           = useMutation(api.orders.addNote);
+  const banCustomer       = useMutation(api.orders.banCustomer);
+  const markRetour        = useMutation(api.orders.markRetour);
 
   // Sync form when order changes
   useEffect(() => {
@@ -233,7 +224,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     }
   }, [order]);
 
-  // Reset all transient state when drawer closes
+  // Reset transient state when drawer closes
   useEffect(() => {
     if (!isOpen) {
       setIsEditing(false);
@@ -244,6 +235,14 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     }
   }, [isOpen]);
 
+  // B3: Auto-focus reason dropdown when destructive confirm panel opens
+  useEffect(() => {
+    if (pendingAction?.requiresReason) {
+      const t = setTimeout(() => reasonSelectRef.current?.focus(), 60);
+      return () => clearTimeout(t);
+    }
+  }, [pendingAction]);
+
   if (!order) return null;
 
   const cfg          = STATUS_CFG[order.status] ?? STATUS_CFG["Pending"];
@@ -253,13 +252,19 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
   const actionBtns   = STATUS_ACTIONS[order.status] ?? [];
   const showCallLog  = CALL_LOG_STATUSES.includes(order.status);
 
-  // ─ Handlers ──────────────────────────────────────────────────────────────────
+  /**
+   * Primary action = first button in the list (most positive / forward-moving).
+   * Only shown in the footer when the amber panel is NOT open.
+   */
+  const primaryAction = !pendingAction && actionBtns.length > 0 ? actionBtns[0] : null;
+
+  // ─ Handlers ──────────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
       await updateOrder({
-        id:              order._id,
+        id: order._id,
         customerName:    formData.customerName,
         customerPhone:   formData.customerPhone,
         customerWilaya:  formData.customerWilaya,
@@ -294,6 +299,49 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     }
   };
 
+  /**
+   * B2 — Route action to either:
+   *  (a) Immediate execution + undo snackbar (safe forward transitions)
+   *  (b) Amber confirm panel + reason dropdown  (destructive transitions)
+   */
+  const handleActionClick = async (btn: ActionBtn) => {
+    const isSafe = !btn.requiresReason && SAFE_STATUSES.includes(btn.toStatus);
+
+    if (isSafe) {
+      // Execute immediately — no pre-confirmation needed
+      const previousStatus = order.status;
+      setIsActioning(true);
+      try {
+        await updateOrderStatus({ id: order._id, status: btn.toStatus });
+        onSuccess();
+        toast.success(`${btn.icon} ${btn.label}`, {
+          action: {
+            label: "Undo",
+            onClick: async () => {
+              try {
+                await updateOrderStatus({ id: order._id, status: previousStatus });
+                onSuccess();
+                toast.info(`↩ Reverted to ${previousStatus}`);
+              } catch (e: any) {
+                toast.error(e.message || "Failed to undo");
+              }
+            },
+          },
+          duration: 5000,
+        });
+      } catch (e: any) {
+        toast.error(e.message || "Failed to update status");
+      } finally {
+        setIsActioning(false);
+      }
+    } else {
+      // Destructive — open amber confirm panel (B3 auto-focus handled by useEffect)
+      setPendingAction(btn);
+      setActionReason("");
+    }
+  };
+
+  /** Confirm the destructive action after amber panel. */
   const handleConfirmAction = async () => {
     if (!pendingAction) return;
     if (pendingAction.requiresReason && !actionReason) return;
@@ -347,8 +395,9 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     }
   };
 
-  const fmt  = (ts: number) => new Date(ts).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
-  const curr = (n: number)  => `${n.toLocaleString()} DA`;
+  const fmt  = (ts: number) =>
+    new Date(ts).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+  const curr = (n: number) => `${n.toLocaleString()} DA`;
 
   // ─ Render ────────────────────────────────────────────────────────────────────────────
 
@@ -359,7 +408,8 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
         hideClose
         className="w-[520px] max-w-[95vw] sm:max-w-[520px] p-0 flex flex-col border-l border-gray-200 shadow-2xl"
       >
-        {/* ══ STICKY HEADER ══════════════════════════════════════════════════════ */}
+
+        {/* ══ STICKY HEADER ════════════════════════════════════════════════════════════ */}
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4 flex items-start justify-between shrink-0">
           <SheetHeader className="gap-1">
             <SheetTitle className="flex items-center gap-2 text-xl font-bold text-gray-900">
@@ -379,102 +429,49 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
               )}
             </SheetDescription>
           </SheetHeader>
-          <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0 text-gray-400 hover:text-gray-700 -mt-1 ml-4">
+          <Button
+            variant="ghost" size="icon" onClick={onClose}
+            className="shrink-0 text-gray-400 hover:text-gray-700 -mt-1 ml-4"
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>
 
-        {/* ══ SCROLLABLE BODY ══════════════════════════════════════════════════════ */}
+        {/* ══ SCROLLABLE BODY ═════════════════════════════════════════════════════════════ */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
-          {/* ── Banned banner ─────────────────────────────────────────────────────── */}
+          {/* Banned banner */}
           {isBanned && (
             <div className="flex items-start gap-3 bg-red-50 border-2 border-red-200 rounded-xl p-4">
               <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold text-red-800 text-sm">Banned customer</p>
-                <p className="text-xs text-red-600 mt-0.5">Future orders from this number will be auto-cancelled.</p>
+                <p className="text-xs text-red-600 mt-0.5">
+                  Future orders from this number will be auto-cancelled.
+                </p>
               </div>
             </div>
           )}
 
-          {/* ─────────────────────────────────────────────────────────────────── */}
-          {/* § 1  CALL LOG — shown only for pre-confirmation statuses              */}
-          {/* ─────────────────────────────────────────────────────────────────── */}
-          {showCallLog && (
-            <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
-                  <PhoneCall className="h-4 w-4 text-orange-600" />
-                  Call Log
-                </h3>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                  callAttempts >= 2 ? "bg-red-100 text-red-700" :
-                  callAttempts === 1 ? "bg-orange-100 text-orange-700" :
-                  "bg-gray-100 text-gray-600"
-                }`}>
-                  {callAttempts} / 2
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  size="sm" disabled={isLoggingCall}
-                  onClick={() => handleCallLog("answered")}
-                  className="bg-green-600 hover:bg-green-700 text-white gap-1.5"
-                >
-                  <PhoneCall className="h-3.5 w-3.5" /> Answered
-                </Button>
-                <Button
-                  size="sm" disabled={isLoggingCall}
-                  onClick={() => handleCallLog("no_answer")}
-                  className="bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
-                >
-                  <PhoneOff className="h-3.5 w-3.5" /> No Answer
-                </Button>
-              </div>
-
-              {callAttempts >= 2 && order.status !== "Confirmed" && (
-                <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
-                  <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-                  <p className="text-xs text-red-700 font-medium">
-                    2 no-answer attempts — confirm, cancel, or try once more above.
-                  </p>
-                </div>
-              )}
-
-              {order.callLog && order.callLog.length > 0 && (
-                <div className="space-y-1 border-t border-orange-200 pt-3">
-                  {[...order.callLog].reverse().map((entry, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs">
-                      <span className={entry.outcome === "answered" ? "text-green-700 font-medium" : "text-red-600"}>
-                        {entry.outcome === "answered" ? "✅ Answered" : "❌ No Answer"}
-                        {entry.note ? ` — ${entry.note}` : ""}
-                      </span>
-                      <span className="text-gray-400">{fmt(entry.timestamp)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ─────────────────────────────────────────────────────────────────── */}
-          {/* § 2  GUIDED ACTIONS                                                    */}
-          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* § 1  ACTIONS — MOVED TO TOP (B1)                                       */}
+          {/* Admin’s primary task: zero scrolling required to act on any order      */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Actions</p>
 
             {actionBtns.length > 0 ? (
               <>
+                {/* Action buttons (hidden while confirm panel is open) */}
                 {!pendingAction && (
                   <div className="flex flex-wrap gap-2">
                     {actionBtns.map((btn) => (
                       <Button
                         key={btn.toStatus}
                         size="sm"
+                        disabled={isActioning}
                         className={`gap-1.5 ${btn.cls}`}
-                        onClick={() => { setPendingAction(btn); setActionReason(""); }}
+                        onClick={() => handleActionClick(btn)}
                       >
                         <span>{btn.icon}</span> {btn.label}
                       </Button>
@@ -482,16 +479,17 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                   </div>
                 )}
 
-                {/* Inline confirm / reason panel */}
+                {/* Amber confirm panel — destructive transitions only (B2) */}
                 {pendingAction && (
                   <div className="border-2 border-amber-200 bg-amber-50 rounded-xl p-4 space-y-3">
                     <p className="text-sm font-semibold text-amber-900">
                       {pendingAction.icon} {pendingAction.label}
                     </p>
 
+                    {/* Reason dropdown — auto-focused via useEffect (B3) */}
                     {pendingAction.requiresReason && (
                       <Select value={actionReason} onValueChange={setActionReason}>
-                        <SelectTrigger className="bg-white text-sm">
+                        <SelectTrigger ref={reasonSelectRef} className="bg-white text-sm">
                           <SelectValue placeholder="Select a reason…" />
                         </SelectTrigger>
                         <SelectContent>
@@ -507,12 +505,18 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                       <Button
                         size="sm"
                         onClick={handleConfirmAction}
-                        disabled={isActioning || (pendingAction.requiresReason && !actionReason)}
+                        disabled={
+                          isActioning ||
+                          (pendingAction.requiresReason && !actionReason)
+                        }
                         className="bg-amber-600 hover:bg-amber-700 text-white"
                       >
                         {isActioning ? "Updating…" : "Yes, continue"}
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => { setPendingAction(null); setActionReason(""); }}>
+                      <Button
+                        size="sm" variant="outline"
+                        onClick={() => { setPendingAction(null); setActionReason(""); }}
+                      >
                         Back
                       </Button>
                     </div>
@@ -528,9 +532,9 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* ─────────────────────────────────────────────────────────────────── */}
-          {/* § 3  ORDERED PRODUCT                                                   */}
-          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* § 2  ORDERED PRODUCT                                                       */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
           <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border-2 border-indigo-100">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -544,10 +548,15 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                 <div className="flex-1 mr-4">
                   <p className="text-xs text-gray-500 mb-1">Product</p>
                   <p className="font-semibold text-gray-900">{order.productName}</p>
-                  {order.selectedVariant && (order.selectedVariant.size || order.selectedVariant.color) ? (
+                  {order.selectedVariant &&
+                  (order.selectedVariant.size || order.selectedVariant.color) ? (
                     <div className="flex gap-2 mt-2 flex-wrap">
-                      {order.selectedVariant.size  && <Badge variant="outline" className="text-xs">Size: {order.selectedVariant.size}</Badge>}
-                      {order.selectedVariant.color && <Badge variant="outline" className="text-xs">Color: {order.selectedVariant.color}</Badge>}
+                      {order.selectedVariant.size && (
+                        <Badge variant="outline" className="text-xs">Size: {order.selectedVariant.size}</Badge>
+                      )}
+                      {order.selectedVariant.color && (
+                        <Badge variant="outline" className="text-xs">Color: {order.selectedVariant.color}</Badge>
+                      )}
                     </div>
                   ) : (
                     <p className="text-xs text-gray-400 mt-1">No variants</p>
@@ -563,15 +572,23 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Truck className="h-3 w-3" /> Type</p>
+                  <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                    <Truck className="h-3 w-3" /> Type
+                  </p>
                   <Badge variant="outline">{order.deliveryType}</Badge>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><DollarSign className="h-3 w-3" /> Delivery</p>
+                  <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                    <DollarSign className="h-3 w-3" /> Delivery
+                  </p>
                   {isEditing ? (
-                    <Input type="number" value={formData.deliveryCost}
-                      onChange={(e) => setFormData((p) => ({ ...p, deliveryCost: parseInt(e.target.value) || 0 }))}
-                      className="h-8 w-28" />
+                    <Input
+                      type="number" value={formData.deliveryCost}
+                      onChange={(e) =>
+                        setFormData((p) => ({ ...p, deliveryCost: parseInt(e.target.value) || 0 }))
+                      }
+                      className="h-8 w-28"
+                    />
                   ) : (
                     <p className="font-medium text-gray-900 text-sm">{curr(order.deliveryCost)}</p>
                   )}
@@ -592,7 +609,10 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                 <div className="flex justify-between items-center">
                   <span className="font-semibold text-gray-900">Total COD</span>
                   <span className="font-bold text-xl text-gray-900">
-                    {curr(order.productPrice + (isEditing ? formData.deliveryCost : order.deliveryCost))}
+                    {curr(
+                      order.productPrice +
+                      (isEditing ? formData.deliveryCost : order.deliveryCost),
+                    )}
                   </span>
                 </div>
               </div>
@@ -601,9 +621,9 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* ─────────────────────────────────────────────────────────────────── */}
-          {/* § 4  CUSTOMER                                                           */}
-          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* § 3  CUSTOMER                                                               */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -615,13 +635,17 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                 </Button>
               ) : (
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="gap-1.5"
+                  <Button
+                    variant="outline" size="sm" className="gap-1.5"
                     onClick={() => {
                       setIsEditing(false);
-                      setFormData({ customerName: order.customerName, customerPhone: order.customerPhone,
+                      setFormData({
+                        customerName: order.customerName, customerPhone: order.customerPhone,
                         customerWilaya: order.customerWilaya, customerCommune: order.customerCommune,
-                        customerAddress: order.customerAddress, deliveryCost: order.deliveryCost });
-                    }}>
+                        customerAddress: order.customerAddress, deliveryCost: order.deliveryCost,
+                      });
+                    }}
+                  >
                     <X className="h-3.5 w-3.5" /> Cancel
                   </Button>
                   <Button size="sm" onClick={handleSave} disabled={isSaving} className="gap-1.5">
@@ -637,47 +661,70 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
               <div className="space-y-4 bg-gray-50 rounded-xl p-5 border-2 border-gray-200">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="cn" className="text-xs flex items-center gap-1"><User className="h-3 w-3" /> Name</Label>
-                    <Input id="cn" value={formData.customerName} onChange={(e) => setFormData((p) => ({ ...p, customerName: e.target.value }))} className="mt-1.5" />
+                    <Label htmlFor="cn" className="text-xs flex items-center gap-1">
+                      <User className="h-3 w-3" /> Name
+                    </Label>
+                    <Input id="cn" value={formData.customerName}
+                      onChange={(e) => setFormData((p) => ({ ...p, customerName: e.target.value }))}
+                      className="mt-1.5" />
                   </div>
                   <div>
-                    <Label htmlFor="cp" className="text-xs flex items-center gap-1"><Phone className="h-3 w-3" /> Phone</Label>
-                    <Input id="cp" value={formData.customerPhone} onChange={(e) => setFormData((p) => ({ ...p, customerPhone: e.target.value }))} className="mt-1.5" />
+                    <Label htmlFor="cp" className="text-xs flex items-center gap-1">
+                      <Phone className="h-3 w-3" /> Phone
+                    </Label>
+                    <Input id="cp" value={formData.customerPhone}
+                      onChange={(e) => setFormData((p) => ({ ...p, customerPhone: e.target.value }))}
+                      className="mt-1.5" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="cw" className="text-xs flex items-center gap-1"><MapPin className="h-3 w-3" /> Wilaya</Label>
-                    <Input id="cw" value={formData.customerWilaya} onChange={(e) => setFormData((p) => ({ ...p, customerWilaya: e.target.value }))} className="mt-1.5" />
+                    <Label htmlFor="cw" className="text-xs flex items-center gap-1">
+                      <MapPin className="h-3 w-3" /> Wilaya
+                    </Label>
+                    <Input id="cw" value={formData.customerWilaya}
+                      onChange={(e) => setFormData((p) => ({ ...p, customerWilaya: e.target.value }))}
+                      className="mt-1.5" />
                   </div>
                   <div>
-                    <Label htmlFor="cc" className="text-xs flex items-center gap-1"><MapPin className="h-3 w-3" /> Commune</Label>
-                    <Input id="cc" value={formData.customerCommune} onChange={(e) => setFormData((p) => ({ ...p, customerCommune: e.target.value }))} className="mt-1.5" />
+                    <Label htmlFor="cc" className="text-xs flex items-center gap-1">
+                      <MapPin className="h-3 w-3" /> Commune
+                    </Label>
+                    <Input id="cc" value={formData.customerCommune}
+                      onChange={(e) => setFormData((p) => ({ ...p, customerCommune: e.target.value }))}
+                      className="mt-1.5" />
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="ca" className="text-xs flex items-center gap-1"><Home className="h-3 w-3" /> Address</Label>
-                  <Input id="ca" value={formData.customerAddress} onChange={(e) => setFormData((p) => ({ ...p, customerAddress: e.target.value }))} className="mt-1.5" />
+                  <Label htmlFor="ca" className="text-xs flex items-center gap-1">
+                    <Home className="h-3 w-3" /> Address
+                  </Label>
+                  <Input id="ca" value={formData.customerAddress}
+                    onChange={(e) => setFormData((p) => ({ ...p, customerAddress: e.target.value }))}
+                    className="mt-1.5" />
                 </div>
               </div>
             ) : (
               <div className="space-y-3 bg-gray-50 rounded-xl p-5 border-2 border-gray-200">
-                <Row icon={<User />}     label="Name"     value={order.customerName} />
-                <Row icon={<Phone />}    label="Phone"    value={
-                  <a href={`tel:${order.customerPhone}`} className="font-medium text-indigo-600 hover:underline">{order.customerPhone}</a>
+                <Row icon={<User />}  label="Name"     value={order.customerName} />
+                <Row icon={<Phone />} label="Phone"    value={
+                  <a href={`tel:${order.customerPhone}`}
+                    className="font-medium text-indigo-600 hover:underline">
+                    {order.customerPhone}
+                  </a>
                 } />
-                <Row icon={<MapPin />}   label="Location" value={`${order.customerWilaya}, ${order.customerCommune}`} />
-                <Row icon={<Home />}     label="Address"  value={order.customerAddress} />
-                <Row icon={<Truck />}    label="Delivery" value={<Badge variant="outline">{order.deliveryType}</Badge>} />
+                <Row icon={<MapPin />} label="Location" value={`${order.customerWilaya}, ${order.customerCommune}`} />
+                <Row icon={<Home />}   label="Address"  value={order.customerAddress} />
+                <Row icon={<Truck />}  label="Delivery" value={<Badge variant="outline">{order.deliveryType}</Badge>} />
               </div>
             )}
           </div>
 
           <Separator />
 
-          {/* ─────────────────────────────────────────────────────────────────── */}
-          {/* § 5  CUSTOMER RISK (fraud score + ban toggle)                          */}
-          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* § 4  CUSTOMER RISK                                                           */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
             <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <Shield className="h-4 w-4 text-gray-500" /> Customer Risk
@@ -695,7 +742,6 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                 }`}>
                   {fraudScore >= 3 ? "— High Risk" : fraudScore >= 1 ? "— Caution" : "— Safe"}
                 </span>
-                {/* CSS tooltip */}
                 <span className="relative group cursor-help">
                   <Info className="h-3.5 w-3.5 text-gray-400" />
                   <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 rounded-lg bg-gray-900 p-2 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 z-50">
@@ -711,11 +757,14 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                   onClick={handleToggleBan}
                   disabled={isBanning}
                   title={isBanned ? "Click to unban" : "Click to ban this customer"}
-                  className={`relative inline-flex h-6 w-11 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-400 disabled:opacity-60 ${
+                  className={`relative inline-flex h-6 w-11 rounded-full transition-colors duration-200
+                    focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-400
+                    disabled:opacity-60 ${
                     isBanned ? "bg-red-500" : "bg-gray-300"
                   }`}
                 >
-                  <span className={`mt-0.5 inline-block h-5 w-5 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${
+                  <span className={`mt-0.5 inline-block h-5 w-5 rounded-full bg-white shadow-sm
+                    transform transition-transform duration-200 ${
                     isBanned ? "translate-x-5" : "translate-x-0.5"
                   }`} />
                 </button>
@@ -731,11 +780,82 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
             )}
           </div>
 
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* § 5  CALL LOG — MOVED BELOW RISK (B1)                                    */}
+          {/* Visible only during the outreach phase; irrelevant once confirmed      */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {showCallLog && (
+            <>
+              <Separator />
+              <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
+                    <PhoneCall className="h-4 w-4 text-orange-600" />
+                    Call Log
+                  </h3>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    callAttempts >= 2
+                      ? "bg-red-100 text-red-700"
+                      : callAttempts === 1
+                      ? "bg-orange-100 text-orange-700"
+                      : "bg-gray-100 text-gray-600"
+                  }`}>
+                    {callAttempts} / 2
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    size="sm" disabled={isLoggingCall}
+                    onClick={() => handleCallLog("answered")}
+                    className="bg-green-600 hover:bg-green-700 text-white gap-1.5"
+                  >
+                    <PhoneCall className="h-3.5 w-3.5" /> Answered
+                  </Button>
+                  <Button
+                    size="sm" disabled={isLoggingCall}
+                    onClick={() => handleCallLog("no_answer")}
+                    className="bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
+                  >
+                    <PhoneOff className="h-3.5 w-3.5" /> No Answer
+                  </Button>
+                </div>
+
+                {callAttempts >= 2 && order.status !== "Confirmed" && (
+                  <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
+                    <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                    <p className="text-xs text-red-700 font-medium">
+                      2 no-answer attempts — confirm, cancel, or try once more above.
+                    </p>
+                  </div>
+                )}
+
+                {order.callLog && order.callLog.length > 0 && (
+                  <div className="space-y-1 border-t border-orange-200 pt-3">
+                    {[...order.callLog].reverse().map((entry, i) => (
+                      <div key={i} className="flex items-center justify-between text-xs">
+                        <span className={
+                          entry.outcome === "answered"
+                            ? "text-green-700 font-medium"
+                            : "text-red-600"
+                        }>
+                          {entry.outcome === "answered" ? "✅ Answered" : "❌ No Answer"}
+                          {entry.note ? ` — ${entry.note}` : ""}
+                        </span>
+                        <span className="text-gray-400">{fmt(entry.timestamp)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
           <Separator />
 
-          {/* ─────────────────────────────────────────────────────────────────── */}
-          {/* § 6  INTERNAL NOTES                                                    */}
-          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* § 6  INTERNAL NOTES                                                          */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <FileText className="h-4 w-4 text-gray-500" />
@@ -751,7 +871,12 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                 className="resize-none text-sm"
                 rows={3}
               />
-              <Button size="sm" onClick={handleSaveNote} disabled={isSavingNote || !newNote.trim()} className="gap-1.5">
+              <Button
+                size="sm"
+                onClick={handleSaveNote}
+                disabled={isSavingNote || !newNote.trim()}
+                className="gap-1.5"
+              >
                 {isSavingNote
                   ? <><div className="animate-spin h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent" /> Saving&hellip;</>
                   : "Save Note"}
@@ -772,9 +897,9 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* ─────────────────────────────────────────────────────────────────── */}
-          {/* § 7  STATUS HISTORY (collapsible)                                       */}
-          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* § 7  STATUS HISTORY (collapsible — unchanged)                              */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
           <div>
             <button
               onClick={() => setIsTimelineOpen((p) => !p)}
@@ -789,7 +914,10 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                   </span>
                 )}
               </span>
-              {isTimelineOpen ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+              {isTimelineOpen
+                ? <ChevronUp className="h-4 w-4 text-gray-400" />
+                : <ChevronDown className="h-4 w-4 text-gray-400" />
+              }
             </button>
 
             {isTimelineOpen && (
@@ -807,7 +935,9 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                             }`}>
                               {ec?.icon} {entry.status}
                             </span>
-                            {entry.reason && <p className="text-xs text-gray-400 mt-0.5 ml-1">{entry.reason}</p>}
+                            {entry.reason && (
+                              <p className="text-xs text-gray-400 mt-0.5 ml-1">{entry.reason}</p>
+                            )}
                           </div>
                           <span className="text-xs text-gray-400 shrink-0">{fmt(entry.timestamp)}</span>
                         </div>
@@ -824,17 +954,35 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
           <div className="h-2" />
         </div>
 
-        {/* ══ STICKY FOOTER ══════════════════════════════════════════════════════ */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 shrink-0 flex items-center justify-between">
-          <p className="text-xs text-gray-400 font-mono">{order.orderNumber}</p>
+        {/* ══ STICKY FOOTER ════════════════════════════════════════════════════════════ */}
+        {/*
+         * B4 — Footer is now an action bar.
+         * Left: primary action button (first in the list) so the admin can act
+         *       without scrolling back up. Falls back to order # for terminal states.
+         * Right: Close button.
+         */}
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 shrink-0 flex items-center justify-between gap-3">
+          {primaryAction ? (
+            <Button
+              size="sm"
+              disabled={isActioning}
+              className={`gap-1.5 ${primaryAction.cls}`}
+              onClick={() => handleActionClick(primaryAction)}
+            >
+              <span>{primaryAction.icon}</span> {primaryAction.label}
+            </Button>
+          ) : (
+            <p className="text-xs text-gray-400 font-mono">{order.orderNumber}</p>
+          )}
           <Button variant="outline" onClick={onClose}>Close</Button>
         </div>
+
       </SheetContent>
     </Sheet>
   );
 }
 
-// ─── Small helper: read-only row in customer view ─────────────────────────────────
+// ─── Read-only row helper ──────────────────────────────────────────────────────────────────────
 
 function Row({
   icon, label, value,
