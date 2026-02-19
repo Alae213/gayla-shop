@@ -3,8 +3,8 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { ProductCard } from "@/components/products/product-card";
-import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { ProductCardSkeleton } from "@/components/products/product-card-skeleton";
+import { useState, useMemo } from "react";
 import {
   Select,
   SelectContent,
@@ -15,45 +15,88 @@ import {
 
 export default function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  
-  const products = useQuery(api.products.list, {
-    category: selectedCategory === "all" ? undefined : selectedCategory,
-  });
 
-  if (products === undefined) {
-    return (
-      <div className="container py-12 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
+  // Fetch ALL active products once — derive categories from data, not hardcoded
+  const allProducts = useQuery(api.products.list, { status: "Active" });
+
+  const categories = useMemo(() => {
+    if (!allProducts) return [];
+    const unique = Array.from(
+      new Set(allProducts.map((p) => p.category).filter(Boolean))
+    ) as string[];
+    return unique.sort();
+  }, [allProducts]);
+
+  const filtered = useMemo(() => {
+    if (!allProducts) return undefined;
+    if (selectedCategory === "all") return allProducts;
+    return allProducts.filter((p) => p.category === selectedCategory);
+  }, [allProducts, selectedCategory]);
 
   return (
     <div className="container py-12">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">All Products</h1>
-        
-        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            <SelectItem value="Clothing">Clothing</SelectItem>
-            <SelectItem value="Accessories">Accessories</SelectItem>
-            <SelectItem value="Shoes">Shoes</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Page header */}
+      <div className="mb-10">
+        <nav className="mb-3 flex gap-2 caption-text text-system-300">
+          <a href="/" className="hover:text-system-400">Home</a>
+          <span>/</span>
+          <span className="text-system-400">Shop</span>
+        </nav>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="headline-h1 text-system-400">All Products</h1>
+            {filtered !== undefined && (
+              <p className="caption-text text-system-300 mt-1">
+                {filtered.length} {filtered.length === 1 ? "product" : "products"}
+                {selectedCategory !== "all" ? ` in ${selectedCategory}` : ""}
+              </p>
+            )}
+          </div>
+
+          {/* Category filter — only show when data is loaded */}
+          {allProducts !== undefined && categories.length > 0 && (
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
       </div>
 
-      {products.length === 0 ? (
-        <p className="text-center text-muted-foreground py-12">
-          No products available
-        </p>
+      {/* Grid */}
+      {filtered === undefined ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <ProductCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-3 text-system-300">
+          <p className="body-text">No products in this category</p>
+          <button
+            onClick={() => setSelectedCategory("all")}
+            className="caption-text text-brand-200 underline hover:no-underline"
+          >
+            Clear filter
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <ProductCard key={product._id} product={product} />
+          {filtered.map((product, i) => (
+            <div
+              key={product._id}
+              className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+              style={{ animationDelay: `${i * 50}ms`, animationFillMode: "both" }}
+            >
+              <ProductCard product={product} />
+            </div>
           ))}
         </div>
       )}
