@@ -26,8 +26,8 @@ import { useRouter } from "next/navigation";
 
 import { StatsCards }           from "@/components/admin/stats-cards";
 import { HeroEditor }           from "@/components/admin/hero-editor";
-import { ProductGrid }          from "@/components/admin/product-grid";
-import { ProductModal }         from "@/components/admin/product-modal";
+import { DndProductGrid }       from "@/components/admin/dnd-product-grid";
+import { ProductDrawer }        from "@/components/admin/product-drawer";
 import { OrderKanban }          from "@/components/admin/order-kanban";
 import { OrderTable }           from "@/components/admin/order-table";
 import { OrderArchive }         from "@/components/admin/order-archive";
@@ -75,36 +75,33 @@ function getDateBoundary(filter: DateFilter): number | null {
 export default function AdminPage() {
   const router = useRouter();
 
-  // Mode & view
+  // ── Mode & view
   const [mode,              setMode]              = useState<AdminMode>("build");
   const [trackingView,      setTrackingView]      = useState<TrackingView>("kanban");
 
-  // Unsaved-state guard for HeroEditor
+  // ── Unsaved-state guard for HeroEditor
   const [isBuildDirty,      setIsBuildDirty]      = useState(false);
   const [pendingModeSwitch, setPendingModeSwitch] = useState<AdminMode | null>(null);
 
-  // Order state
+  // ── Order state
   const [searchQuery,     setSearchQuery]     = useState("");
   const [dateFilter,      setDateFilter]      = useState<DateFilter>("week");
   const [selectedOrderId, setSelectedOrderId] = useState<Id<"orders"> | null>(null);
 
-  // Product modal (replaced by ProductDrawer in Phase 4 — kept for now)
-  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  const [editingProductId,   setEditingProductId]   = useState<Id<"products"> | null>(null);
+  // ── Product drawer state
+  const [drawerOpen,       setDrawerOpen]       = useState(false);
+  const [editingProductId, setEditingProductId] = useState<Id<"products"> | null>(null);
+  const [isAddingProduct,  setIsAddingProduct]  = useState(false);
 
-  // Delivery settings
+  // ── Delivery settings
   const [isDeliverySettingsOpen, setIsDeliverySettingsOpen] = useState(false);
 
-  // ── Convex queries ─────────────────────────────────────────────────────────
-  // Build mode only needs siteContent + products.
-  // Tracking mode only needs orders + orderStats.
-  // Both sets are subscribed when the page first loads; Phase 4 will lazy-load
-  // tracking queries behind the mode gate once the grid is self-contained.
-  const siteContent    = useQuery(api.siteContent.get);
-  const products       = useQuery(api.products.list, {});
-  const orders         = useQuery(api.orders.list, {});
-  const orderStats     = useQuery(api.orders.getStats);
-  const selectedOrder  = useQuery(
+  // ── Convex queries
+  const siteContent   = useQuery(api.siteContent.get);
+  const products      = useQuery(api.products.list, {});
+  const orders        = useQuery(api.orders.list, {});
+  const orderStats    = useQuery(api.orders.getStats);
+  const selectedOrder = useQuery(
     api.orders.getById,
     selectedOrderId ? { id: selectedOrderId } : "skip",
   );
@@ -113,11 +110,12 @@ export default function AdminPage() {
     editingProductId ? { id: editingProductId } : "skip",
   );
 
-  // Mutations
+  // ── Mutations
   const deleteProduct  = useMutation(api.products.remove);
   const restoreProduct = useMutation(api.products.restore);
+  const createEmpty    = useMutation(api.products.createEmpty);
 
-  // beforeunload guard
+  // ── beforeunload guard
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (isBuildDirty) { e.preventDefault(); e.returnValue = ""; }
@@ -126,28 +124,42 @@ export default function AdminPage() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [isBuildDirty]);
 
-  // Reactive document.title
+  // ── Reactive document.title
   useEffect(() => {
     document.title = mode === "build"
       ? "Build — Gayla Admin"
       : "Tracking — Gayla Admin";
   }, [mode]);
 
-  // ─── Handlers ─────────────────────────────────────────────────────────────
+  // ── Handlers ─────────────────────────────────────────────────────────────────
 
-  const handleAddProduct = () => {
-    setEditingProductId(null);
-    setIsProductModalOpen(true);
+  /**
+   * "+ Add Product" card click:
+   * 1. Fire createEmpty mutation → instant Draft DB record.
+   * 2. Open ProductDrawer pointing at the new record.
+   * The spinner on the + card stays while mutation is in flight.
+   */
+  const handleAddProduct = async () => {
+    setIsAddingProduct(true);
+    try {
+      const { id } = await createEmpty();
+      setEditingProductId(id);
+      setDrawerOpen(true);
+    } catch (err: any) {
+      toast.error(err.message ?? "Could not create product");
+    } finally {
+      setIsAddingProduct(false);
+    }
   };
 
   const handleEditProduct = (productId: Id<"products">) => {
     setEditingProductId(productId);
-    setIsProductModalOpen(true);
+    setDrawerOpen(true);
   };
 
-  const handleCloseProductModal = () => {
-    setIsProductModalOpen(false);
-    setTimeout(() => setEditingProductId(null), 300);
+  const handleCloseDrawer = () => {
+    setDrawerOpen(false);
+    setTimeout(() => setEditingProductId(null), 350); // wait for slide-out
   };
 
   const handleDeleteProduct = async (productId: Id<"products">) => {
@@ -161,7 +173,7 @@ export default function AdminPage() {
               await restoreProduct({ id: productId });
               toast.success("Product restored!");
             } catch (e: any) {
-              toast.error(e.message || "Failed to restore product");
+              toast.error(e.message || "Failed to restore");
             }
           },
         },
@@ -172,7 +184,7 @@ export default function AdminPage() {
     }
   };
 
-  // Gated mode switch — shows UnsavedChangesDialog if HeroEditor has unsaved edits
+  // Gated mode switch — shows UnsavedChangesDialog if HeroEditor has open edits
   const handleModeChange = (newMode: AdminMode) => {
     if (!newMode) return;
     if (mode === "build" && isBuildDirty) {
@@ -187,7 +199,7 @@ export default function AdminPage() {
     router.push("/admin/login");
   };
 
-  // ── Order filters ──────────────────────────────────────────────────────────
+  // ── Order filters
   const dateBoundary = getDateBoundary(dateFilter);
   const filteredOrders = orders?.filter((order) => {
     const matchesSearch =
@@ -200,7 +212,7 @@ export default function AdminPage() {
   const activeOrders  = filteredOrders?.filter((o) => !TERMINAL_STATUSES.includes(o.status as OrderStatus));
   const archiveOrders = filteredOrders?.filter((o) =>  TERMINAL_STATUSES.includes(o.status as OrderStatus));
 
-  // ── Loading ────────────────────────────────────────────────────────────────
+  // ── Loading
   if (siteContent === undefined || products === undefined || orders === undefined) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -209,7 +221,7 @@ export default function AdminPage() {
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600 mx-auto" />
             <Sparkles className="h-6 w-6 text-indigo-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           </div>
-          <p className="mt-6 text-gray-700 font-medium">Loading Admin Panel...</p>
+          <p className="mt-6 text-gray-700 font-medium">Loading Admin Panel…</p>
         </div>
       </div>
     );
@@ -218,7 +230,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
 
-      {/* ══ Top Bar ═══════════════════════════════════════════════════════════ */}
+      {/* ══ Top Bar ══════════════════════════════════════════════════════════ */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -233,7 +245,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Mode toggle — no keyboard hints */}
+              {/* Mode toggle */}
               <ToggleGroup
                 type="single"
                 value={mode}
@@ -278,7 +290,7 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* ══ Main Content ══════════════════════════════════════════════════════ */}
+      {/* ══ Main Content ═════════════════════════════════════════════════════ */}
       <div className="max-w-7xl mx-auto px-6 py-8">
 
         {/* ── BUILD MODE ──────────────────────────────────────────────────── */}
@@ -289,11 +301,12 @@ export default function AdminPage() {
               onDirtyChange={setIsBuildDirty}
             />
 
-            <ProductGrid
+            <DndProductGrid
               products={products}
               onEdit={handleEditProduct}
               onDelete={handleDeleteProduct}
               onAdd={handleAddProduct}
+              isAddingProduct={isAddingProduct}
             />
           </div>
         )}
@@ -309,7 +322,7 @@ export default function AdminPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   type="text"
-                  placeholder="Search by name, phone or order #..."
+                  placeholder="Search by name, phone or order #…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -380,22 +393,30 @@ export default function AdminPage() {
       </div>
 
       {/* ══ Overlays ══════════════════════════════════════════════════════════ */}
-      <ProductModal
-        isOpen={isProductModalOpen}
-        onClose={handleCloseProductModal}
-        product={editingProduct ?? null}
+
+      {/* Product drawer — replaces ProductModal */}
+      <ProductDrawer
+        isOpen={drawerOpen}
+        onClose={handleCloseDrawer}
+        product={(editingProduct as any) ?? null}
         onSuccess={() => {}}
       />
+
+      {/* Order drawer */}
       <OrderDrawer
         isOpen={selectedOrderId !== null}
         onClose={() => setSelectedOrderId(null)}
         order={(selectedOrder as any) ?? null}
         onSuccess={() => {}}
       />
+
+      {/* Delivery settings */}
       <DeliverySettingsModal
         isOpen={isDeliverySettingsOpen}
         onClose={() => setIsDeliverySettingsOpen(false)}
       />
+
+      {/* Unsaved-changes guard */}
       <UnsavedChangesDialog
         open={pendingModeSwitch !== null}
         onLeave={() => {
