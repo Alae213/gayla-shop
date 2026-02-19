@@ -27,16 +27,16 @@ import { Separator } from "@/components/ui/separator";
 import {
   Phone, MapPin, Package, Truck, DollarSign, Edit2, Save, X,
   User, Home, Clock, ChevronDown, ChevronUp, AlertTriangle,
-  Info, PhoneCall, PhoneOff, Shield, FileText,
+  Info, PhoneCall, PhoneOff, Shield, FileText, CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 
-// ─── Types ────────────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export type OrderStatus =
   | "Pending"
   | "Confirmed"
-  | "Called no respond" // legacy
+  | "Called no respond"
   | "Called 01"
   | "Called 02"
   | "Cancelled"
@@ -63,7 +63,6 @@ export interface Order {
   selectedVariant?: { size?: string; color?: string };
   totalAmount: number;
   lastUpdated: number;
-  // Phase 1 fields — optional on older documents
   callAttempts?: number;
   callLog?: Array<{ timestamp: number; outcome: "answered" | "no_answer"; note?: string }>;
   statusHistory?: Array<{ status: string; timestamp: number; reason?: string }>;
@@ -83,22 +82,22 @@ interface OrderDrawerProps {
   onSuccess: () => void;
 }
 
-// ─── Status display config ────────────────────────────────────────────────────────────────
+// ─── Status display config ────────────────────────────────────────────────────
 
 const STATUS_CFG: Record<OrderStatus, { color: string; bg: string; icon: string }> = {
-  Pending:            { color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200",  icon: "⏳" },
-  Confirmed:          { color: "text-blue-700",   bg: "bg-blue-50 border-blue-200",      icon: "✓" },
-  "Called no respond":{ color: "text-orange-700", bg: "bg-orange-50 border-orange-200",  icon: "📞" },
-  "Called 01":        { color: "text-orange-700", bg: "bg-orange-50 border-orange-200",  icon: "📞" },
-  "Called 02":        { color: "text-red-700",    bg: "bg-red-50 border-red-200",        icon: "📞" },
-  Cancelled:          { color: "text-red-700",    bg: "bg-red-50 border-red-200",        icon: "✕" },
-  Packaged:           { color: "text-purple-700", bg: "bg-purple-50 border-purple-200",  icon: "📦" },
-  Shipped:            { color: "text-indigo-700", bg: "bg-indigo-50 border-indigo-200",  icon: "🚚" },
-  Delivered:          { color: "text-green-700",  bg: "bg-green-50 border-green-200",    icon: "✓✓" },
-  Retour:             { color: "text-slate-700",  bg: "bg-slate-50 border-slate-200",    icon: "↩" },
+  Pending:             { color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200",  icon: "⏳" },
+  Confirmed:           { color: "text-blue-700",   bg: "bg-blue-50 border-blue-200",      icon: "✓"  },
+  "Called no respond": { color: "text-orange-700", bg: "bg-orange-50 border-orange-200",  icon: "📞" },
+  "Called 01":         { color: "text-orange-700", bg: "bg-orange-50 border-orange-200",  icon: "📞" },
+  "Called 02":         { color: "text-red-700",    bg: "bg-red-50 border-red-200",        icon: "📞" },
+  Cancelled:           { color: "text-red-700",    bg: "bg-red-50 border-red-200",        icon: "✕"  },
+  Packaged:            { color: "text-purple-700", bg: "bg-purple-50 border-purple-200",  icon: "📦" },
+  Shipped:             { color: "text-indigo-700", bg: "bg-indigo-50 border-indigo-200",  icon: "🚚" },
+  Delivered:           { color: "text-green-700",  bg: "bg-green-50 border-green-200",    icon: "✓✓" },
+  Retour:              { color: "text-slate-700",  bg: "bg-slate-50 border-slate-200",    icon: "↩"  },
 };
 
-// ─── Action definitions ─────────────────────────────────────────────────────────────────
+// ─── Action definitions ───────────────────────────────────────────────────────
 
 const CANCEL_REASONS = [
   "No answer after 2 attempts",
@@ -128,41 +127,36 @@ type ActionBtn = {
   useRetour?: boolean;
 };
 
-/**
- * Safe transitions execute immediately + show an undo snackbar (Phase B).
- * Destructive transitions still require the amber confirm panel + reason.
- */
 const SAFE_STATUSES: OrderStatus[] = ["Confirmed", "Packaged", "Shipped", "Delivered"];
 
 const STATUS_ACTIONS: Partial<Record<OrderStatus, ActionBtn[]>> = {
   Pending: [
-    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                                         requiresReason: false },
-    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                   requiresReason: true, reasons: CANCEL_REASONS },
+    { toStatus: "Confirmed", label: "Confirm Order", icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                               requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",  icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",         requiresReason: true, reasons: CANCEL_REASONS },
   ],
   "Called no respond": [
-    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                                         requiresReason: false },
-    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                   requiresReason: true, reasons: CANCEL_REASONS },
+    { toStatus: "Confirmed", label: "Confirm Order", icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                               requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",  icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",         requiresReason: true, reasons: CANCEL_REASONS },
   ],
   "Called 01": [
-    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                                         requiresReason: false },
-    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                   requiresReason: true, reasons: CANCEL_REASONS },
+    { toStatus: "Confirmed", label: "Confirm Order", icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                               requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",  icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",         requiresReason: true, reasons: CANCEL_REASONS },
   ],
   "Called 02": [
-    { toStatus: "Confirmed", label: "Confirm Order",  icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                                         requiresReason: false },
-    { toStatus: "Cancelled", label: "Cancel Order",   icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                   requiresReason: true, reasons: CANCEL_REASONS },
+    { toStatus: "Confirmed", label: "Confirm Order", icon: "✅", cls: "bg-blue-600 hover:bg-blue-700 text-white",                               requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",  icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",         requiresReason: true, reasons: CANCEL_REASONS },
   ],
   Confirmed: [
-    { toStatus: "Packaged",  label: "Mark as Packaged", icon: "📦", cls: "bg-purple-600 hover:bg-purple-700 text-white",                                 requiresReason: false },
-    { toStatus: "Cancelled", label: "Cancel Order",     icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",                 requiresReason: true, reasons: CANCEL_REASONS },
+    { toStatus: "Packaged",  label: "Mark as Packaged", icon: "📦", cls: "bg-purple-600 hover:bg-purple-700 text-white",                       requiresReason: false },
+    { toStatus: "Cancelled", label: "Cancel Order",     icon: "❌", cls: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-300",       requiresReason: true, reasons: CANCEL_REASONS },
   ],
   Packaged: [
-    { toStatus: "Shipped",   label: "Mark as Shipped",  icon: "🚚", cls: "bg-indigo-600 hover:bg-indigo-700 text-white",                                requiresReason: false },
+    { toStatus: "Shipped",   label: "Mark as Shipped",  icon: "🚚", cls: "bg-indigo-600 hover:bg-indigo-700 text-white",                       requiresReason: false },
   ],
   Shipped: [
-    { toStatus: "Delivered", label: "Mark as Delivered", icon: "✅", cls: "bg-green-600 hover:bg-green-700 text-white",                                      requiresReason: false },
-    { toStatus: "Retour",    label: "Mark as Retour",    icon: "↩",  cls: "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300",       requiresReason: true, reasons: RETOUR_REASONS, useRetour: true },
+    { toStatus: "Delivered", label: "Mark as Delivered", icon: "✅", cls: "bg-green-600 hover:bg-green-700 text-white",                         requiresReason: false },
+    { toStatus: "Retour",    label: "Mark as Retour",    icon: "↩",  cls: "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300", requiresReason: true, reasons: RETOUR_REASONS, useRetour: true },
   ],
-  // Terminal states — no actions
   Delivered: [],
   Cancelled: [],
   Retour:    [],
@@ -173,11 +167,11 @@ const CALL_LOG_STATUSES: OrderStatus[] = [
   "Pending", "Called no respond", "Called 01", "Called 02",
 ];
 
-// ─── Component ────────────────────────────────────────────────────────────────────────────
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerProps) {
 
-  // ─ Edit form state ──────────────────────────────────────────────────────────────
+  // ─ Edit form state ──────────────────────────────────────────────────────────
   const [isEditing,  setIsEditing]  = useState(false);
   const [isSaving,   setIsSaving]   = useState(false);
   const [formData,   setFormData]   = useState({
@@ -185,13 +179,13 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     customerCommune: "", customerAddress: "", deliveryCost: 0,
   });
 
-  // ─ Action state ────────────────────────────────────────────────────────────────
-  const [pendingAction,  setPendingAction]  = useState<ActionBtn | null>(null);
-  const [actionReason,   setActionReason]   = useState("");
-  const [isActioning,    setIsActioning]    = useState(false);
-  const [isLoggingCall,  setIsLoggingCall]  = useState(false);
+  // ─ Action state ─────────────────────────────────────────────────────────────
+  const [pendingAction, setPendingAction] = useState<ActionBtn | null>(null);
+  const [actionReason,  setActionReason]  = useState("");
+  const [isActioning,   setIsActioning]   = useState(false);
+  const [isLoggingCall, setIsLoggingCall] = useState(false);
 
-  // ─ Notes state ───────────────────────────────────────────────────────────────
+  // ─ Notes state ──────────────────────────────────────────────────────────────
   const [newNote,      setNewNote]      = useState("");
   const [isSavingNote, setIsSavingNote] = useState(false);
 
@@ -199,7 +193,6 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [isBanning,      setIsBanning]      = useState(false);
 
-  // Ref for auto-focusing the reason Select when the amber panel opens (B3)
   const reasonSelectRef = useRef<HTMLButtonElement>(null);
 
   // ─ Mutations ─────────────────────────────────────────────────────────────────
@@ -235,7 +228,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     }
   }, [isOpen]);
 
-  // B3: Auto-focus reason dropdown when destructive confirm panel opens
+  // Auto-focus reason dropdown when destructive confirm panel opens
   useEffect(() => {
     if (pendingAction?.requiresReason) {
       const t = setTimeout(() => reasonSelectRef.current?.focus(), 60);
@@ -252,13 +245,19 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
   const actionBtns   = STATUS_ACTIONS[order.status] ?? [];
   const showCallLog  = CALL_LOG_STATUSES.includes(order.status);
 
-  /**
-   * Primary action = first button in the list (most positive / forward-moving).
-   * Only shown in the footer when the amber panel is NOT open.
-   */
+  // ─── G1: hasAnswered derived flag ────────────────────────────────────────────
+  // True if ANY call log entry has outcome === 'answered'.
+  // Drives all G2/G3/G4 disable and banner logic.
+  const hasAnswered = order.callLog?.some((e) => e.outcome === "answered") ?? false;
+
+  // ─── G2: master disable flag for call log buttons ────────────────────────────
+  // Both buttons are locked when the customer has already answered OR
+  // when the max no-answer attempts (2) have been reached.
+  const callLogLocked = hasAnswered || callAttempts >= 2;
+
   const primaryAction = !pendingAction && actionBtns.length > 0 ? actionBtns[0] : null;
 
-  // ─ Handlers ─────────────────────────────────────────────────────────────────
+  // ─ Handlers ──────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -283,6 +282,10 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
   };
 
   const handleCallLog = async (outcome: "answered" | "no_answer") => {
+    // G2/G4: guard — should never reach here if UI is correct, but belt-and-suspenders
+    if (callLogLocked) return;
+    if (outcome === "answered" && hasAnswered) return;
+
     setIsLoggingCall(true);
     try {
       await logCallAttempt({ orderId: order._id, outcome });
@@ -299,14 +302,8 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     }
   };
 
-  /**
-   * B2 — Route action to either:
-   *  (a) Immediate execution + undo snackbar (safe forward transitions)
-   *  (b) Amber confirm panel + reason dropdown  (destructive transitions)
-   */
   const handleActionClick = async (btn: ActionBtn) => {
     const isSafe = !btn.requiresReason && SAFE_STATUSES.includes(btn.toStatus);
-
     if (isSafe) {
       const previousStatus = order.status;
       setIsActioning(true);
@@ -339,7 +336,6 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     }
   };
 
-  /** Confirm the destructive action after amber panel. */
   const handleConfirmAction = async () => {
     if (!pendingAction) return;
     if (pendingAction.requiresReason && !actionReason) return;
@@ -397,7 +393,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     new Date(ts).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
   const curr = (n: number) => `${n.toLocaleString()} DA`;
 
-  // ─ Render ───────────────────────────────────────────────────────────────────────────
+  // ─ Render ─────────────────────────────────────────────────────────────────────
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose} modal={false}>
@@ -407,7 +403,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
         className="w-[520px] max-w-[95vw] sm:max-w-[520px] p-0 flex flex-col border-l border-gray-200 shadow-2xl"
       >
 
-        {/* ══ STICKY HEADER ══════════════════════════════════════════════════════════ */}
+        {/* ══ STICKY HEADER ══════════════════════════════════════════════════ */}
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4 flex items-start justify-between shrink-0">
           <SheetHeader className="gap-1">
             <SheetTitle className="flex items-center gap-2 text-xl font-bold text-gray-900">
@@ -435,7 +431,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
           </Button>
         </div>
 
-        {/* ══ SCROLLABLE BODY ═══════════════════════════════════════════════════════════ */}
+        {/* ══ SCROLLABLE BODY ════════════════════════════════════════════════ */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
           {/* Banned banner */}
@@ -451,12 +447,10 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
             </div>
           )}
 
-          {/* ════════════════════════════════════════════════════════════════ */}
-          {/* § 1  ACTIONS                                                              */}
-          {/* D5: <h3> so screen-reader heading nav includes this landmark          */}
-          {/* ════════════════════════════════════════════════════════════════ */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* § 1  ACTIONS                                                    */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
           <div className="space-y-2">
-            {/* D5 — was <p>, now <h3> */}
             <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Actions</h3>
 
             {actionBtns.length > 0 ? (
@@ -482,7 +476,6 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                     <p className="text-sm font-semibold text-amber-900">
                       {pendingAction.icon} {pendingAction.label}
                     </p>
-
                     {pendingAction.requiresReason && (
                       <Select value={actionReason} onValueChange={setActionReason}>
                         <SelectTrigger ref={reasonSelectRef} className="bg-white text-sm">
@@ -495,16 +488,12 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                         </SelectContent>
                       </Select>
                     )}
-
                     <p className="text-sm text-amber-800">Confirm this action?</p>
                     <div className="flex gap-2">
                       <Button
                         size="sm"
                         onClick={handleConfirmAction}
-                        disabled={
-                          isActioning ||
-                          (pendingAction.requiresReason && !actionReason)
-                        }
+                        disabled={isActioning || (pendingAction.requiresReason && !actionReason)}
                         className="bg-amber-600 hover:bg-amber-700 text-white"
                       >
                         {isActioning ? "Updating…" : "Yes, continue"}
@@ -528,9 +517,9 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* ════════════════════════════════════════════════════════════════ */}
-          {/* § 2  ORDERED PRODUCT                                                        */}
-          {/* ════════════════════════════════════════════════════════════════ */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* § 2  ORDERED PRODUCT                                           */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
           <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border-2 border-indigo-100">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -605,10 +594,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                 <div className="flex justify-between items-center">
                   <span className="font-semibold text-gray-900">Total COD</span>
                   <span className="font-bold text-xl text-gray-900">
-                    {curr(
-                      order.productPrice +
-                      (isEditing ? formData.deliveryCost : order.deliveryCost),
-                    )}
+                    {curr(order.productPrice + (isEditing ? formData.deliveryCost : order.deliveryCost))}
                   </span>
                 </div>
               </div>
@@ -617,9 +603,9 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* ════════════════════════════════════════════════════════════════ */}
-          {/* § 3  CUSTOMER                                                                */}
-          {/* ════════════════════════════════════════════════════════════════ */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* § 3  CUSTOMER                                                   */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -660,17 +646,13 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
               <div className="space-y-4 bg-gray-50 rounded-xl p-5 border-2 border-gray-200">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="cn" className="text-xs flex items-center gap-1">
-                      <User className="h-3 w-3" /> Name
-                    </Label>
+                    <Label htmlFor="cn" className="text-xs flex items-center gap-1"><User className="h-3 w-3" /> Name</Label>
                     <Input id="cn" value={formData.customerName}
                       onChange={(e) => setFormData((p) => ({ ...p, customerName: e.target.value }))}
                       className="mt-1.5" />
                   </div>
                   <div>
-                    <Label htmlFor="cp" className="text-xs flex items-center gap-1">
-                      <Phone className="h-3 w-3" /> Phone
-                    </Label>
+                    <Label htmlFor="cp" className="text-xs flex items-center gap-1"><Phone className="h-3 w-3" /> Phone</Label>
                     <Input id="cp" value={formData.customerPhone}
                       onChange={(e) => setFormData((p) => ({ ...p, customerPhone: e.target.value }))}
                       className="mt-1.5" />
@@ -678,26 +660,20 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="cw" className="text-xs flex items-center gap-1">
-                      <MapPin className="h-3 w-3" /> Wilaya
-                    </Label>
+                    <Label htmlFor="cw" className="text-xs flex items-center gap-1"><MapPin className="h-3 w-3" /> Wilaya</Label>
                     <Input id="cw" value={formData.customerWilaya}
                       onChange={(e) => setFormData((p) => ({ ...p, customerWilaya: e.target.value }))}
                       className="mt-1.5" />
                   </div>
                   <div>
-                    <Label htmlFor="cc" className="text-xs flex items-center gap-1">
-                      <MapPin className="h-3 w-3" /> Commune
-                    </Label>
+                    <Label htmlFor="cc" className="text-xs flex items-center gap-1"><MapPin className="h-3 w-3" /> Commune</Label>
                     <Input id="cc" value={formData.customerCommune}
                       onChange={(e) => setFormData((p) => ({ ...p, customerCommune: e.target.value }))}
                       className="mt-1.5" />
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="ca" className="text-xs flex items-center gap-1">
-                    <Home className="h-3 w-3" /> Address
-                  </Label>
+                  <Label htmlFor="ca" className="text-xs flex items-center gap-1"><Home className="h-3 w-3" /> Address</Label>
                   <Input id="ca" value={formData.customerAddress}
                     onChange={(e) => setFormData((p) => ({ ...p, customerAddress: e.target.value }))}
                     className="mt-1.5" />
@@ -707,8 +683,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
               <div className="space-y-3 bg-gray-50 rounded-xl p-5 border-2 border-gray-200">
                 <Row icon={<User />}   label="Name"     value={order.customerName} />
                 <Row icon={<Phone />}  label="Phone"    value={
-                  <a href={`tel:${order.customerPhone}`}
-                    className="font-medium text-indigo-600 hover:underline">
+                  <a href={`tel:${order.customerPhone}`} className="font-medium text-indigo-600 hover:underline">
                     {order.customerPhone}
                   </a>
                 } />
@@ -721,16 +696,14 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* ════════════════════════════════════════════════════════════════ */}
-          {/* § 4  CUSTOMER RISK                                                           */}
-          {/* ════════════════════════════════════════════════════════════════ */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* § 4  CUSTOMER RISK                                              */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
             <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <Shield className="h-4 w-4 text-gray-500" /> Customer Risk
             </h3>
-
             <div className="flex items-start justify-between gap-4">
-              {/* Fraud score */}
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">Fraud score:</span>
                 <span className={`font-bold text-sm ${
@@ -748,8 +721,6 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                   </span>
                 </span>
               </div>
-
-              {/* D2 — Ban toggle with always-visible consequence sentence */}
               <div className="flex flex-col items-end gap-1.5 shrink-0">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500">{isBanned ? "Banned" : "Active"}</span>
@@ -769,7 +740,6 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                     }`} />
                   </button>
                 </div>
-                {/* D2: always-visible consequence label (replaces invisible title=) */}
                 <p className={`text-xs max-w-[160px] text-right leading-snug ${
                   isBanned ? "text-red-600" : "text-gray-400"
                 }`}>
@@ -779,8 +749,6 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                 </p>
               </div>
             </div>
-
-            {/* Courier error bubble */}
             {order.courierError && (
               <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-2">
                 <AlertTriangle className="h-3.5 w-3.5 text-red-600 shrink-0 mt-0.5" />
@@ -789,13 +757,16 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
             )}
           </div>
 
-          {/* ════════════════════════════════════════════════════════════════ */}
-          {/* § 5  CALL LOG — visible only during the outreach phase                  */}
-          {/* ════════════════════════════════════════════════════════════════ */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* § 5  CALL LOG — visible only during outreach phase              */}
+          {/* G1–G4 state machine applied here                               */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
           {showCallLog && (
             <>
               <Separator />
               <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4 space-y-3">
+
+                {/* Header */}
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
                     <PhoneCall className="h-4 w-4 text-orange-600" />
@@ -812,33 +783,56 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                   </span>
                 </div>
 
-                {/* D3: 'Log: Answered' / 'Log: No Answer' — verb makes action unambiguous */}
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    size="sm" disabled={isLoggingCall}
-                    onClick={() => handleCallLog("answered")}
-                    className="bg-green-600 hover:bg-green-700 text-white gap-1.5"
-                  >
-                    <PhoneCall className="h-3.5 w-3.5" /> Log: Answered
-                  </Button>
-                  <Button
-                    size="sm" disabled={isLoggingCall}
-                    onClick={() => handleCallLog("no_answer")}
-                    className="bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
-                  >
-                    <PhoneOff className="h-3.5 w-3.5" /> Log: No Answer
-                  </Button>
-                </div>
-
-                {callAttempts >= 2 && order.status !== "Confirmed" && (
+                {/*
+                 * G3 — Contextual banner replaces buttons when locked.
+                 * Priority: hasAnswered (green) > callAttempts>=2 (red) > buttons active.
+                 */}
+                {hasAnswered ? (
+                  // G3a — Green banner: customer answered
+                  <div className="flex items-start gap-3 bg-green-50 border-2 border-green-200 rounded-lg p-3">
+                    <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-green-800">
+                        ✅ Customer answered
+                      </p>
+                      <p className="text-xs text-green-700 mt-0.5">
+                        Use the actions above to confirm or cancel this order.
+                      </p>
+                    </div>
+                  </div>
+                ) : callAttempts >= 2 ? (
+                  // G3b — Red banner: 2 no-answer attempts
                   <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
                     <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
                     <p className="text-xs text-red-700 font-medium">
-                      2 no-answer attempts — confirm, cancel, or try once more above.
+                      2 no-answer attempts reached — confirm or cancel the order above.
                     </p>
+                  </div>
+                ) : (
+                  // G2/G4 — Buttons active (neither condition met)
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* G4: Log Answered — also disabled individually if hasAnswered */}
+                    <Button
+                      size="sm"
+                      disabled={isLoggingCall || callLogLocked || hasAnswered}
+                      onClick={() => handleCallLog("answered")}
+                      className="bg-green-600 hover:bg-green-700 text-white gap-1.5"
+                    >
+                      <PhoneCall className="h-3.5 w-3.5" /> Log: Answered
+                    </Button>
+                    {/* G2: Log No Answer — disabled when locked */}
+                    <Button
+                      size="sm"
+                      disabled={isLoggingCall || callLogLocked}
+                      onClick={() => handleCallLog("no_answer")}
+                      className="bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
+                    >
+                      <PhoneOff className="h-3.5 w-3.5" /> Log: No Answer
+                    </Button>
                   </div>
                 )}
 
+                {/* Call history log entries */}
                 {order.callLog && order.callLog.length > 0 && (
                   <div className="space-y-1 border-t border-orange-200 pt-3">
                     {[...order.callLog].reverse().map((entry, i) => (
@@ -862,16 +856,15 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* ════════════════════════════════════════════════════════════════ */}
-          {/* § 6  INTERNAL NOTES                                                           */}
-          {/* ════════════════════════════════════════════════════════════════ */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* § 6  INTERNAL NOTES                                             */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <FileText className="h-4 w-4 text-gray-500" />
               Internal Notes
               <span className="text-xs text-gray-400 font-normal">— not visible to customer</span>
             </h3>
-
             <div className="space-y-2">
               <Textarea
                 value={newNote}
@@ -891,7 +884,6 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                   : "Save Note"}
               </Button>
             </div>
-
             {order.adminNotes && order.adminNotes.length > 0 && (
               <div className="space-y-2 border-t border-gray-100 pt-3">
                 {[...order.adminNotes].reverse().map((n, i) => (
@@ -906,9 +898,9 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* ════════════════════════════════════════════════════════════════ */}
-          {/* § 7  STATUS HISTORY (collapsible)                                           */}
-          {/* ════════════════════════════════════════════════════════════════ */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* § 7  STATUS HISTORY (collapsible)                              */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
           <div>
             <button
               onClick={() => setIsTimelineOpen((p) => !p)}
@@ -925,8 +917,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
               </span>
               {isTimelineOpen
                 ? <ChevronUp className="h-4 w-4 text-gray-400" />
-                : <ChevronDown className="h-4 w-4 text-gray-400" />
-              }
+                : <ChevronDown className="h-4 w-4 text-gray-400" />}
             </button>
 
             {isTimelineOpen && (
@@ -963,7 +954,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
           <div className="h-2" />
         </div>
 
-        {/* ══ STICKY FOOTER ══════════════════════════════════════════════════════════ */}
+        {/* ══ STICKY FOOTER ══════════════════════════════════════════════════ */}
         <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 shrink-0 flex items-center justify-between gap-3">
           {primaryAction ? (
             <Button
@@ -985,7 +976,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
   );
 }
 
-// ─── Read-only row helper ──────────────────────────────────────────────────────────────────
+// ─── Read-only row helper ─────────────────────────────────────────────────────
 
 function Row({
   icon, label, value,
