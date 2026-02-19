@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -25,14 +25,15 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 // Components
-import { StatsCards }   from "@/components/admin/stats-cards";
-import { HeroEditor }   from "@/components/admin/hero-editor";
-import { ProductGrid }  from "@/components/admin/product-grid";
-import { ProductModal } from "@/components/admin/product-modal";
-import { OrderKanban }  from "@/components/admin/order-kanban";
-import { OrderTable }   from "@/components/admin/order-table";
-import { OrderArchive } from "@/components/admin/order-archive";
-import { OrderDrawer }  from "@/components/admin/order-drawer";
+import { StatsCards }            from "@/components/admin/stats-cards";
+import { HeroEditor }            from "@/components/admin/hero-editor";
+import { ProductGrid }           from "@/components/admin/product-grid";
+import { ProductModal }          from "@/components/admin/product-modal";
+import { OrderKanban }           from "@/components/admin/order-kanban";
+import { OrderTable }            from "@/components/admin/order-table";
+import { OrderArchive }          from "@/components/admin/order-archive";
+import { OrderDrawer }           from "@/components/admin/order-drawer";
+import { UnsavedChangesDialog }  from "@/components/admin/unsaved-changes-dialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,36 +54,30 @@ type OrderStatus =
 
 type DateFilter = "all" | "today" | "week" | "month";
 
-/** F4 — date filter config */
 const DATE_FILTER_OPTIONS: { value: DateFilter; label: string }[] = [
-  { value: "all",   label: "All"        },
-  { value: "today", label: "Today"      },
-  { value: "week",  label: "This week"  },
-  { value: "month", label: "This month" },
+  { value: "all",   label: "All"       },
+  { value: "today", label: "Today"     },
+  { value: "week",  label: "This week" },
+  { value: "month", label: "This month"},
 ];
 
-/** Terminal statuses shown only in the Archive tab, never on the active board. */
 const TERMINAL_STATUSES: OrderStatus[] = ["Delivered", "Retour", "Cancelled"];
 
-// ─── F4: date boundary helpers ────────────────────────────────────────────────
+// ─── Date boundary helpers ────────────────────────────────────────────────────
 
 function getDateBoundary(filter: DateFilter): number | null {
   if (filter === "all") return null;
   const now = new Date();
   if (filter === "today") {
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    return start.getTime();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   }
   if (filter === "week") {
-    // Last Monday 00:00 local
-    const day  = now.getDay(); // 0=Sun … 6=Sat
-    const diff = (day === 0 ? 6 : day - 1); // days since Monday
-    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff);
-    return monday.getTime();
+    const day  = now.getDay();
+    const diff = day === 0 ? 6 : day - 1;
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff).getTime();
   }
   if (filter === "month") {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return start.getTime();
+    return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
   }
   return null;
 }
@@ -92,23 +87,27 @@ function getDateBoundary(filter: DateFilter): number | null {
 export default function AdminPage() {
   const router = useRouter();
 
-  // ─ Mode & View state ────────────────────────────────────────────────────────
-  const [mode,         setMode]         = useState<AdminMode>("build");
-  const [trackingView, setTrackingView] = useState<TrackingView>("kanban");
+  // ─ Mode & view ──────────────────────────────────────────────────────────────
+  const [mode,              setMode]              = useState<AdminMode>("build");
+  const [trackingView,      setTrackingView]      = useState<TrackingView>("kanban");
 
-  // ─ Order state ───────────────────────────────────────────────────────────────
-  const [searchQuery,     setSearchQuery]     = useState("");
-  const [dateFilter,      setDateFilter]      = useState<DateFilter>("week"); // F4 default
-  const [selectedOrderId, setSelectedOrderId] = useState<Id<"orders"> | null>(null);
+  // M1 Task 1.2 — unsaved-state guard
+  const [isBuildDirty,      setIsBuildDirty]      = useState(false);
+  const [pendingModeSwitch, setPendingModeSwitch] = useState<AdminMode | null>(null);
 
-  // ─ Product modal state ───────────────────────────────────────────────────────
-  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  const [editingProductId,   setEditingProductId]   = useState<Id<"products"> | null>(null);
+  // ─ Order state ──────────────────────────────────────────────────────────────
+  const [searchQuery,       setSearchQuery]       = useState("");
+  const [dateFilter,        setDateFilter]        = useState<DateFilter>("week");
+  const [selectedOrderId,   setSelectedOrderId]   = useState<Id<"orders"> | null>(null);
 
-  // ─ Delivery settings state ───────────────────────────────────────────────────
+  // ─ Product modal ────────────────────────────────────────────────────────────
+  const [isProductModalOpen,   setIsProductModalOpen]   = useState(false);
+  const [editingProductId,     setEditingProductId]     = useState<Id<"products"> | null>(null);
+
+  // ─ Delivery settings ────────────────────────────────────────────────────────
   const [isDeliverySettingsOpen, setIsDeliverySettingsOpen] = useState(false);
 
-  // ─ Convex queries ────────────────────────────────────────────────────────────
+  // ─ Convex queries ───────────────────────────────────────────────────────────
   const siteContent    = useQuery(api.siteContent.get);
   const products       = useQuery(api.products.list, {});
   const orders         = useQuery(api.orders.list, {});
@@ -122,10 +121,24 @@ export default function AdminPage() {
     editingProductId ? { id: editingProductId } : "skip",
   );
 
-  // ─ Mutations ─────────────────────────────────────────────────────────────────
-  const deleteProduct = useMutation(api.products.remove);
+  // ─ Mutations ────────────────────────────────────────────────────────────────
+  const deleteProduct  = useMutation(api.products.remove);
+  const restoreProduct = useMutation(api.products.restore); // M1 Task 1.1 — undo
+
+  // ─ M1 Task 1.2: beforeunload warning when hero has unsaved edits ─────────────
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isBuildDirty) {
+        e.preventDefault();
+        e.returnValue = ""; // triggers browser's native "Leave site?" dialog
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isBuildDirty]);
 
   // ─ Handlers ──────────────────────────────────────────────────────────────────
+
   const handleAddProduct = () => {
     setEditingProductId(null);
     setIsProductModalOpen(true);
@@ -141,14 +154,40 @@ export default function AdminPage() {
     setTimeout(() => setEditingProductId(null), 300);
   };
 
+  // M1 Task 1.1 — soft-delete with Undo toast (5s)
   const handleDeleteProduct = async (productId: Id<"products">) => {
-    if (!confirm("Are you sure you want to delete this product?")) return;
     try {
       await deleteProduct({ id: productId });
-      toast.success("Product deleted!");
+      toast(
+        `Product removed from catalog`,
+        {
+          action: {
+            label: "Undo",
+            onClick: async () => {
+              try {
+                await restoreProduct({ id: productId });
+                toast.success("Product restored!");
+              } catch (e: any) {
+                toast.error(e.message || "Failed to restore product");
+              }
+            },
+          },
+          duration: 5000,
+        }
+      );
     } catch (error: any) {
       toast.error(error.message || "Failed to delete product");
     }
+  };
+
+  // M1 Task 1.2 — gated mode switch
+  const handleModeChange = (newMode: AdminMode) => {
+    if (!newMode) return;
+    if (mode === "build" && isBuildDirty) {
+      setPendingModeSwitch(newMode);
+      return;
+    }
+    setMode(newMode);
   };
 
   const handleLogout = () => {
@@ -156,7 +195,7 @@ export default function AdminPage() {
     router.push("/admin/login");
   };
 
-  // ─ F4: filter orders by date + search ────────────────────────────────────────
+  // ─ Filter orders ─────────────────────────────────────────────────────────────
   const dateBoundary = getDateBoundary(dateFilter);
 
   const filteredOrders = orders?.filter((order) => {
@@ -164,16 +203,13 @@ export default function AdminPage() {
       order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.customerPhone.includes(searchQuery);
-    const matchesDate =
-      dateBoundary === null || order._creationTime >= dateBoundary;
+    const matchesDate = dateBoundary === null || order._creationTime >= dateBoundary;
     return matchesSearch && matchesDate;
   });
 
-  // Active pipeline — feeds Kanban and Table views
   const activeOrders  = filteredOrders?.filter(
     (o) => !TERMINAL_STATUSES.includes(o.status as OrderStatus),
   );
-  // Archive — feeds the Archive tab
   const archiveOrders = filteredOrders?.filter(
     (o) => TERMINAL_STATUSES.includes(o.status as OrderStatus),
   );
@@ -196,7 +232,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
 
-      {/* ══ Top Bar ═════════════════════════════════════════════════════════════ */}
+      {/* ══ Top Bar ════════════════════════════════════════════════════════════ */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -209,10 +245,11 @@ export default function AdminPage() {
                 </div>
               </div>
 
+              {/* M1 Task 1.2 — mode switch gated by dirty check */}
               <ToggleGroup
                 type="single"
                 value={mode}
-                onValueChange={(value) => value && setMode(value as AdminMode)}
+                onValueChange={(value) => handleModeChange(value as AdminMode)}
                 className="border border-gray-200 rounded-lg p-1"
               >
                 <ToggleGroupItem
@@ -258,14 +295,19 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* ══ Main Content ════════════════════════════════════════════════════════ */}
+      {/* ══ Main Content ═══════════════════════════════════════════════════════ */}
       <div className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* ══ BUILD MODE ══════════════════════════════════════════════════════ */}
+        {/* ══ BUILD MODE ════════════════════════════════════════════════════ */}
         {mode === "build" && (
           <div className="space-y-8">
             <StatsCards mode="build" siteContent={siteContent} products={products} />
-            <HeroEditor siteContent={siteContent} onSave={() => {}} />
+            {/* M1 Task 1.2 — onDirtyChange wired up */}
+            <HeroEditor
+              siteContent={siteContent}
+              onSave={() => {}}
+              onDirtyChange={setIsBuildDirty}
+            />
             <ProductGrid
               products={products}
               onEdit={handleEditProduct}
@@ -275,15 +317,13 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ══ TRACKING MODE ═══════════════════════════════════════════════════ */}
+        {/* ══ TRACKING MODE ══════════════════════════════════════════════════ */}
         {mode === "tracking" && (
           <div className="space-y-6">
             <StatsCards mode="tracking" orderStats={orderStats} />
 
-            {/* ─ Toolbar ────────────────────────────────────────────────────── */}
+            {/* Toolbar */}
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 flex items-center gap-4 flex-wrap">
-
-              {/* Search */}
               <div className="relative flex-1 min-w-[200px] max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -295,7 +335,6 @@ export default function AdminPage() {
                 />
               </div>
 
-              {/* F4 — date filter chips (replaces old status <Select>) */}
               <div className="flex items-center gap-1.5">
                 {DATE_FILTER_OPTIONS.map(({ value, label }) => (
                   <button
@@ -312,7 +351,6 @@ export default function AdminPage() {
                 ))}
               </div>
 
-              {/* View toggle */}
               <div className="ml-auto">
                 <ToggleGroup
                   type="single"
@@ -338,22 +376,18 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* ─ Active pipeline views ──────────────────────────────────────── */}
             {trackingView === "kanban" && (
               <OrderKanban
                 orders={activeOrders ?? []}
                 onOrderClick={(id) => setSelectedOrderId(id)}
               />
             )}
-
             {trackingView === "table" && (
               <OrderTable
                 orders={activeOrders ?? []}
                 onOrderClick={(id) => setSelectedOrderId(id)}
               />
             )}
-
-            {/* ─ Archive tab ─────────────────────────────────────────────────── */}
             {trackingView === "archive" && (
               <OrderArchive
                 orders={archiveOrders ?? []}
@@ -369,7 +403,7 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* ══ Overlays ════════════════════════════════════════════════════════════ */}
+      {/* ══ Overlays ═══════════════════════════════════════════════════════════ */}
       <ProductModal
         isOpen={isProductModalOpen}
         onClose={handleCloseProductModal}
@@ -387,6 +421,17 @@ export default function AdminPage() {
       <DeliverySettingsModal
         isOpen={isDeliverySettingsOpen}
         onClose={() => setIsDeliverySettingsOpen(false)}
+      />
+
+      {/* M1 Task 1.2 — unsaved changes guard dialog */}
+      <UnsavedChangesDialog
+        open={pendingModeSwitch !== null}
+        onLeave={() => {
+          setIsBuildDirty(false);
+          setMode(pendingModeSwitch!);
+          setPendingModeSwitch(null);
+        }}
+        onStay={() => setPendingModeSwitch(null)}
       />
     </div>
   );

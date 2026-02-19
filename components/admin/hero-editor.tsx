@@ -21,18 +21,20 @@ interface HeroEditorProps {
     };
   } | null;
   onSave: () => void;
+  /** M1 Task 1.2 — called whenever local state diverges from (or matches) siteContent */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
-  const [editingHero, setEditingHero] = useState(false);
-  const [heroTitle, setHeroTitle] = useState("");
-  const [heroSubtitle, setHeroSubtitle] = useState("");
-  const [heroCtaText, setHeroCtaText] = useState("Shop Now");
+export function HeroEditor({ siteContent, onSave, onDirtyChange }: HeroEditorProps) {
+  const [editingHero, setEditingHero]     = useState(false);
+  const [heroTitle,   setHeroTitle]       = useState("");
+  const [heroSubtitle,setHeroSubtitle]    = useState("");
+  const [heroCtaText, setHeroCtaText]     = useState("Shop Now");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveStatus,  setSaveStatus]      = useState<"idle" | "saving" | "saved">("idle");
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fileInputRef    = useRef<HTMLInputElement>(null);
+  const debounceTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updateSiteContent = useMutation(api.siteContent.update);
   const generateUploadUrl = useMutation(api.siteContent.generateUploadUrl);
@@ -46,6 +48,16 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
     }
   }, [siteContent]);
 
+  // M1 Task 1.2 — derive dirty state and report it to the parent
+  useEffect(() => {
+    if (!onDirtyChange || !siteContent) return;
+    const dirty =
+      heroTitle    !== (siteContent.heroTitle    ?? "") ||
+      heroSubtitle !== (siteContent.heroSubtitle ?? "") ||
+      heroCtaText  !== (siteContent.heroCtaText  ?? "Shop Now");
+    onDirtyChange(dirty);
+  }, [heroTitle, heroSubtitle, heroCtaText, siteContent, onDirtyChange]);
+
   // Debounced save — fires 500ms after the user stops typing
   const debouncedSave = useCallback(
     (title: string, subtitle: string, ctaText: string) => {
@@ -56,8 +68,7 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
           await updateSiteContent({ heroTitle: title, heroSubtitle: subtitle, heroCtaText: ctaText });
           setSaveStatus("saved");
           onSave();
-          // Reset to idle after 2s
-          setTimeout(() => setSaveStatus("idle"), 2000);
+          setTimeout(() => setSaveStatus("idle"), 5000); // M1 P3: extend to 5s
         } catch (error: any) {
           setSaveStatus("idle");
           toast.error(error.message || "Failed to save changes");
@@ -78,30 +89,19 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
 
     setIsUploadingImage(true);
     try {
-      // Step 1: Get a presigned upload URL from Convex
       const uploadUrl = await generateUploadUrl();
-
-      // Step 2: Upload file directly to Convex storage
       const result = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": file.type },
         body: file,
       });
-
       if (!result.ok) throw new Error("Upload failed");
-
-      // Step 3: Get the storageId from the response
       const { storageId } = await result.json();
-
-      // Step 4: Build the correct Convex serving URL
       const convexUrl = new URL(uploadUrl);
       const imageUrl = `${convexUrl.origin}/api/storage/${storageId}`;
-
-      // Step 5: Persist to DB
       await updateSiteContent({
         heroBackgroundImage: { storageId, url: imageUrl },
       });
-
       toast.success("Hero background updated!");
       onSave();
     } catch (error) {
@@ -109,7 +109,6 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
       console.error(error);
     } finally {
       setIsUploadingImage(false);
-      // Reset file input so same file can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -133,8 +132,8 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
           Hero Section
         </h2>
         <div className="flex items-center gap-3">
-          {/* Save status indicator */}
-          {editingHero && saveStatus !== "idle" && (
+          {/* Save status indicator — visible in both edit and preview states */}
+          {saveStatus !== "idle" && (
             <span className="text-xs flex items-center gap-1 text-gray-500">
               {saveStatus === "saving" ? (
                 <>
@@ -154,7 +153,8 @@ export function HeroEditor({ siteContent, onSave }: HeroEditorProps) {
             onClick={() => setEditingHero(!editingHero)}
             size="sm"
           >
-            {editingHero ? "Close" : "Edit"}
+            {/* M1 P3: renamed from 'Close' to 'Done' */}
+            {editingHero ? "Done" : "Edit"}
           </Button>
         </div>
       </div>

@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, Pencil, Trash2, ImageIcon, Package, Plus } from "lucide-react";
 import Image from "next/image";
 import { Id } from "@/convex/_generated/dataModel";
+import { DeleteProductDialog } from "./delete-product-dialog";
 
 interface Product {
   _id: Id<"products">;
@@ -20,12 +22,20 @@ interface Product {
 
 interface ProductGridProps {
   products: Product[];
-  onEdit: (productId: Id<"products">) => void;
+  onEdit:   (productId: Id<"products">) => void;
   onDelete: (productId: Id<"products">) => void;
-  onAdd: () => void;
+  onAdd:    () => void;
 }
 
 export function ProductGrid({ products, onEdit, onDelete, onAdd }: ProductGridProps) {
+  // M1 Task 1.1 — local state drives the AlertDialog; no confirm() anywhere
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+
+  const handleDeleteConfirm = (productId: Id<"products">) => {
+    setDeleteTarget(null);
+    onDelete(productId); // parent handles mutation + undo toast
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
       <div className="flex items-center justify-between mb-6">
@@ -65,7 +75,6 @@ export function ProductGrid({ products, onEdit, onDelete, onAdd }: ProductGridPr
                 >
                   {product.status}
                 </Badge>
-
                 <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1">
                   <Eye className="h-3 w-3 text-gray-300" />
                   <span className="text-xs text-gray-300">{product.viewCount}</span>
@@ -77,13 +86,11 @@ export function ProductGrid({ products, onEdit, onDelete, onAdd }: ProductGridPr
                 <p className="text-2xl font-bold text-indigo-600 mb-2">
                   {product.price.toLocaleString()} DZD
                 </p>
-
                 {product.category && (
                   <Badge variant="outline" className="mb-4 text-xs">
                     {product.category}
                   </Badge>
                 )}
-
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -94,10 +101,11 @@ export function ProductGrid({ products, onEdit, onDelete, onAdd }: ProductGridPr
                     <Pencil className="h-4 w-4 mr-2" />
                     Edit
                   </Button>
+                  {/* M1: opens AlertDialog instead of confirm() */}
                   <Button
                     size="sm"
                     variant="destructive"
-                    onClick={() => onDelete(product._id)}
+                    onClick={() => setDeleteTarget(product)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -115,6 +123,14 @@ export function ProductGrid({ products, onEdit, onDelete, onAdd }: ProductGridPr
           </Button>
         </div>
       )}
+
+      {/* M1 Task 1.1 — styled delete confirmation dialog */}
+      <DeleteProductDialog
+        product={deleteTarget}
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }
