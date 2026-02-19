@@ -30,46 +30,52 @@ import {
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-// Import components
+// Components
 import { StatsCards } from "@/components/admin/stats-cards";
 import { HeroEditor } from "@/components/admin/hero-editor";
 import { ProductGrid } from "@/components/admin/product-grid";
 import { ProductModal } from "@/components/admin/product-modal";
 import { OrderKanban } from "@/components/admin/order-kanban";
 import { OrderTable } from "@/components/admin/order-table";
-import { OrderDetailsModal } from "@/components/admin/order-details-modal";
+// Phase 2: OrderDetailsModal replaced with OrderDrawer
+import { OrderDrawer } from "@/components/admin/order-drawer";
 
 type AdminMode = "build" | "tracking";
 type TrackingView = "kanban" | "table";
+
+// Updated to include Phase 1 new statuses
 type OrderStatus =
   | "Pending"
   | "Confirmed"
-  | "Called no respond"
+  | "Called no respond" // legacy
+  | "Called 01"
+  | "Called 02"
   | "Cancelled"
   | "Packaged"
   | "Shipped"
-  | "Delivered";
+  | "Delivered"
+  | "Retour";
 
 export default function AdminPage() {
   const router = useRouter();
 
-  // ─── Mode State ───────────────────────────────────────────────────────────
+  // ─── Mode State ───────────────────────────────────────────────────────────────
   const [mode, setMode] = useState<AdminMode>("build");
   const [trackingView, setTrackingView] = useState<TrackingView>("kanban");
 
-  // ─── Order State ──────────────────────────────────────────────────────────
+  // ─── Order State ─────────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
   const [selectedOrderId, setSelectedOrderId] = useState<Id<"orders"> | null>(null);
 
-  // ─── Product Modal State ──────────────────────────────────────────────────
+  // ─── Product Modal State ───────────────────────────────────────────────────────
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<Id<"products"> | null>(null);
 
-  // ─── Delivery Settings State ──────────────────────────────────────────────
+  // ─── Delivery Settings State ──────────────────────────────────────────────────
   const [isDeliverySettingsOpen, setIsDeliverySettingsOpen] = useState(false);
 
-  // ─── Convex Queries ───────────────────────────────────────────────────────
+  // ─── Convex Queries ───────────────────────────────────────────────────────────
   const siteContent = useQuery(api.siteContent.get);
   const products = useQuery(api.products.list, {});
   const orders = useQuery(api.orders.list, {});
@@ -78,17 +84,15 @@ export default function AdminPage() {
     api.orders.getById,
     selectedOrderId ? { id: selectedOrderId } : "skip"
   );
-
-  // Fetch full product data for the product being edited
   const editingProduct = useQuery(
     api.products.getById,
     editingProductId ? { id: editingProductId } : "skip"
   );
 
-  // ─── Mutations ────────────────────────────────────────────────────────────
+  // ─── Mutations ──────────────────────────────────────────────────────────────────
   const deleteProduct = useMutation(api.products.remove);
 
-  // ─── Handlers ─────────────────────────────────────────────────────────────
+  // ─── Handlers ──────────────────────────────────────────────────────────────────
   const handleAddProduct = () => {
     setEditingProductId(null);
     setIsProductModalOpen(true);
@@ -101,7 +105,6 @@ export default function AdminPage() {
 
   const handleCloseProductModal = () => {
     setIsProductModalOpen(false);
-    // Small delay before clearing ID so modal closes smoothly first
     setTimeout(() => setEditingProductId(null), 300);
   };
 
@@ -120,7 +123,7 @@ export default function AdminPage() {
     router.push("/admin/login");
   };
 
-  // ─── Filter Orders ────────────────────────────────────────────────────────
+  // ─── Filter Orders ───────────────────────────────────────────────────────────
   const filteredOrders = orders?.filter((order) => {
     const matchesSearch =
       order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -131,8 +134,12 @@ export default function AdminPage() {
     return matchesSearch && matchesStatus;
   });
 
-  // ─── Loading State ────────────────────────────────────────────────────────
-  if (siteContent === undefined || products === undefined || orders === undefined) {
+  // ─── Loading State ─────────────────────────────────────────────────────────────
+  if (
+    siteContent === undefined ||
+    products === undefined ||
+    orders === undefined
+  ) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center">
@@ -148,11 +155,10 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* ── Top Bar ────────────────────────────────────────────────────────── */}
+      {/* ── Top Bar ───────────────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            {/* Left: Logo + Mode Toggle */}
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-3">
                 <Sparkles className="h-8 w-8 text-indigo-600" />
@@ -185,7 +191,6 @@ export default function AdminPage() {
               </ToggleGroup>
             </div>
 
-            {/* Right: Delivery Settings (Tracking only) + Logout */}
             <div className="flex items-center gap-3">
               {mode === "tracking" && (
                 <Button
@@ -212,10 +217,10 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* ── Main Content ───────────────────────────────────────────────────── */}
+      {/* ── Main Content ─────────────────────────────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* ── BUILD MODE ─────────────────────────────────────────────────── */}
+        {/* ── BUILD MODE ─────────────────────────────────────────────────────────── */}
         {mode === "build" && (
           <div className="space-y-8">
             <StatsCards mode="build" siteContent={siteContent} products={products} />
@@ -229,7 +234,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ── TRACKING MODE ──────────────────────────────────────────────── */}
+        {/* ── TRACKING MODE ────────────────────────────────────────────────────────── */}
         {mode === "tracking" && (
           <div className="space-y-6">
             <StatsCards mode="tracking" orderStats={orderStats} />
@@ -248,25 +253,27 @@ export default function AdminPage() {
                 />
               </div>
 
-              {/* Status Filter */}
+              {/* Status Filter — updated to include Phase 1 statuses */}
               <Select
                 value={statusFilter}
                 onValueChange={(value) =>
                   setStatusFilter(value as OrderStatus | "all")
                 }
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Confirmed">Confirmed</SelectItem>
-                  <SelectItem value="Called no respond">Called no respond</SelectItem>
-                  <SelectItem value="Cancelled">Cancelled</SelectItem>
-                  <SelectItem value="Packaged">Packaged</SelectItem>
-                  <SelectItem value="Shipped">Shipped</SelectItem>
-                  <SelectItem value="Delivered">Delivered</SelectItem>
+                  <SelectItem value="Pending">⏳ Pending</SelectItem>
+                  <SelectItem value="Called 01">📞 Called 01</SelectItem>
+                  <SelectItem value="Called 02">📞 Called 02</SelectItem>
+                  <SelectItem value="Confirmed">✓ Confirmed</SelectItem>
+                  <SelectItem value="Cancelled">✕ Cancelled</SelectItem>
+                  <SelectItem value="Packaged">📦 Packaged</SelectItem>
+                  <SelectItem value="Shipped">🚚 Shipped</SelectItem>
+                  <SelectItem value="Delivered">✓✓ Delivered</SelectItem>
+                  <SelectItem value="Retour">↩ Retour</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -306,27 +313,24 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* ── Modals ─────────────────────────────────────────────────────────── */}
+      {/* ── Overlays ───────────────────────────────────────────────────────────── */}
 
-      {/* Product Add/Edit Modal */}
       <ProductModal
         isOpen={isProductModalOpen}
         onClose={handleCloseProductModal}
         product={editingProduct ?? null}
-        onSuccess={() => {
-          // Convex reactivity handles the product list update automatically
-        }}
-      />
-
-      {/* Order Details Modal */}
-      <OrderDetailsModal
-        isOpen={selectedOrderId !== null}
-        onClose={() => setSelectedOrderId(null)}
-        order={selectedOrder || null}
         onSuccess={() => {}}
       />
 
-      {/* Delivery Settings Modal (Tracking Mode only) */}
+      {/* Phase 2: Right-side drawer — replaces the blocking center modal.
+          modal={false} inside OrderDrawer keeps the Kanban board interactive. */}
+      <OrderDrawer
+        isOpen={selectedOrderId !== null}
+        onClose={() => setSelectedOrderId(null)}
+        order={(selectedOrder as any) ?? null}
+        onSuccess={() => {}}
+      />
+
       <DeliverySettingsModal
         isOpen={isDeliverySettingsOpen}
         onClose={() => setIsDeliverySettingsOpen(false)}
