@@ -82,7 +82,7 @@ function TiptapToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
   );
 }
 
-// ─── ProductDrawer ───────────────────────────────────────────────────────────────
+// ─── ProductDrawer ─────────────────────────────────────────────────────────────
 // Always operates in UPDATE mode.
 // New products are created via api.products.createEmpty first (in admin/page.tsx),
 // which guarantees a real DB record exists before this drawer opens.
@@ -107,7 +107,10 @@ export function ProductDrawer({
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
 
   // ── Tiptap editor
+  // immediatelyRender: false is required in Next.js App Router to prevent
+  // the SSR/hydration mismatch Tiptap warns about when rendering server-side.
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Placeholder.configure({ placeholder: "Add a product description…" }),
@@ -127,7 +130,6 @@ export function ProductDrawer({
     setPrice(product.price);
     setStatus(product.status);
     setImages(product.images ?? []);
-    // Load description into Tiptap (HTML or plain text both render fine)
     editor?.commands.setContent(product.description ?? "");
   }, [product, isOpen, editor]);
 
@@ -155,7 +157,6 @@ export function ProductDrawer({
           toast.error(`${file.name} is too large (max 10 MB)`);
           continue;
         }
-        // Preview URL for immediate display in the drawer
         const previewUrl = URL.createObjectURL(file);
         objectUrlsRef.current.push(previewUrl);
 
@@ -181,22 +182,19 @@ export function ProductDrawer({
     }
   };
 
-  // ── Save
-  // Always updates — the DB record already exists from createEmpty.
+  // ── Save — always updates (DB record already exists from createEmpty)
   const handleSave = async () => {
     if (!product) return;
     const trimmedTitle = title.trim();
-    if (!trimmedTitle)  { toast.error("Title is required");              return; }
-    if (price <= 0)     { toast.error("Price must be greater than 0");   return; }
+    if (!trimmedTitle)  { toast.error("Title is required");             return; }
+    if (price <= 0)     { toast.error("Price must be greater than 0");  return; }
 
-    // Auto-generate a clean slug when the product was just created (was untitled)
     const newSlug = isUntitled(product)
       ? generateSlug(trimmedTitle) || `product-${Date.now()}`
       : product.slug;
 
     const description = editor?.getHTML() ?? "";
 
-    // Strip blob: preview URLs — server resolves real URL via ctx.storage.getUrl
     const imagesToSave = images.map((img) => ({
       storageId: img.storageId,
       url: img.url.startsWith("blob:") ? img.storageId : img.url,
@@ -217,7 +215,6 @@ export function ProductDrawer({
       onSuccess?.();
       onClose();
     } catch (err: any) {
-      // Slug collision — retry with random suffix
       if (err.message?.includes("slug already exists")) {
         try {
           const uniqueSlug = `${newSlug}-${Math.random().toString(36).slice(2, 6)}`;
