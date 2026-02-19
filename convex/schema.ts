@@ -65,7 +65,7 @@ export default defineSchema({
       size:  v.optional(v.string()),
       color: v.optional(v.string()),
     })),
-    notes:        v.optional(v.string()),
+    notes:         v.optional(v.string()),
     statusHistory: v.optional(v.array(v.object({
       status:    v.string(),
       timestamp: v.number(),
@@ -123,13 +123,15 @@ export default defineSchema({
   }),
 
   // ─── adminUsers ────────────────────────────────────────────────────────────
+  // username and createdAt are optional to stay compatible with the existing
+  // admin document that was created before these fields were added to the schema.
   adminUsers: defineTable({
-    username:     v.string(),
+    username:     v.optional(v.string()),
     passwordHash: v.string(),
     email:        v.optional(v.string()),
     name:         v.optional(v.string()),
     lastLogin:    v.optional(v.number()),
-    createdAt:    v.number(),
+    createdAt:    v.optional(v.number()),
   })
     .index("by_username", ["username"])
     .index("by_email",    ["email"]),
