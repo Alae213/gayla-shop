@@ -27,12 +27,12 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-// ─── Types ────────────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type OrderStatus =
   | "Pending"
   | "Confirmed"
-  | "Called no respond" // legacy
+  | "Called no respond"
   | "Called 01"
   | "Called 02"
   | "Cancelled"
@@ -42,41 +42,36 @@ type OrderStatus =
   | "Retour";
 
 /**
- * Virtual column IDs — 5-column active pipeline.
- * These are UI identifiers, NOT order statuses.
+ * F1+F2 — 4-column board. "New" absorbs Pending + all Outreach statuses.
+ * These are UI column IDs, NOT raw order statuses.
  */
-type ColumnId = "Pending" | "Outreach" | "Confirmed" | "Packaged" | "Shipped";
+type ColumnId = "New" | "Confirmed" | "Packaged" | "Shipped";
 
-/** All order statuses that belong to the Outreach column. */
-const OUTREACH_STATUSES: OrderStatus[] = [
-  "Called 01",
-  "Called 02",
-  "Called no respond",
-];
-
-/** Ordered pipeline columns — left to right on the board. */
-const PIPELINE: ColumnId[] = [
-  "Pending",
-  "Outreach",
-  "Confirmed",
-  "Packaged",
-  "Shipped",
-];
+/** F1: pipeline is now 4 columns — Outreach removed. */
+const PIPELINE: ColumnId[] = ["New", "Confirmed", "Packaged", "Shipped"];
 
 /**
- * Column configuration.
- * `defaultStatus` is the status applied when a card is drag-dropped into this column.
+ * F1+F2: column config.
+ * New column absorbs Pending + Called 01 / Called 02 / Called no respond.
+ * defaultStatus = status applied on drag-drop into that column.
  */
 const COLUMN_CONFIG: Record<
   ColumnId,
   { label: string; icon: string; color: string; bgColor: string; defaultStatus: OrderStatus }
 > = {
-  Pending:   { label: "Pending",   icon: "⏳", color: "text-yellow-700", bgColor: "bg-yellow-50",  defaultStatus: "Pending"   },
-  Outreach:  { label: "Outreach",  icon: "📞", color: "text-orange-700", bgColor: "bg-orange-50",  defaultStatus: "Called 01" },
+  New:       { label: "New",       icon: "🔔", color: "text-yellow-700", bgColor: "bg-yellow-50",  defaultStatus: "Pending"   },
   Confirmed: { label: "Confirmed", icon: "✓",  color: "text-blue-700",   bgColor: "bg-blue-50",    defaultStatus: "Confirmed" },
   Packaged:  { label: "Packaged",  icon: "📦", color: "text-purple-700", bgColor: "bg-purple-50",  defaultStatus: "Packaged"  },
   Shipped:   { label: "Shipped",   icon: "🚚", color: "text-indigo-700", bgColor: "bg-indigo-50",  defaultStatus: "Shipped"   },
 };
+
+/** All statuses that belong in the New column. */
+const NEW_STATUSES: OrderStatus[] = [
+  "Pending",
+  "Called 01",
+  "Called 02",
+  "Called no respond",
+];
 
 interface Order {
   _id: Id<"orders">;
@@ -87,9 +82,12 @@ interface Order {
   customerPhone: string;
   customerWilaya?: string;
   productName: string;
+  productPrice: number;
   deliveryType: "Domicile" | "Stopdesk";
+  deliveryCost: number;
   totalAmount: number;
   callAttempts?: number;
+  callLog?: Array<{ timestamp: number; outcome: "answered" | "no_answer" }>;
   isBanned?: boolean;
   fraudScore?: number;
 }
@@ -99,18 +97,60 @@ interface OrderKanbanProps {
   onOrderClick: (orderId: Id<"orders">) => void;
 }
 
-// ─── Helper: map order → column ───────────────────────────────────────────────────────────
+// ─── Helper: map order → column ───────────────────────────────────────────────
 
 function getColumnId(order: Order): ColumnId | null {
-  if (order.status === "Pending")                      return "Pending";
-  if (OUTREACH_STATUSES.includes(order.status))        return "Outreach";
-  if (order.status === "Confirmed")                    return "Confirmed";
-  if (order.status === "Packaged")                     return "Packaged";
-  if (order.status === "Shipped")                      return "Shipped";
-  return null; // terminal — not shown in the active kanban
+  if (NEW_STATUSES.includes(order.status)) return "New";
+  if (order.status === "Confirmed")         return "Confirmed";
+  if (order.status === "Packaged")          return "Packaged";
+  if (order.status === "Shipped")           return "Shipped";
+  return null; // terminal — not shown on active board
 }
 
-// ─── Sortable card ───────────────────────────────────────────────────────────────────
+// ─── F3: Call badge helper ─────────────────────────────────────────────────────
+
+function CallBadge({ order, columnId }: { order: Order; columnId: ColumnId }) {
+  // Only show in the New column
+  if (columnId !== "New") return <div className="h-5" />;
+
+  const callAttempts = order.callAttempts ?? 0;
+  const hasAnswered  = order.callLog?.some((e) => e.outcome === "answered") ?? false;
+
+  if (hasAnswered) {
+    return (
+      <div className="h-5 flex items-center">
+        <span className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0 rounded-sm bg-green-100 text-green-700">
+          📞 ✓
+        </span>
+      </div>
+    );
+  }
+
+  if (callAttempts >= 2) {
+    return (
+      <div className="h-5 flex items-center">
+        <span className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0 rounded-sm bg-red-100 text-red-700 animate-pulse">
+          📞 2/2 ⚠
+        </span>
+      </div>
+    );
+  }
+
+  if (callAttempts === 1) {
+    return (
+      <div className="h-5 flex items-center">
+        <span className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0 rounded-sm bg-orange-100 text-orange-700">
+          📞 1/2
+        </span>
+      </div>
+    );
+  }
+
+  // callAttempts === 0 → reserve the row height but show nothing
+  return <div className="h-5" />;
+}
+
+// ─── Sortable card ─────────────────────────────────────────────────────────────
 
 function SortableOrderCard({
   order,
@@ -143,10 +183,6 @@ function SortableOrderCard({
   const isBanned     = order.isBanned     ?? false;
   const fraudScore   = order.fraudScore   ?? 0;
 
-  /**
-   * Left-border urgency indicator — scannable at board level.
-   * Priority: 2 failed calls > banned > high fraud.
-   */
   const urgencyBorder =
     callAttempts >= 2
       ? "border-l-[3px] border-l-red-500"
@@ -156,10 +192,6 @@ function SortableOrderCard({
       ? "border-l-[3px] border-l-amber-400"
       : "";
 
-  /**
-   * Pulsing outline for 2-failed-calls urgency so the card visually
-   * screams "action needed" without opening it.
-   */
   const pulseClass = callAttempts >= 2 ? "ring-1 ring-red-300 animate-pulse" : "";
 
   return (
@@ -189,36 +221,21 @@ function SortableOrderCard({
         </Badge>
       </div>
 
-      {/* Level 1 — customer name (bold anchor) */}
+      {/* Row 2: customer name */}
       <h4 className="font-semibold text-sm text-gray-900 mb-0.5 line-clamp-1">
         {order.customerName}
         {isBanned && <span className="ml-1 text-xs">🚫</span>}
         {!isBanned && fraudScore >= 3 && <span className="ml-1 text-xs">⚠️</span>}
       </h4>
 
-      {/* Level 2 — product name */}
-      <p className="text-sm text-gray-600 mb-2 line-clamp-1">{order.productName}</p>
+      {/* Row 3: product name */}
+      <p className="text-sm text-gray-600 mb-1.5 line-clamp-1">{order.productName}</p>
 
-      {/* Outreach sub-state badge (only visible in Outreach column) */}
-      {columnId === "Outreach" && (
-        <div
-          className={`text-xs font-medium mb-1.5 px-1.5 py-0.5 rounded-sm inline-block ${
-            callAttempts >= 2
-              ? "bg-red-100 text-red-700"
-              : "bg-orange-100 text-orange-700"
-          }`}
-        >
-          📞 {callAttempts}/2 · 
-          {order.status === "Called 01"
-            ? "1st attempt"
-            : order.status === "Called 02"
-            ? "2nd attempt"
-            : "legacy"}
-        </div>
-      )}
+      {/* F3 — call badge row (always h-5 to lock card height) */}
+      <CallBadge order={order} columnId={columnId} />
 
-      {/* Level 3 — footer: phone + total */}
-      <div className="flex items-center justify-between pt-1.5 border-t border-gray-100">
+      {/* Row 5: footer — phone + total */}
+      <div className="flex items-center justify-between pt-1.5 border-t border-gray-100 mt-1">
         <div className="flex items-center gap-1 text-xs text-gray-400">
           <Phone className="h-3 w-3 shrink-0" />
           <span className="truncate max-w-[90px]">{order.customerPhone}</span>
@@ -228,7 +245,7 @@ function SortableOrderCard({
         </span>
       </div>
 
-      {/* Level 3 — wilaya: always rendered to lock card height */}
+      {/* Row 6: wilaya — always rendered to lock height */}
       <div className="flex items-center gap-1 text-xs text-gray-400 mt-1 h-4">
         <MapPin className="h-3 w-3 shrink-0" />
         <span className="truncate">{order.customerWilaya || "\u00a0"}</span>
@@ -237,7 +254,7 @@ function SortableOrderCard({
   );
 }
 
-// ─── Droppable column ───────────────────────────────────────────────────────────────────
+// ─── Droppable column ──────────────────────────────────────────────────────────
 
 function KanbanColumn({
   columnId,
@@ -249,6 +266,12 @@ function KanbanColumn({
   onOrderClick: (orderId: Id<"orders">) => void;
 }) {
   const cfg = COLUMN_CONFIG[columnId];
+
+  // F5 — column DA total
+  const totalDA = orders.reduce(
+    (sum, o) => sum + (o.productPrice ?? 0) + (o.deliveryCost ?? 0),
+    0,
+  );
 
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${columnId}`,
@@ -263,18 +286,27 @@ function KanbanColumn({
       }`}
     >
       {/* Column header */}
-      <div className={`${cfg.bgColor} rounded-t-xl px-4 py-3 border-b border-gray-200 shrink-0`}>
+      <div className={`group ${cfg.bgColor} rounded-t-xl px-4 py-3 border-b border-gray-200 shrink-0`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-base">{cfg.icon}</span>
             <h3 className={`font-semibold text-sm ${cfg.color}`}>{cfg.label}</h3>
           </div>
-          <Badge
-            variant="secondary"
-            className="bg-white/70 text-gray-700 border-0 text-xs font-semibold"
-          >
-            {orders.length}
-          </Badge>
+          {/* Count badge + F5 DA total */}
+          <div className="flex flex-col items-end gap-0.5">
+            <Badge
+              variant="secondary"
+              className="bg-white/70 text-gray-700 border-0 text-xs font-semibold"
+            >
+              {orders.length}
+            </Badge>
+            {/* F5 — always visible DA total (hidden only if empty) */}
+            {orders.length > 0 && (
+              <span className="text-xs text-gray-400 font-mono leading-none">
+                {totalDA.toLocaleString()} DA
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -287,7 +319,7 @@ function KanbanColumn({
           {orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-40 text-gray-300">
               <Package2 className="h-8 w-8 mb-2" />
-              <p className="text-xs">Empty</p>
+              <p className="text-xs">No new orders</p>
             </div>
           ) : (
             orders.map((order) => (
@@ -305,7 +337,7 @@ function KanbanColumn({
   );
 }
 
-// ─── Main kanban ─────────────────────────────────────────────────────────────────────────
+// ─── Main kanban ───────────────────────────────────────────────────────────────
 
 export function OrderKanban({ orders, onOrderClick }: OrderKanbanProps) {
   const [activeId, setActiveId] = useState<Id<"orders"> | null>(null);
@@ -316,7 +348,7 @@ export function OrderKanban({ orders, onOrderClick }: OrderKanbanProps) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  // Group orders into the 5 active pipeline columns
+  // Group orders into the 4 active pipeline columns
   const ordersByColumn = PIPELINE.reduce(
     (acc, colId) => {
       acc[colId] = orders.filter((o) => getColumnId(o) === colId);
@@ -338,13 +370,6 @@ export function OrderKanban({ orders, onOrderClick }: OrderKanbanProps) {
     const activeOrder   = orders.find((o) => o._id === activeOrderId);
     if (!activeOrder) return;
 
-    /**
-     * Resolve the target status using defaultStatus (not raw status).
-     * Priority:
-     *  1. over.data.current.defaultStatus  (columns and cards both carry this)
-     *  2. parse column-{id} string → look up COLUMN_CONFIG
-     *  3. find the hovered order, get its column, get that column’s defaultStatus
-     */
     let newStatus: OrderStatus | null = null;
 
     if (over.data.current?.defaultStatus) {
@@ -361,7 +386,6 @@ export function OrderKanban({ orders, onOrderClick }: OrderKanbanProps) {
     }
 
     if (!newStatus) return;
-    // Already in target state — nothing to do
     if (newStatus === activeOrder.status) return;
 
     try {
@@ -373,7 +397,6 @@ export function OrderKanban({ orders, onOrderClick }: OrderKanbanProps) {
   };
 
   const activeOrder = activeId ? orders.find((o) => o._id === activeId) : null;
-  const activeColId = activeOrder ? getColumnId(activeOrder) : null;
 
   return (
     <div className="w-full">
@@ -384,11 +407,8 @@ export function OrderKanban({ orders, onOrderClick }: OrderKanbanProps) {
         onDragEnd={handleDragEnd}
         onDragCancel={() => setActiveId(null)}
       >
-        {/*
-         * 5-column grid — fits on any ≥xl screen without horizontal scroll.
-         * xl = 1280px, 5 equal columns ≈ 240px each.
-         */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        {/* F1: 4-column grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4">
           {PIPELINE.map((colId) => (
             <KanbanColumn
               key={colId}

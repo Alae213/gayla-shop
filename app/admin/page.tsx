@@ -13,13 +13,6 @@ import {
   ToggleGroupItem,
 } from "@/components/ui/toggle-group";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Sparkles,
   Package,
   LogOut,
@@ -32,16 +25,16 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 // Components
-import { StatsCards }          from "@/components/admin/stats-cards";
-import { HeroEditor }          from "@/components/admin/hero-editor";
-import { ProductGrid }         from "@/components/admin/product-grid";
-import { ProductModal }        from "@/components/admin/product-modal";
-import { OrderKanban }         from "@/components/admin/order-kanban";
-import { OrderTable }          from "@/components/admin/order-table";
-import { OrderArchive }        from "@/components/admin/order-archive";
-import { OrderDrawer }         from "@/components/admin/order-drawer";
+import { StatsCards }   from "@/components/admin/stats-cards";
+import { HeroEditor }   from "@/components/admin/hero-editor";
+import { ProductGrid }  from "@/components/admin/product-grid";
+import { ProductModal } from "@/components/admin/product-modal";
+import { OrderKanban }  from "@/components/admin/order-kanban";
+import { OrderTable }   from "@/components/admin/order-table";
+import { OrderArchive } from "@/components/admin/order-archive";
+import { OrderDrawer }  from "@/components/admin/order-drawer";
 
-// ─── Types ────────────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type AdminMode    = "build" | "tracking";
 type TrackingView = "kanban" | "table" | "archive";
@@ -49,7 +42,7 @@ type TrackingView = "kanban" | "table" | "archive";
 type OrderStatus =
   | "Pending"
   | "Confirmed"
-  | "Called no respond" // legacy
+  | "Called no respond"
   | "Called 01"
   | "Called 02"
   | "Cancelled"
@@ -58,31 +51,64 @@ type OrderStatus =
   | "Delivered"
   | "Retour";
 
+type DateFilter = "all" | "today" | "week" | "month";
+
+/** F4 — date filter config */
+const DATE_FILTER_OPTIONS: { value: DateFilter; label: string }[] = [
+  { value: "all",   label: "All"        },
+  { value: "today", label: "Today"      },
+  { value: "week",  label: "This week"  },
+  { value: "month", label: "This month" },
+];
+
 /** Terminal statuses shown only in the Archive tab, never on the active board. */
 const TERMINAL_STATUSES: OrderStatus[] = ["Delivered", "Retour", "Cancelled"];
 
-// ─── Page ────────────────────────────────────────────────────────────────────────────
+// ─── F4: date boundary helpers ────────────────────────────────────────────────
+
+function getDateBoundary(filter: DateFilter): number | null {
+  if (filter === "all") return null;
+  const now = new Date();
+  if (filter === "today") {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return start.getTime();
+  }
+  if (filter === "week") {
+    // Last Monday 00:00 local
+    const day  = now.getDay(); // 0=Sun … 6=Sat
+    const diff = (day === 0 ? 6 : day - 1); // days since Monday
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff);
+    return monday.getTime();
+  }
+  if (filter === "month") {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    return start.getTime();
+  }
+  return null;
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
   const router = useRouter();
 
-  // ─ Mode & View state ─────────────────────────────────────────────────────────────
+  // ─ Mode & View state ────────────────────────────────────────────────────────
   const [mode,         setMode]         = useState<AdminMode>("build");
   const [trackingView, setTrackingView] = useState<TrackingView>("kanban");
 
-  // ─ Order state ────────────────────────────────────────────────────────────────────
-  const [searchQuery,    setSearchQuery]    = useState("");
-  const [statusFilter,   setStatusFilter]   = useState<OrderStatus | "all">("all");
+  // ─ Order state ───────────────────────────────────────────────────────────────
+  const [searchQuery,     setSearchQuery]     = useState("");
+  const [dateFilter,      setDateFilter]      = useState<DateFilter>("week"); // F4 default
   const [selectedOrderId, setSelectedOrderId] = useState<Id<"orders"> | null>(null);
 
-  // ─ Product modal state ──────────────────────────────────────────────────────────
+  // ─ Product modal state ───────────────────────────────────────────────────────
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProductId,   setEditingProductId]   = useState<Id<"products"> | null>(null);
 
-  // ─ Delivery settings state ──────────────────────────────────────────────────────
+  // ─ Delivery settings state ───────────────────────────────────────────────────
   const [isDeliverySettingsOpen, setIsDeliverySettingsOpen] = useState(false);
 
-  // ─ Convex queries ────────────────────────────────────────────────────────────────
+  // ─ Convex queries ────────────────────────────────────────────────────────────
   const siteContent    = useQuery(api.siteContent.get);
   const products       = useQuery(api.products.list, {});
   const orders         = useQuery(api.orders.list, {});
@@ -96,10 +122,10 @@ export default function AdminPage() {
     editingProductId ? { id: editingProductId } : "skip",
   );
 
-  // ─ Mutations ─────────────────────────────────────────────────────────────────────
+  // ─ Mutations ─────────────────────────────────────────────────────────────────
   const deleteProduct = useMutation(api.products.remove);
 
-  // ─ Handlers ──────────────────────────────────────────────────────────────────────
+  // ─ Handlers ──────────────────────────────────────────────────────────────────
   const handleAddProduct = () => {
     setEditingProductId(null);
     setIsProductModalOpen(true);
@@ -130,15 +156,17 @@ export default function AdminPage() {
     router.push("/admin/login");
   };
 
-  // ─ Filter orders ─────────────────────────────────────────────────────────────────
+  // ─ F4: filter orders by date + search ────────────────────────────────────────
+  const dateBoundary = getDateBoundary(dateFilter);
+
   const filteredOrders = orders?.filter((order) => {
     const matchesSearch =
       order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.customerPhone.includes(searchQuery);
-    const matchesStatus =
-      statusFilter === "all" || order.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesDate =
+      dateBoundary === null || order._creationTime >= dateBoundary;
+    return matchesSearch && matchesDate;
   });
 
   // Active pipeline — feeds Kanban and Table views
@@ -150,7 +178,7 @@ export default function AdminPage() {
     (o) => TERMINAL_STATUSES.includes(o.status as OrderStatus),
   );
 
-  // ─ Loading ───────────────────────────────────────────────────────────────────────
+  // ─ Loading ───────────────────────────────────────────────────────────────────
   if (siteContent === undefined || products === undefined || orders === undefined) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -168,7 +196,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
 
-      {/* ══ Top Bar ═════════════════════════════════════════════════════════════════ */}
+      {/* ══ Top Bar ═════════════════════════════════════════════════════════════ */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -230,10 +258,10 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* ══ Main Content ═══════════════════════════════════════════════════════════ */}
+      {/* ══ Main Content ════════════════════════════════════════════════════════ */}
       <div className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* ══ BUILD MODE ═════════════════════════════════════════════════════════ */}
+        {/* ══ BUILD MODE ══════════════════════════════════════════════════════ */}
         {mode === "build" && (
           <div className="space-y-8">
             <StatsCards mode="build" siteContent={siteContent} products={products} />
@@ -247,13 +275,13 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ══ TRACKING MODE ══════════════════════════════════════════════════════ */}
+        {/* ══ TRACKING MODE ═══════════════════════════════════════════════════ */}
         {mode === "tracking" && (
           <div className="space-y-6">
             <StatsCards mode="tracking" orderStats={orderStats} />
 
-            {/* ─ Toolbar ──────────────────────────────────────────────────────────────── */}
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 flex items-center justify-between gap-4 flex-wrap">
+            {/* ─ Toolbar ────────────────────────────────────────────────────── */}
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 flex items-center gap-4 flex-wrap">
 
               {/* Search */}
               <div className="relative flex-1 min-w-[200px] max-w-md">
@@ -267,55 +295,50 @@ export default function AdminPage() {
                 />
               </div>
 
-              {/* Status filter */}
-              <Select
-                value={statusFilter}
-                onValueChange={(value) =>
-                  setStatusFilter(value as OrderStatus | "all")
-                }
-              >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="Pending">⏳ Pending</SelectItem>
-                  <SelectItem value="Called 01">📞 Called 01</SelectItem>
-                  <SelectItem value="Called 02">📞 Called 02</SelectItem>
-                  <SelectItem value="Confirmed">✓ Confirmed</SelectItem>
-                  <SelectItem value="Packaged">📦 Packaged</SelectItem>
-                  <SelectItem value="Shipped">🚚 Shipped</SelectItem>
-                  <SelectItem value="Delivered">✓✓ Delivered</SelectItem>
-                  <SelectItem value="Retour">↩ Retour</SelectItem>
-                  <SelectItem value="Cancelled">✕ Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
+              {/* F4 — date filter chips (replaces old status <Select>) */}
+              <div className="flex items-center gap-1.5">
+                {DATE_FILTER_OPTIONS.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => setDateFilter(value)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+                      dateFilter === value
+                        ? "bg-gray-900 text-white border-gray-900"
+                        : "bg-white border-gray-200 text-gray-600 hover:border-gray-400"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
 
-              {/* View toggle — 3 options: Kanban / Table / Archive */}
-              <ToggleGroup
-                type="single"
-                value={trackingView}
-                onValueChange={(value) =>
-                  value && setTrackingView(value as TrackingView)
-                }
-                className="border border-gray-200 rounded-lg p-1"
-              >
-                <ToggleGroupItem value="kanban" className="gap-1.5 text-xs">
-                  <LayoutGrid className="h-4 w-4" />
-                  Kanban
-                </ToggleGroupItem>
-                <ToggleGroupItem value="table" className="gap-1.5 text-xs">
-                  <LayoutList className="h-4 w-4" />
-                  Table
-                </ToggleGroupItem>
-                <ToggleGroupItem value="archive" className="gap-1.5 text-xs">
-                  <Archive className="h-4 w-4" />
-                  Archive
-                </ToggleGroupItem>
-              </ToggleGroup>
+              {/* View toggle */}
+              <div className="ml-auto">
+                <ToggleGroup
+                  type="single"
+                  value={trackingView}
+                  onValueChange={(value) =>
+                    value && setTrackingView(value as TrackingView)
+                  }
+                  className="border border-gray-200 rounded-lg p-1"
+                >
+                  <ToggleGroupItem value="kanban" className="gap-1.5 text-xs">
+                    <LayoutGrid className="h-4 w-4" />
+                    Kanban
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="table" className="gap-1.5 text-xs">
+                    <LayoutList className="h-4 w-4" />
+                    Table
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="archive" className="gap-1.5 text-xs">
+                    <Archive className="h-4 w-4" />
+                    Archive
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
             </div>
 
-            {/* ─ Active pipeline views (kanban + table) ─────────────────────────── */}
+            {/* ─ Active pipeline views ──────────────────────────────────────── */}
             {trackingView === "kanban" && (
               <OrderKanban
                 orders={activeOrders ?? []}
@@ -330,7 +353,7 @@ export default function AdminPage() {
               />
             )}
 
-            {/* ─ Archive tab ───────────────────────────────────────────────────────────── */}
+            {/* ─ Archive tab ─────────────────────────────────────────────────── */}
             {trackingView === "archive" && (
               <OrderArchive
                 orders={archiveOrders ?? []}
@@ -346,7 +369,7 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* ══ Overlays ═══════════════════════════════════════════════════════════════ */}
+      {/* ══ Overlays ════════════════════════════════════════════════════════════ */}
       <ProductModal
         isOpen={isProductModalOpen}
         onClose={handleCloseProductModal}
@@ -354,7 +377,6 @@ export default function AdminPage() {
         onSuccess={() => {}}
       />
 
-      {/* Phase 2: right-side drawer — modal={false} keeps the board interactive */}
       <OrderDrawer
         isOpen={selectedOrderId !== null}
         onClose={() => setSelectedOrderId(null)}
