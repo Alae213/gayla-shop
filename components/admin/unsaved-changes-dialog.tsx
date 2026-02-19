@@ -1,6 +1,11 @@
 "use client";
 
-import { AlertTriangle } from "lucide-react";
+/**
+ * UnsavedChangesDialog
+ * M1 Task 1.2 — shown when the admin tries to leave Build Mode
+ * while the hero editor has unsaved changes.
+ */
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,11 +16,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TriangleAlert } from "lucide-react";
 
 interface UnsavedChangesDialogProps {
   open: boolean;
   onLeave: () => void;
-  onStay: () => void;
+  onStay:  () => void;
 }
 
 export function UnsavedChangesDialog({
@@ -24,25 +30,28 @@ export function UnsavedChangesDialog({
   onStay,
 }: UnsavedChangesDialogProps) {
   return (
-    <AlertDialog open={open}>
+    <AlertDialog
+      open={open}
+      onOpenChange={(isOpen) => { if (!isOpen) onStay(); }}
+    >
       <AlertDialogContent className="max-w-sm">
         <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2 text-amber-700">
-            <AlertTriangle className="h-5 w-5" />
-            Unsaved changes
-          </AlertDialogTitle>
+          <div className="flex items-center gap-2 text-amber-600 mb-1">
+            <TriangleAlert className="h-5 w-5 shrink-0" />
+            <AlertDialogTitle className="text-amber-700">
+              Unsaved changes
+            </AlertDialogTitle>
+          </div>
           <AlertDialogDescription>
-            You have unsaved edits in the Hero section. If you leave now, your
-            changes will be lost.
+            Your hero section has unsaved changes. If you leave now they will
+            be lost.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onStay}>
-            Stay &amp; save
-          </AlertDialogCancel>
+          <AlertDialogCancel onClick={onStay}>Stay &amp; save</AlertDialogCancel>
           <AlertDialogAction
             onClick={onLeave}
-            className="bg-amber-600 hover:bg-amber-700 text-white"
+            className="bg-gray-900 hover:bg-gray-700 text-white"
           >
             Leave anyway
           </AlertDialogAction>
