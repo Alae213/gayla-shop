@@ -26,8 +26,8 @@ export default defineSchema({
     viewCount:  v.optional(v.number()),
     sortOrder:  v.optional(v.number()),
     isArchived: v.optional(v.boolean()),
-    createdAt:  v.number(),
-    updatedAt:  v.number(),
+    createdAt:  v.optional(v.number()),
+    updatedAt:  v.optional(v.number()),
   })
     .index("by_slug",   ["slug"])
     .index("by_status", ["status"]),
@@ -89,7 +89,7 @@ export default defineSchema({
     courierSentAt:     v.optional(v.number()),
     courierError:      v.optional(v.string()),
     lastUpdated:       v.optional(v.number()),
-    createdAt:         v.number(),
+    createdAt:         v.optional(v.number()),
     updatedAt:         v.optional(v.number()),
   })
     .index("by_orderNumber",    ["orderNumber"])
@@ -119,12 +119,10 @@ export default defineSchema({
     contactEmail:      v.optional(v.string()),
     contactPhone:      v.optional(v.string()),
     homepageViewCount: v.optional(v.number()),
-    updatedAt:         v.number(),
+    updatedAt:         v.optional(v.number()),
   }),
 
   // ─── adminUsers ────────────────────────────────────────────────────────────
-  // username and createdAt are optional to stay compatible with the existing
-  // admin document that was created before these fields were added to the schema.
   adminUsers: defineTable({
     username:     v.optional(v.string()),
     passwordHash: v.string(),
