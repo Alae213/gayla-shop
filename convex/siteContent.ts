@@ -35,6 +35,8 @@ export const initialize = mutation({
       heroSubtitle: "Discover premium men's streetwear fashion",
       heroCtaText: "Shop Now",
       homepageViewCount: 0,
+      contactEmail: "contact@gaylashop.com",
+      contactPhone: "",
       updatedAt: Date.now(),
     });
 
@@ -47,6 +49,8 @@ export const update = mutation({
     heroTitle: v.optional(v.string()),
     heroSubtitle: v.optional(v.string()),
     heroCtaText: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
     // M2 Task 2.4: allow clearing the hero image by passing null
     heroBackgroundImage: v.optional(
       v.union(
@@ -64,6 +68,8 @@ export const update = mutation({
         heroSubtitle: args.heroSubtitle || "Discover premium streetwear",
         heroCtaText: args.heroCtaText || "Shop Now",
         homepageViewCount: 0,
+        contactEmail: args.contactEmail || "contact@gaylashop.com",
+        contactPhone: args.contactPhone || "",
         updatedAt: Date.now(),
       });
       content = await ctx.db.get(id);
@@ -74,6 +80,8 @@ export const update = mutation({
     if (args.heroTitle !== undefined)           updates.heroTitle           = args.heroTitle;
     if (args.heroSubtitle !== undefined)        updates.heroSubtitle        = args.heroSubtitle;
     if (args.heroCtaText !== undefined)         updates.heroCtaText         = args.heroCtaText;
+    if (args.contactEmail !== undefined)        updates.contactEmail        = args.contactEmail;
+    if (args.contactPhone !== undefined)        updates.contactPhone        = args.contactPhone;
     if (args.heroBackgroundImage !== undefined) updates.heroBackgroundImage = args.heroBackgroundImage ?? undefined;
 
     await ctx.db.patch(content._id, updates);
