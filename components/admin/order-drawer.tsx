@@ -166,6 +166,9 @@ const CALL_LOG_STATUSES: OrderStatus[] = [
   "Pending", "Called no respond", "Called 01", "Called 02",
 ];
 
+// The pre-filled cancel reason used when 2× no-answer forces cancellation.
+const TWO_NO_ANSWER_REASON = "No answer after 2 attempts";
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerProps) {
@@ -232,19 +235,12 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
   const isBanned     = order.isBanned     ?? false;
   const showCallLog  = CALL_LOG_STATUSES.includes(order.status);
 
-  // G1: hasAnswered derived flag
-  const hasAnswered = order.callLog?.some((e) => e.outcome === "answered") ?? false;
-
-  // G2: master lock
+  const hasAnswered   = order.callLog?.some((e) => e.outcome === "answered") ?? false;
   const callLogLocked = hasAnswered || callAttempts >= 2;
+  const twoNoAnswers  = callAttempts >= 2 && !hasAnswered;
 
-  // Fix 2: derive twoNoAnswers — 2 failed calls, customer never answered.
-  // When true: hide "Confirm Order" and show a forced-cancel suggestion.
-  const twoNoAnswers = callAttempts >= 2 && !hasAnswered;
-
-  // Fix 2: at render time, filter out Confirm for twoNoAnswers orders.
   const rawActionBtns = STATUS_ACTIONS[order.status] ?? [];
-  const actionBtns = twoNoAnswers
+  const actionBtns    = twoNoAnswers
     ? rawActionBtns.filter((b) => b.toStatus !== "Confirmed")
     : rawActionBtns;
 
@@ -323,7 +319,12 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
       }
     } else {
       setPendingAction(btn);
-      setActionReason("");
+      // Fix 2: auto-prefill reason when cancelling a 2× no-answer order
+      setActionReason(
+        twoNoAnswers && btn.toStatus === "Cancelled"
+          ? TWO_NO_ANSWER_REASON
+          : ""
+      );
     }
   };
 
@@ -432,20 +433,17 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
             </div>
           )}
 
-          {/* § 1 ACTIONS ────────────────────────────────────────────────────── */}
+          {/* § 1 ACTIONS */}
           <div className="space-y-2">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Actions</h3>
 
-            {/* Fix 2: twoNoAnswers warning panel — shown above the action buttons */}
             {twoNoAnswers && (
               <div className="flex items-start gap-3 bg-amber-50 border-2 border-amber-200 rounded-xl p-4">
                 <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-amber-900 text-sm">
-                    2 unanswered call attempts
-                  </p>
+                  <p className="font-semibold text-amber-900 text-sm">2 unanswered call attempts</p>
                   <p className="text-xs text-amber-700 mt-0.5">
-                    The customer did not answer twice. "Confirm Order" has been removed.
+                    The customer did not answer twice. “Confirm Order” has been removed.
                     Please cancel this order below.
                   </p>
                 </div>
@@ -514,7 +512,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* § 2 ORDERED PRODUCT ────────────────────────────────────────────── */}
+          {/* § 2 ORDERED PRODUCT */}
           <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border-2 border-indigo-100">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -580,7 +578,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* § 3 CUSTOMER ───────────────────────────────────────────────────── */}
+          {/* § 3 CUSTOMER */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -658,7 +656,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* § 4 CUSTOMER RISK ──────────────────────────────────────────────── */}
+          {/* § 4 CUSTOMER RISK */}
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
             <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <Shield className="h-4 w-4 text-gray-500" /> Customer Risk
@@ -710,7 +708,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
             )}
           </div>
 
-          {/* § 5 CALL LOG ───────────────────────────────────────────────────── */}
+          {/* § 5 CALL LOG */}
           {showCallLog && (
             <>
               <Separator />
@@ -777,7 +775,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* § 6 INTERNAL NOTES ─────────────────────────────────────────────── */}
+          {/* § 6 INTERNAL NOTES */}
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <FileText className="h-4 w-4 text-gray-500" /> Internal Notes
@@ -807,7 +805,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* § 7 STATUS HISTORY ─────────────────────────────────────────────── */}
+          {/* § 7 STATUS HISTORY */}
           <div>
             <button onClick={() => setIsTimelineOpen((p) => !p)}
               className="w-full flex items-center justify-between text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors py-1">

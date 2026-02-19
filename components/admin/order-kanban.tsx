@@ -113,7 +113,7 @@ function CallBadge({ order, columnId }: { order: Order; columnId: ColumnId }) {
   if (callAttempts >= 2) {
     return (
       <div className="h-5 flex items-center">
-        <span className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0 rounded-sm bg-red-100 text-red-700 animate-pulse">
+        <span className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0 rounded-sm bg-red-100 text-red-700">
           📞 2/2 ⚠
         </span>
       </div>
@@ -161,24 +161,19 @@ function SortableOrderCard({
   const callAttempts = order.callAttempts ?? 0;
   const isBanned     = order.isBanned     ?? false;
   const fraudScore   = order.fraudScore   ?? 0;
+  const hasAnswered  = order.callLog?.some((e) => e.outcome === "answered") ?? false;
 
-  // Fix 1: derive hasAnswered so urgency visuals are suppressed when
-  // the customer has already answered — callAttempts can be >= 2 after
-  // one no-answer + one answered call, but that is a POSITIVE outcome.
-  const hasAnswered = order.callLog?.some((e) => e.outcome === "answered") ?? false;
-
+  // Left-border treatment:
+  // - Banned customer  → red border
+  // - High fraud score → amber border
+  // - 2× no-answer    → NO border (badge in row 4 is sufficient)
   const urgencyBorder =
-    callAttempts >= 2 && !hasAnswered   // Fix 1: gate on !hasAnswered
-      ? "border-l-[3px] border-l-red-500"
-      : isBanned
-      ? "border-l-[3px] border-l-red-400"
-      : fraudScore >= 3
-      ? "border-l-[3px] border-l-amber-400"
-      : "";
+    isBanned      ? "border-l-[3px] border-l-red-400"
+    : fraudScore >= 3 ? "border-l-[3px] border-l-amber-400"
+    : "";
 
-  // Fix 1: suppress pulsing ring when customer has answered
-  const pulseClass =
-    callAttempts >= 2 && !hasAnswered ? "ring-1 ring-red-300 animate-pulse" : "";
+  // No pulsing ring for any call-log state — badge communicates it clearly.
+  const pulseClass = "";
 
   return (
     <div
