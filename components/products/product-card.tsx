@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/utils";
@@ -27,15 +28,15 @@ export function ProductCard({ product }: ProductCardProps) {
 
   return (
     <Link href={`/products/${product.slug}`}>
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer h-full">
-        <div className="aspect-square relative bg-muted">
+      <Card className="group overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer h-full">
+        <div className="aspect-square relative bg-muted overflow-hidden">
           {mainImage ? (
-            // Using <img> instead of next/image to avoid remote pattern issues with Convex storage URLs
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={mainImage}
               alt={product.title}
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
               loading="lazy"
             />
           ) : (
