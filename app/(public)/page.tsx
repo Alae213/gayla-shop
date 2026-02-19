@@ -3,6 +3,7 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { ProductCard } from "@/components/products/product-card";
+import { ProductCardSkeleton } from "@/components/products/product-card-skeleton";
 import { useEffect } from "react";
 
 export default function HomePage() {
@@ -12,7 +13,7 @@ export default function HomePage() {
 
   useEffect(() => {
     incrementHomeViews();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const heroTitle = siteContent?.heroTitle || "Welcome to Gayla Shop";
@@ -52,8 +53,10 @@ export default function HomePage() {
         <div className="container">
           <h2 className="headline-h2 mb-8 text-system-400">Our Products</h2>
           {products === undefined ? (
-            <div className="flex justify-center py-12">
-              <h3 className="headline-h2 text-system-300">Loading products...</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <ProductCardSkeleton key={i} />
+              ))}
             </div>
           ) : products.length === 0 ? (
             <p className="text-center text-system-300 py-12 caption-text">
