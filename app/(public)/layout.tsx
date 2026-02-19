@@ -1,11 +1,7 @@
-import type { Metadata } from "next";
+"use client";
+
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
-
-export const metadata: Metadata = {
-  title: "Gayla Shop - Online Store",
-  description: "Discover our quality products",
-};
 
 export default function PublicLayout({
   children,

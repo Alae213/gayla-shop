@@ -1,10 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 export function Footer() {
   const siteContent = useQuery(api.siteContent.get);
-  
+
   const contactEmail = siteContent?.contactEmail || "contact@gaylashop.com";
   const contactPhone = siteContent?.contactPhone || "";
 
@@ -50,7 +52,7 @@ export function Footer() {
         </div>
 
         <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-          © 2026 Gayla Shop. All rights reserved.
+          &copy; 2026 Gayla Shop. All rights reserved.
         </div>
       </div>
     </footer>
