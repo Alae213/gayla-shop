@@ -30,6 +30,9 @@ export default defineSchema({
       )
     ),
     viewCount: v.optional(v.number()),
+    // Admin-defined display order. Lower = appears first on public site.
+    // Optional so existing products without it fall back to createdAt sort.
+    sortOrder: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -39,6 +42,7 @@ export default defineSchema({
   orders: defineTable({
     orderNumber: v.string(),
     productId: v.id("products"),
+    productName: v.optional(v.string()),
     customerName: v.string(),
     customerPhone: v.string(),
     customerWilaya: v.string(),
@@ -46,13 +50,19 @@ export default defineSchema({
     customerAddress: v.optional(v.string()),
     deliveryType: v.union(v.literal("Stopdesk"), v.literal("Domicile")),
     deliveryCost: v.number(),
+    totalAmount: v.optional(v.number()),
     status: v.optional(
       v.union(
-        v.literal("pending"),
-        v.literal("confirmed"),
-        v.literal("shipped"),
-        v.literal("delivered"),
-        v.literal("cancelled")
+        v.literal("Pending"),
+        v.literal("Confirmed"),
+        v.literal("Called no respond"),
+        v.literal("Called 01"),
+        v.literal("Called 02"),
+        v.literal("Cancelled"),
+        v.literal("Packaged"),
+        v.literal("Shipped"),
+        v.literal("Delivered"),
+        v.literal("Retour")
       )
     ),
     selectedVariant: v.optional(
@@ -61,6 +71,7 @@ export default defineSchema({
         color: v.optional(v.string()),
       })
     ),
+    notes: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
   })
@@ -90,7 +101,7 @@ export default defineSchema({
     homepageViewCount: v.optional(v.number()),
     updatedAt: v.number(),
   }),
-  // Admin users table for authentication
+
   adminUsers: defineTable({
     username: v.string(),
     passwordHash: v.string(),
