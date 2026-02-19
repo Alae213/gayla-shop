@@ -24,16 +24,15 @@ import {
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-// Components
-import { StatsCards }            from "@/components/admin/stats-cards";
-import { HeroEditor }            from "@/components/admin/hero-editor";
-import { ProductGrid }           from "@/components/admin/product-grid";
-import { ProductModal }          from "@/components/admin/product-modal";
-import { OrderKanban }           from "@/components/admin/order-kanban";
-import { OrderTable }            from "@/components/admin/order-table";
-import { OrderArchive }          from "@/components/admin/order-archive";
-import { OrderDrawer }           from "@/components/admin/order-drawer";
-import { UnsavedChangesDialog }  from "@/components/admin/unsaved-changes-dialog";
+import { StatsCards }           from "@/components/admin/stats-cards";
+import { HeroEditor }           from "@/components/admin/hero-editor";
+import { ProductGrid }          from "@/components/admin/product-grid";
+import { ProductModal }         from "@/components/admin/product-modal";
+import { OrderKanban }          from "@/components/admin/order-kanban";
+import { OrderTable }           from "@/components/admin/order-table";
+import { OrderArchive }         from "@/components/admin/order-archive";
+import { OrderDrawer }          from "@/components/admin/order-drawer";
+import { UnsavedChangesDialog } from "@/components/admin/unsaved-changes-dialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,44 +40,33 @@ type AdminMode    = "build" | "tracking";
 type TrackingView = "kanban" | "table" | "archive";
 
 type OrderStatus =
-  | "Pending"
-  | "Confirmed"
-  | "Called no respond"
-  | "Called 01"
-  | "Called 02"
-  | "Cancelled"
-  | "Packaged"
-  | "Shipped"
-  | "Delivered"
-  | "Retour";
+  | "Pending" | "Confirmed" | "Called no respond"
+  | "Called 01" | "Called 02" | "Cancelled"
+  | "Packaged" | "Shipped" | "Delivered" | "Retour";
 
 type DateFilter = "all" | "today" | "week" | "month";
 
 const DATE_FILTER_OPTIONS: { value: DateFilter; label: string }[] = [
-  { value: "all",   label: "All"       },
-  { value: "today", label: "Today"     },
-  { value: "week",  label: "This week" },
-  { value: "month", label: "This month"},
+  { value: "all",   label: "All"        },
+  { value: "today", label: "Today"      },
+  { value: "week",  label: "This week"  },
+  { value: "month", label: "This month" },
 ];
 
 const TERMINAL_STATUSES: OrderStatus[] = ["Delivered", "Retour", "Cancelled"];
 
-// ─── Date boundary helpers ────────────────────────────────────────────────────
-
 function getDateBoundary(filter: DateFilter): number | null {
   if (filter === "all") return null;
   const now = new Date();
-  if (filter === "today") {
+  if (filter === "today")
     return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  }
   if (filter === "week") {
-    const day  = now.getDay();
+    const day = now.getDay();
     const diff = day === 0 ? 6 : day - 1;
     return new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff).getTime();
   }
-  if (filter === "month") {
+  if (filter === "month")
     return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-  }
   return null;
 }
 
@@ -87,27 +75,30 @@ function getDateBoundary(filter: DateFilter): number | null {
 export default function AdminPage() {
   const router = useRouter();
 
-  // ─ Mode & view ──────────────────────────────────────────────────────────────
+  // Mode & view
   const [mode,              setMode]              = useState<AdminMode>("build");
   const [trackingView,      setTrackingView]      = useState<TrackingView>("kanban");
 
-  // M1 Task 1.2 — unsaved-state guard
+  // M1 — unsaved-state guard
   const [isBuildDirty,      setIsBuildDirty]      = useState(false);
   const [pendingModeSwitch, setPendingModeSwitch] = useState<AdminMode | null>(null);
 
-  // ─ Order state ──────────────────────────────────────────────────────────────
-  const [searchQuery,       setSearchQuery]       = useState("");
-  const [dateFilter,        setDateFilter]        = useState<DateFilter>("week");
-  const [selectedOrderId,   setSelectedOrderId]   = useState<Id<"orders"> | null>(null);
+  // M2 Task 2.2 — no-image filter for product grid
+  const [noImageFilter, setNoImageFilter] = useState(false);
 
-  // ─ Product modal ────────────────────────────────────────────────────────────
-  const [isProductModalOpen,   setIsProductModalOpen]   = useState(false);
-  const [editingProductId,     setEditingProductId]     = useState<Id<"products"> | null>(null);
+  // Order state
+  const [searchQuery,     setSearchQuery]     = useState("");
+  const [dateFilter,      setDateFilter]      = useState<DateFilter>("week");
+  const [selectedOrderId, setSelectedOrderId] = useState<Id<"orders"> | null>(null);
 
-  // ─ Delivery settings ────────────────────────────────────────────────────────
+  // Product modal
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [editingProductId,   setEditingProductId]   = useState<Id<"products"> | null>(null);
+
+  // Delivery settings
   const [isDeliverySettingsOpen, setIsDeliverySettingsOpen] = useState(false);
 
-  // ─ Convex queries ───────────────────────────────────────────────────────────
+  // Convex queries
   const siteContent    = useQuery(api.siteContent.get);
   const products       = useQuery(api.products.list, {});
   const orders         = useQuery(api.orders.list, {});
@@ -121,24 +112,20 @@ export default function AdminPage() {
     editingProductId ? { id: editingProductId } : "skip",
   );
 
-  // ─ Mutations ────────────────────────────────────────────────────────────────
+  // Mutations
   const deleteProduct  = useMutation(api.products.remove);
-  const restoreProduct = useMutation(api.products.restore); // M1 Task 1.1 — undo
+  const restoreProduct = useMutation(api.products.restore);
 
-  // ─ M1 Task 1.2: beforeunload warning when hero has unsaved edits ─────────────
+  // M1 — beforeunload guard
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (isBuildDirty) {
-        e.preventDefault();
-        e.returnValue = ""; // triggers browser's native "Leave site?" dialog
-      }
+      if (isBuildDirty) { e.preventDefault(); e.returnValue = ""; }
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [isBuildDirty]);
 
-  // ─ Handlers ──────────────────────────────────────────────────────────────────
-
+  // Handlers
   const handleAddProduct = () => {
     setEditingProductId(null);
     setIsProductModalOpen(true);
@@ -154,33 +141,30 @@ export default function AdminPage() {
     setTimeout(() => setEditingProductId(null), 300);
   };
 
-  // M1 Task 1.1 — soft-delete with Undo toast (5s)
+  // M1 — soft-delete + undo toast
   const handleDeleteProduct = async (productId: Id<"products">) => {
     try {
       await deleteProduct({ id: productId });
-      toast(
-        `Product removed from catalog`,
-        {
-          action: {
-            label: "Undo",
-            onClick: async () => {
-              try {
-                await restoreProduct({ id: productId });
-                toast.success("Product restored!");
-              } catch (e: any) {
-                toast.error(e.message || "Failed to restore product");
-              }
-            },
+      toast("Product removed from catalog", {
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            try {
+              await restoreProduct({ id: productId });
+              toast.success("Product restored!");
+            } catch (e: any) {
+              toast.error(e.message || "Failed to restore product");
+            }
           },
-          duration: 5000,
-        }
-      );
+        },
+        duration: 5000,
+      });
     } catch (error: any) {
       toast.error(error.message || "Failed to delete product");
     }
   };
 
-  // M1 Task 1.2 — gated mode switch
+  // M1 — gated mode switch
   const handleModeChange = (newMode: AdminMode) => {
     if (!newMode) return;
     if (mode === "build" && isBuildDirty) {
@@ -195,9 +179,8 @@ export default function AdminPage() {
     router.push("/admin/login");
   };
 
-  // ─ Filter orders ─────────────────────────────────────────────────────────────
+  // Filter orders
   const dateBoundary = getDateBoundary(dateFilter);
-
   const filteredOrders = orders?.filter((order) => {
     const matchesSearch =
       order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -206,15 +189,15 @@ export default function AdminPage() {
     const matchesDate = dateBoundary === null || order._creationTime >= dateBoundary;
     return matchesSearch && matchesDate;
   });
+  const activeOrders  = filteredOrders?.filter((o) => !TERMINAL_STATUSES.includes(o.status as OrderStatus));
+  const archiveOrders = filteredOrders?.filter((o) => TERMINAL_STATUSES.includes(o.status as OrderStatus));
 
-  const activeOrders  = filteredOrders?.filter(
-    (o) => !TERMINAL_STATUSES.includes(o.status as OrderStatus),
-  );
-  const archiveOrders = filteredOrders?.filter(
-    (o) => TERMINAL_STATUSES.includes(o.status as OrderStatus),
-  );
+  // M2 Task 2.2 — apply no-image filter to products
+  const displayedProducts = noImageFilter
+    ? (products ?? []).filter((p) => !p.images || p.images.length === 0)
+    : (products ?? []);
 
-  // ─ Loading ───────────────────────────────────────────────────────────────────
+  // Loading
   if (siteContent === undefined || products === undefined || orders === undefined) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -232,7 +215,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
 
-      {/* ══ Top Bar ════════════════════════════════════════════════════════════ */}
+      {/* Top Bar */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -244,8 +227,6 @@ export default function AdminPage() {
                   <p className="text-xs text-gray-500">Control Panel</p>
                 </div>
               </div>
-
-              {/* M1 Task 1.2 — mode switch gated by dirty check */}
               <ToggleGroup
                 type="single"
                 value={mode}
@@ -268,25 +249,14 @@ export default function AdminPage() {
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
-
             <div className="flex items-center gap-3">
               {mode === "tracking" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsDeliverySettingsOpen(true)}
-                  className="gap-2"
-                >
+                <Button variant="outline" size="sm" onClick={() => setIsDeliverySettingsOpen(true)} className="gap-2">
                   <Settings className="h-4 w-4" />
                   Delivery Settings
                 </Button>
               )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                className="gap-2"
-              >
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
                 <LogOut className="h-4 w-4" />
                 Logout
               </Button>
@@ -295,34 +265,46 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* ══ Main Content ═══════════════════════════════════════════════════════ */}
+      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* ══ BUILD MODE ════════════════════════════════════════════════════ */}
+        {/* BUILD MODE */}
         {mode === "build" && (
           <div className="space-y-8">
-            <StatsCards mode="build" siteContent={siteContent} products={products} />
-            {/* M1 Task 1.2 — onDirtyChange wired up */}
+            <StatsCards
+              mode="build"
+              siteContent={siteContent}
+              products={products}
+              onNoImageClick={() => {
+                setNoImageFilter(true);
+                // Scroll to product grid
+                setTimeout(() =>
+                  document.getElementById("section-products")?.scrollIntoView({ behavior: "smooth" })
+                , 100);
+              }}
+            />
             <HeroEditor
               siteContent={siteContent}
               onSave={() => {}}
               onDirtyChange={setIsBuildDirty}
             />
-            <ProductGrid
-              products={products}
-              onEdit={handleEditProduct}
-              onDelete={handleDeleteProduct}
-              onAdd={handleAddProduct}
-            />
+            <div id="section-products">
+              <ProductGrid
+                products={displayedProducts}
+                onEdit={handleEditProduct}
+                onDelete={handleDeleteProduct}
+                onAdd={handleAddProduct}
+                noImageFilterActive={noImageFilter}
+                onClearFilter={() => setNoImageFilter(false)}
+              />
+            </div>
           </div>
         )}
 
-        {/* ══ TRACKING MODE ══════════════════════════════════════════════════ */}
+        {/* TRACKING MODE */}
         {mode === "tracking" && (
           <div className="space-y-6">
             <StatsCards mode="tracking" orderStats={orderStats} />
-
-            {/* Toolbar */}
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 flex items-center gap-4 flex-wrap">
               <div className="relative flex-1 min-w-[200px] max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -334,7 +316,6 @@ export default function AdminPage() {
                   className="pl-10"
                 />
               </div>
-
               <div className="flex items-center gap-1.5">
                 {DATE_FILTER_OPTIONS.map(({ value, label }) => (
                   <button
@@ -350,52 +331,31 @@ export default function AdminPage() {
                   </button>
                 ))}
               </div>
-
               <div className="ml-auto">
                 <ToggleGroup
                   type="single"
                   value={trackingView}
-                  onValueChange={(value) =>
-                    value && setTrackingView(value as TrackingView)
-                  }
+                  onValueChange={(value) => value && setTrackingView(value as TrackingView)}
                   className="border border-gray-200 rounded-lg p-1"
                 >
                   <ToggleGroupItem value="kanban" className="gap-1.5 text-xs">
-                    <LayoutGrid className="h-4 w-4" />
-                    Kanban
+                    <LayoutGrid className="h-4 w-4" />Kanban
                   </ToggleGroupItem>
                   <ToggleGroupItem value="table" className="gap-1.5 text-xs">
-                    <LayoutList className="h-4 w-4" />
-                    Table
+                    <LayoutList className="h-4 w-4" />Table
                   </ToggleGroupItem>
                   <ToggleGroupItem value="archive" className="gap-1.5 text-xs">
-                    <Archive className="h-4 w-4" />
-                    Archive
+                    <Archive className="h-4 w-4" />Archive
                   </ToggleGroupItem>
                 </ToggleGroup>
               </div>
             </div>
-
-            {trackingView === "kanban" && (
-              <OrderKanban
-                orders={activeOrders ?? []}
-                onOrderClick={(id) => setSelectedOrderId(id)}
-              />
-            )}
-            {trackingView === "table" && (
-              <OrderTable
-                orders={activeOrders ?? []}
-                onOrderClick={(id) => setSelectedOrderId(id)}
-              />
-            )}
+            {trackingView === "kanban" && <OrderKanban orders={activeOrders ?? []} onOrderClick={(id) => setSelectedOrderId(id)} />}
+            {trackingView === "table"  && <OrderTable  orders={activeOrders ?? []} onOrderClick={(id) => setSelectedOrderId(id)} />}
             {trackingView === "archive" && (
               <OrderArchive
                 orders={archiveOrders ?? []}
-                stats={{
-                  Delivered: orderStats?.Delivered,
-                  Retour:    orderStats?.Retour,
-                  Cancelled: orderStats?.Cancelled,
-                }}
+                stats={{ Delivered: orderStats?.Delivered, Retour: orderStats?.Retour, Cancelled: orderStats?.Cancelled }}
                 onOrderClick={(id) => setSelectedOrderId(id)}
               />
             )}
@@ -403,27 +363,23 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* ══ Overlays ═══════════════════════════════════════════════════════════ */}
+      {/* Overlays */}
       <ProductModal
         isOpen={isProductModalOpen}
         onClose={handleCloseProductModal}
         product={editingProduct ?? null}
         onSuccess={() => {}}
       />
-
       <OrderDrawer
         isOpen={selectedOrderId !== null}
         onClose={() => setSelectedOrderId(null)}
         order={(selectedOrder as any) ?? null}
         onSuccess={() => {}}
       />
-
       <DeliverySettingsModal
         isOpen={isDeliverySettingsOpen}
         onClose={() => setIsDeliverySettingsOpen(false)}
       />
-
-      {/* M1 Task 1.2 — unsaved changes guard dialog */}
       <UnsavedChangesDialog
         open={pendingModeSwitch !== null}
         onLeave={() => {

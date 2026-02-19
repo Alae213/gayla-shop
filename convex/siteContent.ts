@@ -7,7 +7,6 @@ export const get = query({
     const content = await ctx.db.query("siteContent").first();
     if (!content) return null;
 
-    // Resolve hero background image URL from storage if storageId is set
     if (content.heroBackgroundImage?.storageId) {
       const resolvedUrl = await ctx.storage.getUrl(
         content.heroBackgroundImage.storageId
@@ -36,6 +35,7 @@ export const initialize = mutation({
       heroSubtitle: "Discover premium men's streetwear fashion",
       heroCtaText: "Shop Now",
       homepageViewCount: 0,
+      updatedAt: Date.now(),
     });
 
     return await ctx.db.get(id);
@@ -47,11 +47,12 @@ export const update = mutation({
     heroTitle: v.optional(v.string()),
     heroSubtitle: v.optional(v.string()),
     heroCtaText: v.optional(v.string()),
+    // M2 Task 2.4: allow clearing the hero image by passing null
     heroBackgroundImage: v.optional(
-      v.object({
-        url: v.string(),
-        storageId: v.string(),
-      })
+      v.union(
+        v.object({ url: v.string(), storageId: v.string() }),
+        v.null()
+      )
     ),
   },
   handler: async (ctx, args) => {
@@ -63,22 +64,19 @@ export const update = mutation({
         heroSubtitle: args.heroSubtitle || "Discover premium streetwear",
         heroCtaText: args.heroCtaText || "Shop Now",
         homepageViewCount: 0,
+        updatedAt: Date.now(),
       });
       content = await ctx.db.get(id);
       if (!content) throw new Error("Failed to create content");
     }
 
-    const updates: any = {};
-    if (args.heroTitle !== undefined) updates.heroTitle = args.heroTitle;
-    if (args.heroSubtitle !== undefined) updates.heroSubtitle = args.heroSubtitle;
-    if (args.heroCtaText !== undefined) updates.heroCtaText = args.heroCtaText;
-    if (args.heroBackgroundImage !== undefined)
-      updates.heroBackgroundImage = args.heroBackgroundImage;
+    const updates: any = { updatedAt: Date.now() }; // M2 Task 2.2 — always stamp
+    if (args.heroTitle !== undefined)           updates.heroTitle           = args.heroTitle;
+    if (args.heroSubtitle !== undefined)        updates.heroSubtitle        = args.heroSubtitle;
+    if (args.heroCtaText !== undefined)         updates.heroCtaText         = args.heroCtaText;
+    if (args.heroBackgroundImage !== undefined) updates.heroBackgroundImage = args.heroBackgroundImage ?? undefined;
 
-    if (Object.keys(updates).length > 0) {
-      await ctx.db.patch(content._id, updates);
-    }
-
+    await ctx.db.patch(content._id, updates);
     return { success: true };
   },
 });
@@ -88,31 +86,22 @@ export const incrementHomeViews = mutation({
   handler: async (ctx) => {
     const content = await ctx.db.query("siteContent").first();
     if (!content) throw new Error("Site content not found");
-
     await ctx.db.patch(content._id, {
       homepageViewCount: (content.homepageViewCount || 0) + 1,
     });
-
     return { success: true };
   },
 });
 
 export const uploadHeroImage = mutation({
-  args: {
-    storageId: v.string(),
-    url: v.string(),
-  },
+  args: { storageId: v.string(), url: v.string() },
   handler: async (ctx, args) => {
     const content = await ctx.db.query("siteContent").first();
     if (!content) throw new Error("Site content not found");
-
     await ctx.db.patch(content._id, {
-      heroBackgroundImage: {
-        storageId: args.storageId,
-        url: args.url,
-      },
+      heroBackgroundImage: { storageId: args.storageId, url: args.url },
+      updatedAt: Date.now(),
     });
-
     return { success: true };
   },
 });

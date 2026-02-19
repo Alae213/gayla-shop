@@ -33,7 +33,7 @@ export default defineSchema({
     viewCount: v.number(),
     createdAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
-    // M1 Task 1.1 — soft-delete flag
+    // M1 — soft-delete flag
     isArchived: v.optional(v.boolean()),
   })
     .index("by_slug", ["slug"])
@@ -146,5 +146,7 @@ export default defineSchema({
       })
     ),
     homepageViewCount: v.number(),
+    // M2 Task 2.2 — content-health stat: when was hero last saved
+    updatedAt: v.optional(v.number()),
   }),
 });
