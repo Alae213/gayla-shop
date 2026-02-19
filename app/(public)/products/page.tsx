@@ -16,7 +16,6 @@ import {
 export default function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
-  // Fetch ALL active products once — derive categories from data, not hardcoded
   const allProducts = useQuery(api.products.list, { status: "Active" });
 
   const categories = useMemo(() => {
@@ -34,7 +33,7 @@ export default function ProductsPage() {
   }, [allProducts, selectedCategory]);
 
   return (
-    <div className="container py-12">
+    <div className="page-container py-12">
       {/* Page header */}
       <div className="mb-10">
         <nav className="mb-3 flex gap-2 caption-text text-system-300">
@@ -53,7 +52,6 @@ export default function ProductsPage() {
             )}
           </div>
 
-          {/* Category filter — only show when data is loaded */}
           {allProducts !== undefined && categories.length > 0 && (
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger className="w-full sm:w-[200px]">

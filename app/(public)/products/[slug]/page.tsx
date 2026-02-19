@@ -11,10 +11,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 
-// ── Loading skeleton ──────────────────────────────────────────────────────────
 function ProductDetailSkeleton() {
   return (
-    <div className="container py-12">
+    <div className="page-container py-12">
       <div className="h-4 w-48 bg-system-200 rounded animate-pulse mb-8" />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
         <div className="space-y-4">
@@ -42,7 +41,6 @@ function ProductDetailSkeleton() {
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
 export default function ProductDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
@@ -65,8 +63,7 @@ export default function ProductDetailPage() {
   const currentImage = product.images?.[selectedImageIndex]?.url;
 
   return (
-    <div className="container py-10 md:py-14">
-      {/* Breadcrumb */}
+    <div className="page-container py-10 md:py-14">
       <nav className="mb-8 flex gap-2 caption-text text-system-300">
         <Link href="/" className="hover:text-system-400 transition-colors">Home</Link>
         <span>/</span>
@@ -76,9 +73,7 @@ export default function ProductDetailPage() {
       </nav>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
-        {/* ── Left: Images ─────────────────────────────────── */}
         <div className="space-y-4">
-          {/* Main image */}
           <div className="aspect-square relative overflow-hidden rounded-2xl bg-system-100 group">
             {currentImage ? (
               <Image
@@ -97,7 +92,6 @@ export default function ProductDetailPage() {
             )}
           </div>
 
-          {/* Thumbnails */}
           {product.images && product.images.length > 1 && (
             <div className="grid grid-cols-5 gap-2">
               {product.images.map((image, index) => (
@@ -125,9 +119,7 @@ export default function ProductDetailPage() {
           )}
         </div>
 
-        {/* ── Right: Info + Order Form ─────────────────────── */}
         <div className="space-y-8">
-          {/* Title / Price / Meta */}
           <div className="space-y-3">
             {product.category && (
               <Badge variant="secondary" className="caption-text">
@@ -142,10 +134,8 @@ export default function ProductDetailPage() {
             </p>
           </div>
 
-          {/* Divider */}
           <div className="border-t border-system-200" />
 
-          {/* Description */}
           {product.description && (
             <div
               className="prose prose-sm max-w-none text-system-300 leading-relaxed"
@@ -153,7 +143,6 @@ export default function ProductDetailPage() {
             />
           )}
 
-          {/* Order Form */}
           <OrderForm product={product} />
         </div>
       </div>

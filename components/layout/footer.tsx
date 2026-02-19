@@ -13,9 +13,8 @@ export function Footer() {
 
   return (
     <footer className="border-t bg-white mt-auto">
-      <div className="container py-12">
+      <div className="page-container py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-          {/* Brand */}
           <div className="space-y-3">
             <Link href="/" className="flex items-center gap-2">
               <ShoppingBag className="h-5 w-5 text-brand-200" />
@@ -26,7 +25,6 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Links */}
           <div className="space-y-3">
             <p className="caption-text font-semibold text-system-400 uppercase tracking-wide">Navigation</p>
             <ul className="space-y-2">
@@ -48,7 +46,6 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Contact */}
           <div className="space-y-3">
             <p className="caption-text font-semibold text-system-400 uppercase tracking-wide">Contact</p>
             <div className="space-y-1">

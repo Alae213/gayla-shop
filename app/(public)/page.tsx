@@ -33,7 +33,7 @@ export default function HomePage() {
         }}
       >
         <div className="absolute inset-0 bg-black/40" />
-        <div className="container relative z-10 py-20">
+        <div className="page-container relative z-10 py-20">
           <div className="max-w-2xl">
             <h1 className="headline-h1 mb-5 text-white">{heroTitle}</h1>
             <p className="body-text mb-10 text-white/85 max-w-lg">{heroSubtitle}</p>
@@ -54,7 +54,7 @@ export default function HomePage() {
 
       {/* Products Catalog */}
       <section id="products" className="py-16">
-        <div className="container">
+        <div className="page-container">
           <h2 className="headline-h2 mb-2 text-system-400">Our Products</h2>
           <p className="caption-text text-system-300 mb-8">Handpicked streetwear for every style</p>
 
