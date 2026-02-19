@@ -7,6 +7,7 @@ import { OrderForm } from "@/components/products/order-form";
 import { formatPrice } from "@/lib/utils";
 import { Loader2, ImageIcon } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -44,17 +45,27 @@ export default function ProductDetailPage() {
 
   return (
     <div className="container py-12">
+      <nav className="mb-6 text-sm text-muted-foreground flex gap-2">
+        <a href="/" className="hover:text-foreground">Home</a>
+        <span>/</span>
+        <a href="/products" className="hover:text-foreground">Products</a>
+        <span>/</span>
+        <span className="text-foreground">{product.title}</span>
+      </nav>
+      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
         {/* Product Images */}
         <div className="space-y-4">
           {/* Main Image */}
-          <div className="aspect-square relative overflow-hidden rounded-lg bg-muted flex items-center justify-center">
+          <div className="aspect-square relative overflow-hidden rounded-lg bg-muted flex items-center justify-center group">
             {currentImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={currentImage}
                 alt={product.title}
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover transition-transform duration-500 group-hover:scale-110 cursor-zoom-in"
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                priority
               />
             ) : (
               <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -65,7 +76,7 @@ export default function ProductDetailPage() {
           </div>
 
           {/* Thumbnails */}
-          {product.images.length > 1 && (
+          {product.images && product.images.length > 1 && (
             <div className="grid grid-cols-4 gap-2">
               {product.images.map((image, index) => (
                 <button
@@ -76,12 +87,14 @@ export default function ProductDetailPage() {
                       ? "border-primary"
                       : "border-transparent hover:border-primary/50"
                   }`}
+                  aria-label={`View ${product.title} image ${index + 1}`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={image.url}
                     alt={`${product.title} ${index + 1}`}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
+                    sizes="25vw"
                     loading="lazy"
                   />
                 </button>
@@ -102,11 +115,10 @@ export default function ProductDetailPage() {
           </div>
 
           {product.description && (
-            <div className="prose prose-sm max-w-none">
-              <p className="text-muted-foreground whitespace-pre-wrap">
-                {product.description}
-              </p>
-            </div>
+            <div
+              className="prose prose-sm max-w-none text-muted-foreground"
+              dangerouslySetInnerHTML={{ __html: product.description }}
+            />
           )}
 
           <OrderForm product={product} />
