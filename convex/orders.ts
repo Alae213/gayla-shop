@@ -66,7 +66,7 @@ export const getByOrderNumber = query({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("orders")
-      .withIndex("by_order_number", (q) => q.eq("orderNumber", args.orderNumber))
+      .withIndex("by_orderNumber", (q) => q.eq("orderNumber", args.orderNumber))
       .first();
   },
 });
@@ -88,7 +88,8 @@ export const getStats = query({
       Packaged: 0, Shipped: 0, Delivered: 0, Retour: 0,
     };
     orders.forEach((order) => {
-      if (counts[order.status] !== undefined) counts[order.status]++;
+      const s = order.status;
+      if (s && counts[s] !== undefined) counts[s]++;
     });
     return {
       ...counts,
@@ -133,16 +134,16 @@ export const create = mutation({
     while (attempts < 5) {
       const existing = await ctx.db
         .query("orders")
-        .withIndex("by_order_number", (q) => q.eq("orderNumber", orderNumber))
+        .withIndex("by_orderNumber", (q) => q.eq("orderNumber", orderNumber))
         .first();
       if (!existing) break;
       orderNumber = generateOrderNumber();
       attempts++;
     }
 
-    const totalAmount    = product.price + args.deliveryCost;
-    const now            = Date.now();
-    const initialStatus  = isBanned ? "Cancelled" : "Pending";
+    const totalAmount   = product.price + args.deliveryCost;
+    const now           = Date.now();
+    const initialStatus = isBanned ? "Cancelled" : "Pending";
 
     const orderId = await ctx.db.insert("orders", {
       orderNumber,
@@ -166,6 +167,7 @@ export const create = mutation({
       adminNotes:      [],
       fraudScore:      0,
       isBanned,
+      createdAt:       now,
       statusHistory: [
         {
           status: initialStatus,
@@ -206,9 +208,9 @@ export const update = mutation({
     const { id, ...updates } = args;
     const order = await ctx.db.get(id);
     if (!order) throw new Error("Order not found");
-    let totalAmount    = order.totalAmount;
-    if (updates.deliveryCost !== undefined) totalAmount = order.productPrice + updates.deliveryCost;
-    let statusHistory  = order.statusHistory;
+    let totalAmount   = order.totalAmount;
+    if (updates.deliveryCost !== undefined) totalAmount = (order.productPrice ?? 0) + updates.deliveryCost;
+    let statusHistory = order.statusHistory;
     if (updates.status && updates.status !== order.status) {
       statusHistory = pushStatusHistory(order, updates.status);
     }
@@ -239,7 +241,7 @@ export const logCallAttempt = mutation({
     const currentAttempts = order.callAttempts ?? 0;
     const newAttempts     = currentAttempts + 1;
     const callLog         = pushCallLog(order, args.outcome, args.note);
-    let newStatus: string = order.status;
+    let newStatus: string = order.status ?? "Pending";
     if (args.outcome === "no_answer") {
       if (currentAttempts === 0) newStatus = "Called 01";
       else if (currentAttempts === 1) newStatus = "Called 02";
@@ -294,11 +296,11 @@ export const markRetour = mutation({
     if (!order) throw new Error("Order not found");
     const statusHistory = pushStatusHistory(order, "Retour", args.reason);
     await ctx.db.patch(order._id, {
-      status:      "Retour",
+      status:       "Retour",
       retourReason: args.reason,
-      fraudScore:  (order.fraudScore ?? 0) + 1,
+      fraudScore:   (order.fraudScore ?? 0) + 1,
       statusHistory,
-      lastUpdated: Date.now(),
+      lastUpdated:  Date.now(),
     });
     return { success: true };
   },
@@ -311,12 +313,12 @@ export const markCourierSent = mutation({
     if (!order) throw new Error("Order not found");
     const statusHistory = pushStatusHistory(order, "Packaged");
     await ctx.db.patch(order._id, {
-      status:           "Packaged",
+      status:            "Packaged",
       courierTrackingId: args.trackingId,
-      courierSentAt:    Date.now(),
-      courierError:     undefined,
+      courierSentAt:     Date.now(),
+      courierError:      undefined,
       statusHistory,
-      lastUpdated:      Date.now(),
+      lastUpdated:       Date.now(),
     });
     return { success: true };
   },
@@ -327,13 +329,13 @@ export const markCourierFailed = mutation({
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("Order not found");
-    const statusHistory = pushStatusHistory(order, order.status, `Courier send failed: ${args.error}`);
+    const statusHistory = pushStatusHistory(order, order.status ?? "Pending", `Courier send failed: ${args.error}`);
     await ctx.db.patch(order._id, { courierError: args.error, statusHistory, lastUpdated: Date.now() });
     return { success: true };
   },
 });
 
-// ─── ARCHIVE CLEANUP (Phase E) ────────────────────────────────────────────────
+// ─── ARCHIVE CLEANUP ──────────────────────────────────────────────────────────
 
 const TERMINAL_STATUSES = ["Delivered", "Retour", "Cancelled"] as const;
 const SIXTY_DAYS_MS     = 60 * 24 * 60 * 60 * 1000;
@@ -342,12 +344,12 @@ export const getArchiveCleanupPreview = query({
   handler: async (ctx) => {
     const orders   = await ctx.db.query("orders").collect();
     const terminal = orders.filter((o) =>
-      (TERMINAL_STATUSES as readonly string[]).includes(o.status)
+      (TERMINAL_STATUSES as readonly string[]).includes(o.status ?? "")
     );
     if (terminal.length === 0) {
       return { eligibleCount: 0, totalTerminal: 0, oldestCreationTime: null };
     }
-    const cutoff  = Date.now() - SIXTY_DAYS_MS;
+    const cutoff   = Date.now() - SIXTY_DAYS_MS;
     const eligible = terminal.filter((o) => o._creationTime < cutoff);
     const oldest   = Math.min(...terminal.map((o) => o._creationTime));
     return { eligibleCount: eligible.length, totalTerminal: terminal.length, oldestCreationTime: oldest };
@@ -356,11 +358,11 @@ export const getArchiveCleanupPreview = query({
 
 export const purgeOldArchive = mutation({
   handler: async (ctx) => {
-    const cutoff  = Date.now() - SIXTY_DAYS_MS;
-    const orders  = await ctx.db.query("orders").collect();
+    const cutoff   = Date.now() - SIXTY_DAYS_MS;
+    const orders   = await ctx.db.query("orders").collect();
     const toDelete = orders.filter(
       (o) =>
-        (TERMINAL_STATUSES as readonly string[]).includes(o.status) &&
+        (TERMINAL_STATUSES as readonly string[]).includes(o.status ?? "") &&
         o._creationTime < cutoff
     );
     for (const order of toDelete) await ctx.db.delete(order._id);
@@ -368,11 +370,6 @@ export const purgeOldArchive = mutation({
   },
 });
 
-/**
- * Fix 3: Delete a specific list of orders by ID.
- * Used by the Archive checkbox selection "Delete selected" action.
- * No status or age restriction — deletes exactly what was passed.
- */
 export const purgeByIds = mutation({
   args: { ids: v.array(v.id("orders")) },
   handler: async (ctx, args) => {

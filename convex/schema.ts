@@ -37,8 +37,8 @@ export default defineSchema({
     orderNumber:      v.string(),
     productId:        v.id("products"),
     productName:      v.optional(v.string()),
-    // productPrice stored at order-time so it's stable if product price changes
     productPrice:     v.optional(v.number()),
+    productSlug:      v.optional(v.string()),
     customerName:     v.string(),
     customerPhone:    v.string(),
     customerWilaya:   v.string(),
@@ -65,37 +65,36 @@ export default defineSchema({
       size:  v.optional(v.string()),
       color: v.optional(v.string()),
     })),
-    notes:       v.optional(v.string()),
-    // Status change audit trail
+    notes:        v.optional(v.string()),
     statusHistory: v.optional(v.array(v.object({
       status:    v.string(),
       timestamp: v.number(),
       note:      v.optional(v.string()),
+      reason:    v.optional(v.string()),
     }))),
-    // Call-attempt tracking (Called 01 / Called 02 / Called no respond)
     callAttempts: v.optional(v.number()),
-    // Admin internal notes array
+    callLog: v.optional(v.array(v.object({
+      timestamp: v.number(),
+      outcome:   v.union(v.literal("answered"), v.literal("no_answer")),
+      note:      v.optional(v.string()),
+    }))),
     adminNotes: v.optional(v.array(v.object({
       text:      v.string(),
       timestamp: v.number(),
     }))),
-    // Customer ban flag (blocks future orders from same phone)
-    isBanned:    v.optional(v.boolean()),
-    // Retour / fraud
-    retourReason: v.optional(v.string()),
-    fraudScore:   v.optional(v.number()),
-    // Courier integration
+    isBanned:          v.optional(v.boolean()),
+    retourReason:      v.optional(v.string()),
+    fraudScore:        v.optional(v.number()),
     courierTrackingId: v.optional(v.string()),
+    courierSentAt:     v.optional(v.number()),
     courierError:      v.optional(v.string()),
-    // Timestamps
-    lastUpdated: v.optional(v.number()),
-    createdAt:   v.number(),
-    updatedAt:   v.optional(v.number()),
+    lastUpdated:       v.optional(v.number()),
+    createdAt:         v.number(),
+    updatedAt:         v.optional(v.number()),
   })
-    .index("by_orderNumber",      ["orderNumber"])
-    .index("by_order_number",     ["orderNumber"])   // legacy alias used in orders.ts
-    .index("by_status",           ["status"])
-    .index("by_customer_phone",   ["customerPhone"]),
+    .index("by_orderNumber",    ["orderNumber"])
+    .index("by_status",         ["status"])
+    .index("by_customer_phone", ["customerPhone"]),
 
   // ─── deliveryCosts ─────────────────────────────────────────────────────────
   deliveryCosts: defineTable({
@@ -106,8 +105,7 @@ export default defineSchema({
     isManualOverride: v.optional(v.boolean()),
     updatedAt:        v.number(),
   })
-    .index("by_wilayaId",    ["wilayaId"])
-    .index("by_wilaya_id",   ["wilayaId"]),  // legacy alias used in deliveryCosts.ts
+    .index("by_wilayaId", ["wilayaId"]),
 
   // ─── siteContent ───────────────────────────────────────────────────────────
   siteContent: defineTable({
