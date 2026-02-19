@@ -2,18 +2,22 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // Products table
   products: defineTable({
     title: v.string(),
     slug: v.string(),
     description: v.optional(v.string()),
     price: v.number(),
-    category: v.string(),
+    category: v.optional(v.string()),
+    status: v.union(
+      v.literal("Active"),
+      v.literal("Draft"),
+      v.literal("Out of stock")
+    ),
     images: v.optional(
       v.array(
         v.object({
-          url: v.string(),
           storageId: v.string(),
+          url: v.string(),
         })
       )
     ),
@@ -25,128 +29,71 @@ export default defineSchema({
         })
       )
     ),
-    status: v.union(
-      v.literal("Active"),
-      v.literal("Draft"),
-      v.literal("Out of stock")
-    ),
-    viewCount: v.number(),
-    createdAt: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
-    // M1 — soft-delete flag
-    isArchived: v.optional(v.boolean()),
+    viewCount: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
   })
     .index("by_slug", ["slug"])
-    .index("by_category", ["category"])
     .index("by_status", ["status"]),
 
-  // Orders table
   orders: defineTable({
     orderNumber: v.string(),
-    status: v.union(
-      v.literal("Pending"),
-      v.literal("Confirmed"),
-      v.literal("Cancelled"),
-      v.literal("Called no respond"),
-      v.literal("Called 01"),
-      v.literal("Called 02"),
-      v.literal("Packaged"),
-      v.literal("Shipped"),
-      v.literal("Delivered"),
-      v.literal("Retour")
-    ),
+    productId: v.id("products"),
     customerName: v.string(),
     customerPhone: v.string(),
     customerWilaya: v.string(),
-    customerCommune: v.string(),
-    customerAddress: v.string(),
-    deliveryType: v.union(v.literal("Domicile"), v.literal("Stopdesk")),
+    customerCommune: v.optional(v.string()),
+    customerAddress: v.optional(v.string()),
+    deliveryType: v.union(v.literal("Stopdesk"), v.literal("Domicile")),
     deliveryCost: v.number(),
-    productId: v.id("products"),
-    productName: v.string(),
-    productPrice: v.number(),
-    productSlug: v.optional(v.string()),
+    status: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("confirmed"),
+        v.literal("shipped"),
+        v.literal("delivered"),
+        v.literal("cancelled")
+      )
+    ),
     selectedVariant: v.optional(
       v.object({
         size: v.optional(v.string()),
         color: v.optional(v.string()),
       })
     ),
-    totalAmount: v.number(),
-    lastUpdated: v.number(),
+    createdAt: v.number(),
     updatedAt: v.optional(v.number()),
-    callAttempts: v.optional(v.number()),
-    callLog: v.optional(
-      v.array(
-        v.object({
-          timestamp: v.number(),
-          outcome: v.union(
-            v.literal("answered"),
-            v.literal("no_answer")
-          ),
-          note: v.optional(v.string()),
-        })
-      )
-    ),
-    statusHistory: v.optional(
-      v.array(
-        v.object({
-          status: v.string(),
-          timestamp: v.number(),
-          reason: v.optional(v.string()),
-        })
-      )
-    ),
-    adminNotes: v.optional(
-      v.array(
-        v.object({
-          text: v.string(),
-          timestamp: v.number(),
-        })
-      )
-    ),
-    fraudScore: v.optional(v.number()),
-    isBanned: v.optional(v.boolean()),
-    courierSentAt: v.optional(v.number()),
-    courierTrackingId: v.optional(v.string()),
-    courierError: v.optional(v.string()),
-    retourReason: v.optional(v.string()),
   })
-    .index("by_order_number", ["orderNumber"])
-    .index("by_status", ["status"])
-    .index("by_customer_phone", ["customerPhone"]),
+    .index("by_orderNumber", ["orderNumber"])
+    .index("by_status", ["status"]),
 
-  // Delivery costs table
   deliveryCosts: defineTable({
     wilayaId: v.number(),
     wilayaName: v.string(),
-    domicileCost: v.number(),
     stopdeskCost: v.number(),
-    lastFetched: v.number(),
-    isManualOverride: v.boolean(),
-  }).index("by_wilaya_id", ["wilayaId"]),
+    domicileCost: v.number(),
+    updatedAt: v.number(),
+  }).index("by_wilayaId", ["wilayaId"]),
 
-  // Admin users table
-  adminUsers: defineTable({
-    email: v.string(),
-    passwordHash: v.string(),
-    name: v.string(),
-    lastLogin: v.optional(v.number()),
-  }).index("by_email", ["email"]),
-
-  // Site content table
   siteContent: defineTable({
     heroTitle: v.optional(v.string()),
     heroSubtitle: v.optional(v.string()),
     heroCtaText: v.optional(v.string()),
     heroBackgroundImage: v.optional(
       v.object({
-        url: v.string(),
         storageId: v.string(),
+        url: v.string(),
       })
     ),
-    homepageViewCount: v.number(),
-    // M2 Task 2.2 — content-health stat: when was hero last saved
-    updatedAt: v.optional(v.number()),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    homepageViewCount: v.optional(v.number()),
+    updatedAt: v.number(),
   }),
+  // Admin users table for authentication
+  adminUsers: defineTable({
+    username: v.string(),
+    passwordHash: v.string(),
+    createdAt: v.number(),
+  }).index("by_username", ["username"]),
 });
