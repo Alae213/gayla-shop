@@ -28,7 +28,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
   return (
     <Link href={`/products/${product.slug}`}>
-      <Card className="group overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer h-full">
+      <Card className="group overflow-hidden hover:shadow-m transition-shadow duration-300 cursor-pointer h-full">
         <div className="aspect-square relative bg-muted overflow-hidden">
           {mainImage ? (
             <Image
@@ -40,9 +40,9 @@ export function ProductCard({ product }: ProductCardProps) {
               loading="lazy"
             />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground gap-2">
+            <div className="w-full h-full flex flex-col items-center justify-center text-system-300 gap-2">
               <ImageIcon className="h-10 w-10 opacity-30" />
-              <span className="text-xs">No Image</span>
+              <span className="caption-text">No Image</span>
             </div>
           )}
           {product.status === "Out of stock" && (
@@ -57,17 +57,17 @@ export function ProductCard({ product }: ProductCardProps) {
 
         <CardContent className="p-4">
           {product.category && (
-            <Badge variant="secondary" className="mb-2">
+            <Badge variant="secondary" className="mb-2 caption-text">
               {product.category}
             </Badge>
           )}
-          <h3 className="font-semibold text-lg line-clamp-2 mb-2">
+          <h3 className="headline-h2 line-clamp-2 mb-2">
             {product.title}
           </h3>
         </CardContent>
 
         <CardFooter className="p-4 pt-0">
-          <p className="text-xl font-bold text-primary">
+          <p className="body-text font-bold text-brand-200">
             {formatPrice(product.price, "en-US")}
           </p>
         </CardFooter>
