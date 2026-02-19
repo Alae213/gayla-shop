@@ -1,4 +1,13 @@
+import Link from "next/link";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+
 export function Footer() {
+  const siteContent = useQuery(api.siteContent.get);
+  
+  const contactEmail = siteContent?.contactEmail || "contact@gaylashop.com";
+  const contactPhone = siteContent?.contactPhone || "";
+
   return (
     <footer className="border-t py-8 mt-auto">
       <div className="container">
@@ -14,14 +23,14 @@ export function Footer() {
             <h3 className="font-bold mb-4">Quick Links</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="/products" className="text-muted-foreground hover:text-primary">
+                <Link href="/products" className="text-muted-foreground hover:text-primary">
                   Products
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="/track-order" className="text-muted-foreground hover:text-primary">
+                <Link href="/track-order" className="text-muted-foreground hover:text-primary">
                   Track Order
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -29,9 +38,13 @@ export function Footer() {
           <div>
             <h3 className="font-bold mb-4">Contact</h3>
             <p className="text-sm text-muted-foreground">
-              Email: contact@gaylashop.com
-              <br />
-              Phone: +213 XXX XXX XXX
+              Email: {contactEmail}
+              {contactPhone && (
+                <>
+                  <br />
+                  Phone: {contactPhone}
+                </>
+              )}
             </p>
           </div>
         </div>
