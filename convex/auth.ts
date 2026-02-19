@@ -3,7 +3,6 @@ import { mutation, query } from "./_generated/server";
 
 // Simple password hashing using Web Crypto API
 async function hashPassword(password: string): Promise<string> {
-  // Simple hash for development (use proper bcrypt in production)
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
@@ -37,15 +36,14 @@ export const login = mutation({
       throw new Error("Invalid email or password");
     }
 
-    // Update last login
     await ctx.db.patch(user._id, {
       lastLogin: Date.now(),
     });
 
     return {
       userId: user._id,
-      email: user.email,
-      name: user.name,
+      email:  user.email,
+      name:   user.name,
     };
   },
 });
@@ -57,14 +55,11 @@ export const getCurrentUser = query({
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
-    if (!user) {
-      return null;
-    }
-
+    if (!user) return null;
     return {
-      userId: user._id,
-      email: user.email,
-      name: user.name,
+      userId:    user._id,
+      email:     user.email,
+      name:      user.name,
       lastLogin: user.lastLogin,
     };
   },
@@ -73,12 +68,11 @@ export const getCurrentUser = query({
 // Create admin user (for initial setup)
 export const createAdminUser = mutation({
   args: {
-    email: v.string(),
+    email:    v.string(),
     password: v.string(),
-    name: v.string(),
+    name:     v.string(),
   },
   handler: async (ctx, args) => {
-    // Check if user already exists
     const existing = await ctx.db
       .query("adminUsers")
       .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase()))
@@ -89,12 +83,16 @@ export const createAdminUser = mutation({
     }
 
     const passwordHash = await hashPassword(args.password);
+    // username is required by the schema — derive it from the email local part
+    const username = args.email.toLowerCase().split("@")[0];
 
     const userId = await ctx.db.insert("adminUsers", {
-      email: args.email.toLowerCase(),
+      username,
+      email:        args.email.toLowerCase(),
       passwordHash,
-      name: args.name,
-      lastLogin: Date.now(),
+      name:         args.name,
+      lastLogin:    Date.now(),
+      createdAt:    Date.now(),
     });
 
     return { userId };
