@@ -63,15 +63,15 @@ interface Order {
   _id: Id<"orders">;
   _creationTime: number;
   orderNumber: string;
-  status: OrderStatus;
+  status?: OrderStatus;
   customerName: string;
   customerPhone: string;
   customerWilaya?: string;
-  productName: string;
-  productPrice: number;
+  productName?: string;
+  productPrice?: number;
   deliveryType: "Domicile" | "Stopdesk";
   deliveryCost: number;
-  totalAmount: number;
+  totalAmount?: number;
   callAttempts?: number;
   callLog?: Array<{ timestamp: number; outcome: "answered" | "no_answer" }>;
   isBanned?: boolean;
@@ -86,10 +86,12 @@ interface OrderKanbanProps {
 // ─── Helper: map order → column ──────────────────────────────────────────────
 
 function getColumnId(order: Order): ColumnId | null {
-  if (NEW_STATUSES.includes(order.status)) return "New";
-  if (order.status === "Confirmed")         return "Confirmed";
-  if (order.status === "Packaged")          return "Packaged";
-  if (order.status === "Shipped")           return "Shipped";
+  const s = order.status;
+  if (!s) return null;
+  if ((NEW_STATUSES as string[]).includes(s)) return "New";
+  if (s === "Confirmed") return "Confirmed";
+  if (s === "Packaged")  return "Packaged";
+  if (s === "Shipped")   return "Shipped";
   return null;
 }
 
@@ -161,19 +163,12 @@ function SortableOrderCard({
   const callAttempts = order.callAttempts ?? 0;
   const isBanned     = order.isBanned     ?? false;
   const fraudScore   = order.fraudScore   ?? 0;
-  const hasAnswered  = order.callLog?.some((e) => e.outcome === "answered") ?? false;
+  const totalAmount  = order.totalAmount  ?? (order.productPrice ?? 0) + (order.deliveryCost ?? 0);
 
-  // Left-border treatment:
-  // - Banned customer  → red border
-  // - High fraud score → amber border
-  // - 2× no-answer    → NO border (badge in row 4 is sufficient)
   const urgencyBorder =
-    isBanned      ? "border-l-[3px] border-l-red-400"
+    isBanned        ? "border-l-[3px] border-l-red-400"
     : fraudScore >= 3 ? "border-l-[3px] border-l-amber-400"
     : "";
-
-  // No pulsing ring for any call-log state — badge communicates it clearly.
-  const pulseClass = "";
 
   return (
     <div
@@ -186,7 +181,7 @@ function SortableOrderCard({
         group bg-white border border-gray-200 rounded-lg p-3
         cursor-pointer hover:shadow-md hover:border-indigo-300
         transition-all duration-200
-        ${urgencyBorder} ${pulseClass}
+        ${urgencyBorder}
       `}
     >
       {/* Row 1: order number + delivery badge */}
@@ -207,9 +202,9 @@ function SortableOrderCard({
       </h4>
 
       {/* Row 3: product name */}
-      <p className="text-sm text-gray-600 mb-1.5 line-clamp-1">{order.productName}</p>
+      <p className="text-sm text-gray-600 mb-1.5 line-clamp-1">{order.productName ?? "—"}</p>
 
-      {/* Row 4: call badge (always h-5 to lock card height) */}
+      {/* Row 4: call badge */}
       <CallBadge order={order} columnId={columnId} />
 
       {/* Row 5: footer — phone + total */}
@@ -219,11 +214,11 @@ function SortableOrderCard({
           <span className="truncate max-w-[90px]">{order.customerPhone}</span>
         </div>
         <span className="text-xs font-bold text-gray-800">
-          {order.totalAmount.toLocaleString()} DA
+          {totalAmount.toLocaleString()} DA
         </span>
       </div>
 
-      {/* Row 6: wilaya — always rendered to lock height */}
+      {/* Row 6: wilaya */}
       <div className="flex items-center gap-1 text-xs text-gray-400 mt-1 h-4">
         <MapPin className="h-3 w-3 shrink-0" />
         <span className="truncate">{order.customerWilaya || "\u00a0"}</span>
@@ -378,7 +373,7 @@ export function OrderKanban({ orders, onOrderClick }: OrderKanbanProps) {
             <div className="bg-white border-2 border-indigo-400 rounded-lg p-3 shadow-2xl w-52 rotate-2 scale-105">
               <span className="font-mono text-xs font-semibold text-indigo-600">{activeOrder.orderNumber}</span>
               <p className="font-semibold text-sm text-gray-900 mt-1">{activeOrder.customerName}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{activeOrder.productName}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{activeOrder.productName ?? "—"}</p>
             </div>
           )}
         </DragOverlay>

@@ -31,13 +31,13 @@ interface Order {
   _id: Id<"orders">;
   _creationTime: number;
   orderNumber: string;
-  status: OrderStatus;
+  status?: OrderStatus;
   customerName: string;
   customerPhone: string;
-  customerWilaya: string;
-  productName: string;
+  customerWilaya?: string;
+  productName?: string;
   deliveryType: "Domicile" | "Stopdesk";
-  totalAmount: number;
+  totalAmount?: number;
   callAttempts?: number;
   isBanned?: boolean;
 }
@@ -45,11 +45,8 @@ interface Order {
 interface OrderTableProps {
   orders: Order[];
   onOrderClick: (orderId: Id<"orders">) => void;
-  /** When true, renders a checkbox column for multi-select. Default false. */
   selectable?: boolean;
-  /** Currently selected IDs (controlled from parent). */
   selectedIds?: Set<Id<"orders">>;
-  /** Called when selection changes. Parent owns the state. */
   onSelectionChange?: (ids: Set<Id<"orders">>) => void;
 }
 
@@ -68,8 +65,8 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   Retour:              "bg-slate-100  text-slate-700  border-slate-300",
 };
 
-const getStatusColor = (s: OrderStatus) =>
-  STATUS_COLORS[s] ?? "bg-gray-100 text-gray-700 border-gray-300";
+const getStatusColor = (s?: OrderStatus) =>
+  s ? (STATUS_COLORS[s] ?? "bg-gray-100 text-gray-700 border-gray-300") : "bg-gray-100 text-gray-700 border-gray-300";
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -88,7 +85,6 @@ export function OrderTable({
   const toggleAll = () => {
     if (!onSelectionChange) return;
     if (allSelected) {
-      // deselect all rows currently visible
       const next = new Set(selected);
       orders.forEach((o) => next.delete(o._id));
       onSelectionChange(next);
@@ -120,7 +116,6 @@ export function OrderTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-gray-50">
-            {/* Checkbox column — only in selectable mode */}
             {selectable && (
               <TableHead className="w-10 px-3">
                 <input
@@ -155,7 +150,6 @@ export function OrderTable({
                   isSelected ? "bg-indigo-50 hover:bg-indigo-100" : "hover:bg-gray-50"
                 }`}
               >
-                {/* Checkbox cell — stops row click propagation */}
                 {selectable && (
                   <TableCell className="w-10 px-3" onClick={(e) => e.stopPropagation()}>
                     <input
@@ -182,11 +176,11 @@ export function OrderTable({
                   </div>
                 </TableCell>
 
-                <TableCell className="text-sm text-gray-700">{order.productName}</TableCell>
+                <TableCell className="text-sm text-gray-700">{order.productName ?? "—"}</TableCell>
 
                 <TableCell>
                   <Badge className={`text-xs ${getStatusColor(order.status)}`}>
-                    {order.status}
+                    {order.status ?? "—"}
                   </Badge>
                 </TableCell>
 
@@ -205,12 +199,12 @@ export function OrderTable({
                 <TableCell>
                   <div>
                     <p className="text-sm">{order.deliveryType}</p>
-                    <p className="text-xs text-gray-500">{order.customerWilaya}</p>
+                    <p className="text-xs text-gray-500">{order.customerWilaya ?? "—"}</p>
                   </div>
                 </TableCell>
 
                 <TableCell className="font-semibold text-sm">
-                  {order.totalAmount.toLocaleString()} DA
+                  {(order.totalAmount ?? 0).toLocaleString()} DA
                 </TableCell>
 
                 <TableCell className="text-sm text-gray-500">
