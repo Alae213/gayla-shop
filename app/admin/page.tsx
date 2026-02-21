@@ -53,7 +53,7 @@ const DATE_FILTER_OPTIONS: { value: DateFilter; label: string }[] = [
   { value: "month", label: "This month" },
 ];
 
-const TERMINAL_STATUSES: OrderStatus[] = ["Delivered", "Retour", "Cancelled"];
+const TERMINAL_STATUSES: string[] = ["Delivered", "Retour", "Cancelled"];
 
 function getDateBoundary(filter: DateFilter): number | null {
   if (filter === "all") return null;
@@ -70,33 +70,23 @@ function getDateBoundary(filter: DateFilter): number | null {
   return null;
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Page ────────────────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
   const router = useRouter();
 
-  // ── Mode & view
   const [mode,              setMode]              = useState<AdminMode>("build");
   const [trackingView,      setTrackingView]      = useState<TrackingView>("kanban");
-
-  // ── Unsaved-state guard for HeroEditor
   const [isBuildDirty,      setIsBuildDirty]      = useState(false);
   const [pendingModeSwitch, setPendingModeSwitch] = useState<AdminMode | null>(null);
-
-  // ── Order state
-  const [searchQuery,     setSearchQuery]     = useState("");
-  const [dateFilter,      setDateFilter]      = useState<DateFilter>("week");
-  const [selectedOrderId, setSelectedOrderId] = useState<Id<"orders"> | null>(null);
-
-  // ── Product drawer state
-  const [drawerOpen,       setDrawerOpen]       = useState(false);
-  const [editingProductId, setEditingProductId] = useState<Id<"products"> | null>(null);
-  const [isAddingProduct,  setIsAddingProduct]  = useState(false);
-
-  // ── Delivery settings
+  const [searchQuery,       setSearchQuery]       = useState("");
+  const [dateFilter,        setDateFilter]        = useState<DateFilter>("week");
+  const [selectedOrderId,   setSelectedOrderId]   = useState<Id<"orders"> | null>(null);
+  const [drawerOpen,        setDrawerOpen]        = useState(false);
+  const [editingProductId,  setEditingProductId]  = useState<Id<"products"> | null>(null);
+  const [isAddingProduct,   setIsAddingProduct]   = useState(false);
   const [isDeliverySettingsOpen, setIsDeliverySettingsOpen] = useState(false);
 
-  // ── Convex queries
   const siteContent   = useQuery(api.siteContent.get);
   const products      = useQuery(api.products.list, {});
   const orders        = useQuery(api.orders.list, {});
@@ -110,12 +100,10 @@ export default function AdminPage() {
     editingProductId ? { id: editingProductId } : "skip",
   );
 
-  // ── Mutations
   const deleteProduct  = useMutation(api.products.remove);
   const restoreProduct = useMutation(api.products.restore);
   const createEmpty    = useMutation(api.products.createEmpty);
 
-  // ── beforeunload guard
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (isBuildDirty) { e.preventDefault(); e.returnValue = ""; }
@@ -124,21 +112,12 @@ export default function AdminPage() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [isBuildDirty]);
 
-  // ── Reactive document.title
   useEffect(() => {
     document.title = mode === "build"
       ? "Build — Gayla Admin"
       : "Tracking — Gayla Admin";
   }, [mode]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────────
-
-  /**
-   * "+ Add Product" card click:
-   * 1. Fire createEmpty mutation → instant Draft DB record.
-   * 2. Open ProductDrawer pointing at the new record.
-   * The spinner on the + card stays while mutation is in flight.
-   */
   const handleAddProduct = async () => {
     setIsAddingProduct(true);
     try {
@@ -159,7 +138,7 @@ export default function AdminPage() {
 
   const handleCloseDrawer = () => {
     setDrawerOpen(false);
-    setTimeout(() => setEditingProductId(null), 350); // wait for slide-out
+    setTimeout(() => setEditingProductId(null), 350);
   };
 
   const handleDeleteProduct = async (productId: Id<"products">) => {
@@ -184,7 +163,6 @@ export default function AdminPage() {
     }
   };
 
-  // Gated mode switch — shows UnsavedChangesDialog if HeroEditor has open edits
   const handleModeChange = (newMode: AdminMode) => {
     if (!newMode) return;
     if (mode === "build" && isBuildDirty) {
@@ -199,7 +177,6 @@ export default function AdminPage() {
     router.push("/admin/login");
   };
 
-  // ── Order filters
   const dateBoundary = getDateBoundary(dateFilter);
   const filteredOrders = orders?.filter((order) => {
     const matchesSearch =
@@ -209,10 +186,11 @@ export default function AdminPage() {
     const matchesDate = dateBoundary === null || order._creationTime >= dateBoundary;
     return matchesSearch && matchesDate;
   });
-  const activeOrders  = filteredOrders?.filter((o) => !TERMINAL_STATUSES.includes(o.status as OrderStatus));
-  const archiveOrders = filteredOrders?.filter((o) =>  TERMINAL_STATUSES.includes(o.status as OrderStatus));
 
-  // ── Loading
+  // Use string[] for TERMINAL_STATUSES so comparing with optional status is safe
+  const activeOrders  = filteredOrders?.filter((o) => !TERMINAL_STATUSES.includes(o.status ?? ""));
+  const archiveOrders = filteredOrders?.filter((o) =>  TERMINAL_STATUSES.includes(o.status ?? ""));
+
   if (siteContent === undefined || products === undefined || orders === undefined) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -230,13 +208,12 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
 
-      {/* ══ Top Bar ══════════════════════════════════════════════════════════ */}
+      {/* ══ Top Bar ════════════════════════════════════════════════════════════════════ */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
 
             <div className="flex items-center gap-6">
-              {/* Brand */}
               <div className="flex items-center gap-3">
                 <Sparkles className="h-8 w-8 text-indigo-600" />
                 <div>
@@ -245,7 +222,6 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Mode toggle */}
               <ToggleGroup
                 type="single"
                 value={mode}
@@ -290,10 +266,10 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* ══ Main Content ═════════════════════════════════════════════════════ */}
+      {/* ══ Main Content ════════════════════════════════════════════════════════════════════ */}
       <div className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* ── BUILD MODE ──────────────────────────────────────────────────── */}
+        {/* ── BUILD MODE ────────────────────────────────────────────────────────────────── */}
         {mode === "build" && (
           <div className="space-y-8">
             <HeroEditor
@@ -311,12 +287,11 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ── TRACKING MODE ───────────────────────────────────────────────── */}
+        {/* ── TRACKING MODE ────────────────────────────────────────────────────────────────── */}
         {mode === "tracking" && (
           <div className="space-y-6">
             <StatsCards mode="tracking" orderStats={orderStats} />
 
-            {/* Search + date filter + view toggle */}
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 flex items-center gap-4 flex-wrap">
               <div className="relative flex-1 min-w-[200px] max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -365,7 +340,7 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {trackingView === "kanban"  && (
+            {trackingView === "kanban" && (
               <OrderKanban
                 orders={activeOrders ?? []}
                 onOrderClick={(id) => setSelectedOrderId(id)}
@@ -392,9 +367,8 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* ══ Overlays ══════════════════════════════════════════════════════════ */}
+      {/* ══ Overlays ═════════════════════════════════════════════════════════════════════ */}
 
-      {/* Product drawer — replaces ProductModal */}
       <ProductDrawer
         isOpen={drawerOpen}
         onClose={handleCloseDrawer}
@@ -402,7 +376,6 @@ export default function AdminPage() {
         onSuccess={() => {}}
       />
 
-      {/* Order drawer */}
       <OrderDrawer
         isOpen={selectedOrderId !== null}
         onClose={() => setSelectedOrderId(null)}
@@ -410,13 +383,11 @@ export default function AdminPage() {
         onSuccess={() => {}}
       />
 
-      {/* Delivery settings */}
       <DeliverySettingsModal
         isOpen={isDeliverySettingsOpen}
         onClose={() => setIsDeliverySettingsOpen(false)}
       />
 
-      {/* Unsaved-changes guard */}
       <UnsavedChangesDialog
         open={pendingModeSwitch !== null}
         onLeave={() => {
