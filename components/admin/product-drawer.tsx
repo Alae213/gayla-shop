@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Product {
   _id:          Id<"products">;
@@ -41,7 +41,7 @@ interface ProductDrawerProps {
   onSuccess?: () => void;
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────────
 
 function generateSlug(title: string) {
   return title
@@ -54,9 +54,10 @@ function generateSlug(title: string) {
 const isUntitled = (p: Product) =>
   p.title === "Untitled Product" || p.slug.startsWith("untitled-");
 
-// ─── TiptapToolbar ─────────────────────────────────────────────────────────────
+// ─── TiptapToolbar ────────────────────────────────────────────────────────────────────
 
-function TiptapToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
+// editor prop typed as Editor | null — useEditor returns null before mount
+function TiptapToolbar({ editor }: { editor: Editor | null }) {
   if (!editor) return null;
   const btn = (active: boolean) =>
     cn(
@@ -82,7 +83,7 @@ function TiptapToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
   );
 }
 
-// ─── ProductDrawer ─────────────────────────────────────────────────────────────
+// ─── ProductDrawer ────────────────────────────────────────────────────────────────────
 // Always operates in UPDATE mode.
 // New products are created via api.products.createEmpty first (in admin/page.tsx),
 // which guarantees a real DB record exists before this drawer opens.
