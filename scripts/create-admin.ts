@@ -29,13 +29,13 @@ const client = new ConvexHttpClient(CONVEX_URL);
 async function createAdmin() {
   console.log("🔐 Creating admin user for Gayla...\n");
 
-  const email = "admin@gayla.dz";
+  const email    = "admin@gayla.dz";
   const password = "Gayla2026!"; // Change this after first login!
-  const name = "Admin Gayla";
+  const name     = "Admin Gayla";
 
   try {
-    // Use action instead of mutation
-    const result = await client.action(api.auth.createAdmin, {
+    // createAdminUser is a mutation, not an action
+    const result = await client.mutation(api.auth.createAdminUser, {
       email,
       password,
       name,
