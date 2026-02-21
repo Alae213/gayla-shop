@@ -5,7 +5,6 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +15,68 @@ import {
 import { Settings, Search, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
+// Default wilaya data used when seeding for the first time
+const DEFAULT_WILAYAS = [
+  { id: 1,  name: "Adrar",           stopdeskCost: 700,  domicileCost: 900  },
+  { id: 2,  name: "Chlef",           stopdeskCost: 500,  domicileCost: 700  },
+  { id: 3,  name: "Laghouat",        stopdeskCost: 600,  domicileCost: 800  },
+  { id: 4,  name: "Oum El Bouaghi",  stopdeskCost: 500,  domicileCost: 700  },
+  { id: 5,  name: "Batna",           stopdeskCost: 500,  domicileCost: 700  },
+  { id: 6,  name: "B\u00e9ja\u00efa",          stopdeskCost: 500,  domicileCost: 700  },
+  { id: 7,  name: "Biskra",          stopdeskCost: 550,  domicileCost: 750  },
+  { id: 8,  name: "B\u00e9char",          stopdeskCost: 700,  domicileCost: 900  },
+  { id: 9,  name: "Blida",           stopdeskCost: 400,  domicileCost: 600  },
+  { id: 10, name: "Bouira",          stopdeskCost: 450,  domicileCost: 650  },
+  { id: 11, name: "Tamanrasset",     stopdeskCost: 900,  domicileCost: 1100 },
+  { id: 12, name: "T\u00e9bessa",         stopdeskCost: 550,  domicileCost: 750  },
+  { id: 13, name: "Tlemcen",         stopdeskCost: 550,  domicileCost: 750  },
+  { id: 14, name: "Tiaret",          stopdeskCost: 550,  domicileCost: 750  },
+  { id: 15, name: "Tizi Ouzou",      stopdeskCost: 450,  domicileCost: 650  },
+  { id: 16, name: "Alger",           stopdeskCost: 350,  domicileCost: 550  },
+  { id: 17, name: "Djelfa",          stopdeskCost: 550,  domicileCost: 750  },
+  { id: 18, name: "Jijel",           stopdeskCost: 500,  domicileCost: 700  },
+  { id: 19, name: "S\u00e9tif",           stopdeskCost: 500,  domicileCost: 700  },
+  { id: 20, name: "Sa\u00efda",           stopdeskCost: 600,  domicileCost: 800  },
+  { id: 21, name: "Skikda",          stopdeskCost: 500,  domicileCost: 700  },
+  { id: 22, name: "Sidi Bel Abb\u00e8s",  stopdeskCost: 550,  domicileCost: 750  },
+  { id: 23, name: "Annaba",          stopdeskCost: 500,  domicileCost: 700  },
+  { id: 24, name: "Guelma",          stopdeskCost: 500,  domicileCost: 700  },
+  { id: 25, name: "Constantine",     stopdeskCost: 450,  domicileCost: 650  },
+  { id: 26, name: "M\u00e9d\u00e9a",          stopdeskCost: 450,  domicileCost: 650  },
+  { id: 27, name: "Mostaganem",      stopdeskCost: 500,  domicileCost: 700  },
+  { id: 28, name: "M\u2019Sila",          stopdeskCost: 550,  domicileCost: 750  },
+  { id: 29, name: "Mascara",         stopdeskCost: 550,  domicileCost: 750  },
+  { id: 30, name: "Ouargla",         stopdeskCost: 650,  domicileCost: 850  },
+  { id: 31, name: "Oran",            stopdeskCost: 400,  domicileCost: 600  },
+  { id: 32, name: "El Bayadh",       stopdeskCost: 700,  domicileCost: 900  },
+  { id: 33, name: "Illizi",          stopdeskCost: 1000, domicileCost: 1200 },
+  { id: 34, name: "Bordj Bou Arr\u00e9ridj", stopdeskCost: 500, domicileCost: 700 },
+  { id: 35, name: "Boumerd\u00e8s",       stopdeskCost: 400,  domicileCost: 600  },
+  { id: 36, name: "El Tarf",         stopdeskCost: 500,  domicileCost: 700  },
+  { id: 37, name: "Tindouf",         stopdeskCost: 1000, domicileCost: 1200 },
+  { id: 38, name: "Tissemsilt",      stopdeskCost: 600,  domicileCost: 800  },
+  { id: 39, name: "El Ou\u00e9d",         stopdeskCost: 650,  domicileCost: 850  },
+  { id: 40, name: "Khenchela",       stopdeskCost: 550,  domicileCost: 750  },
+  { id: 41, name: "Souk Ahras",      stopdeskCost: 550,  domicileCost: 750  },
+  { id: 42, name: "Tipaza",          stopdeskCost: 400,  domicileCost: 600  },
+  { id: 43, name: "Mila",            stopdeskCost: 500,  domicileCost: 700  },
+  { id: 44, name: "A\u00efn Defla",       stopdeskCost: 500,  domicileCost: 700  },
+  { id: 45, name: "Na\u00e2ma",           stopdeskCost: 700,  domicileCost: 900  },
+  { id: 46, name: "A\u00efn T\u00e9mouchent",  stopdeskCost: 550,  domicileCost: 750  },
+  { id: 47, name: "Gharda\u00efa",        stopdeskCost: 650,  domicileCost: 850  },
+  { id: 48, name: "Relizane",        stopdeskCost: 550,  domicileCost: 750  },
+  { id: 49, name: "Timimoun",        stopdeskCost: 800,  domicileCost: 1000 },
+  { id: 50, name: "Bordj Badji Mokhtar", stopdeskCost: 1000, domicileCost: 1200 },
+  { id: 51, name: "Ou\u00e9d Djema\u00e2",    stopdeskCost: 800,  domicileCost: 1000 },
+  { id: 52, name: "In Salah",        stopdeskCost: 900,  domicileCost: 1100 },
+  { id: 53, name: "In Guezzam",      stopdeskCost: 1000, domicileCost: 1200 },
+  { id: 54, name: "Touggourt",       stopdeskCost: 650,  domicileCost: 850  },
+  { id: 55, name: "Djanet",          stopdeskCost: 1000, domicileCost: 1200 },
+  { id: 56, name: "El M\u2019Ghair",      stopdeskCost: 650,  domicileCost: 850  },
+  { id: 57, name: "El Meniaa",       stopdeskCost: 750,  domicileCost: 950  },
+  { id: 58, name: "Dra El Mizane",   stopdeskCost: 450,  domicileCost: 650  },
+];
+
 interface DeliverySettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -24,11 +85,13 @@ interface DeliverySettingsModalProps {
 export function DeliverySettingsModal({ isOpen, onClose }: DeliverySettingsModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [editedCosts, setEditedCosts] = useState<Record<string, { domicile: number; stopdesk: number }>>({});
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving,    setIsSaving]    = useState(false);
 
-  const deliveryCosts = useQuery(api.deliveryCosts.list);
-  const updateCost = useMutation(api.deliveryCosts.update);
-  const initializeDefaults = useMutation(api.deliveryCosts.initializeDefaults);
+  const deliveryCosts     = useQuery(api.deliveryCosts.list);
+  // upsert = create-or-update by wilayaId+wilayaName
+  const upsertCost        = useMutation(api.deliveryCosts.upsert);
+  // seedDefaults = insert missing wilayas without overriding existing ones
+  const seedDefaults      = useMutation(api.deliveryCosts.seedDefaults);
 
   useEffect(() => {
     if (deliveryCosts) {
@@ -47,15 +110,16 @@ export function DeliverySettingsModal({ isOpen, onClose }: DeliverySettingsModal
     cost.wilayaName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleSave = async (id: string) => {
-    if (!editedCosts[id]) return;
-
+  const handleSave = async (costId: string) => {
+    const row = deliveryCosts?.find((c) => c._id === costId);
+    if (!row || !editedCosts[costId]) return;
     setIsSaving(true);
     try {
-      await updateCost({
-        id: id as any,
-        domicileCost: editedCosts[id].domicile,
-        stopdeskCost: editedCosts[id].stopdesk,
+      await upsertCost({
+        wilayaId:     row.wilayaId,
+        wilayaName:   row.wilayaName,
+        domicileCost: editedCosts[costId].domicile,
+        stopdeskCost: editedCosts[costId].stopdesk,
       });
       toast.success("Delivery cost updated!");
     } catch (error: any) {
@@ -67,10 +131,16 @@ export function DeliverySettingsModal({ isOpen, onClose }: DeliverySettingsModal
 
   const handleInitialize = async () => {
     if (!confirm("Initialize default costs for all wilayas? (Won't override existing)")) return;
-
     try {
-      const result = await initializeDefaults();
-      toast.success(`Initialized ${result.created} wilayas!`);
+      const result = await seedDefaults({
+        wilayas: DEFAULT_WILAYAS.map((w) => ({
+          id:           w.id,
+          name:         w.name,
+          stopdeskCost: w.stopdeskCost,
+          domicileCost: w.domicileCost,
+        })),
+      });
+      toast.success(`Initialized ${result.seeded} wilaya${result.seeded !== 1 ? "s" : ""}!`);
     } catch (error: any) {
       toast.error(error.message || "Failed to initialize");
     }
@@ -113,18 +183,10 @@ export function DeliverySettingsModal({ isOpen, onClose }: DeliverySettingsModal
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                    Wilaya
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                    Home Delivery (DA)
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                    Stopdesk (DA)
-                  </th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
-                    Actions
-                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Wilaya</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Home Delivery (DA)</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Stopdesk (DA)</th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
