@@ -87,11 +87,14 @@ export default function AdminPage() {
   const [isAddingProduct,   setIsAddingProduct]   = useState(false);
   const [isDeliverySettingsOpen, setIsDeliverySettingsOpen] = useState(false);
 
-  const siteContent   = useQuery(api.siteContent.get);
-  const products      = useQuery(api.products.list, {});
-  const orders        = useQuery(api.orders.list, {});
-  const orderStats    = useQuery(api.orders.getStats);
-  const selectedOrder = useQuery(
+  const siteContent    = useQuery(api.siteContent.get);
+  const products       = useQuery(api.products.list, {});
+  const orders         = useQuery(api.orders.list, {});
+  const orderStats     = useQuery(api.orders.getStats);
+  // Cast to any so we can read the dynamic Record<string,number> keys
+  // (Delivered, Retour, Cancelled) that TypeScript loses from the spread.
+  const orderStatsAny  = orderStats as any;
+  const selectedOrder  = useQuery(
     api.orders.getById,
     selectedOrderId ? { id: selectedOrderId } : "skip",
   );
@@ -187,7 +190,6 @@ export default function AdminPage() {
     return matchesSearch && matchesDate;
   });
 
-  // Use string[] for TERMINAL_STATUSES so comparing with optional status is safe
   const activeOrders  = filteredOrders?.filter((o) => !TERMINAL_STATUSES.includes(o.status ?? ""));
   const archiveOrders = filteredOrders?.filter((o) =>  TERMINAL_STATUSES.includes(o.status ?? ""));
 
@@ -356,9 +358,9 @@ export default function AdminPage() {
               <OrderArchive
                 orders={archiveOrders ?? []}
                 stats={{
-                  Delivered: orderStats?.Delivered,
-                  Retour:    orderStats?.Retour,
-                  Cancelled: orderStats?.Cancelled,
+                  Delivered: orderStatsAny?.Delivered,
+                  Retour:    orderStatsAny?.Retour,
+                  Cancelled: orderStatsAny?.Cancelled,
                 }}
                 onOrderClick={(id) => setSelectedOrderId(id)}
               />
