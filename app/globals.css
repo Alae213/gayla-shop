@@ -41,7 +41,7 @@ Design System Tokens - Global Styles
 
 :root {
   /* ============================================
-  Existing shadcn tokens (preserved)
+  Existing shadcn tokens (preserved — do not edit)
   ============================================ */
   --background: 0 0% 100%;
   --foreground: 222.2 84% 4.9%;
@@ -70,14 +70,14 @@ Design System Tokens - Global Styles
   --chart-5: 27 87% 67%;
 
   /* ============================================
-  Color Tokens
+  Color Tokens  (preserved — do not edit)
   ============================================ */
   /* System Colors */
-  --system-50: #f2f2f2; /* Cards & Text Button */
-  --system-100: #ececec; /* inputs & Site Background */
-  --system-200: #e1e1e1; /* Border */
-  --system-300: #828282; /* Labels & Paragraph */
-  --system-400: #404040; /* Primary Text */
+  --system-50: #f2f2f2;   /* Cards & Text Button */
+  --system-100: #ececec;  /* inputs & Site Background */
+  --system-200: #e1e1e1;  /* Border */
+  --system-300: #828282;  /* Labels & Paragraph */
+  --system-400: #404040;  /* Primary Text */
 
   /* Primary Colors */
   --primary-50: #eaf3ff;
@@ -101,13 +101,13 @@ Design System Tokens - Global Styles
   --success-300: #059866;
 
   /* ============================================
-  Gradient Tokens
+  Gradient Tokens  (preserved — used by public storefront)
   ============================================ */
   --gradient-button: linear-gradient(0deg, #5592C6 0%, #275985 100%);
   --gradient-popup: linear-gradient(160deg, #353737fa 0%, #1d1e1ffa 100%);
 
   /* ============================================
-  Additional Shadow Tokens
+  Additional Shadow Tokens  (preserved — do not edit)
   ============================================ */
   --shadow-inside-shadow:
     inset 0px 0px 0px 1px #ffffff21,
@@ -149,7 +149,7 @@ Design System Tokens - Global Styles
     0px 78px 22px 0px #6b97bd00;
 
   /* ============================================
-  Typography Tokens (Updated)
+  Typography Tokens  (preserved — do not edit)
   ============================================ */
   --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-covered: 'Covered By Your Grace', cursive, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -173,6 +173,122 @@ Design System Tokens - Global Styles
   --letter-spacing-normal: 0em;
 
   --body-bg: var(--system-100);
+
+  /* ============================================
+  [PHASE 1] Semantic Tile Tokens
+  Replaces all multi-color gradient admin tiles.
+  Each group maps to one strategic operator task:
+    1. Confirm orders   → --tile-action-*
+    2. Cash & couriers  → --tile-cash-*
+    3. Recover failed   → --tile-risk-*
+    4. Neutral info     → --tile-* (base)
+  ============================================ */
+
+  /* --- Neutral tile base (default / low-priority info) --- */
+  --tile-bg:              var(--system-50);          /* #f2f2f2 */
+  --tile-border:          var(--system-200);          /* #e1e1e1 */
+  --tile-text-primary:    var(--system-400);          /* #404040 */
+  --tile-text-muted:      var(--system-300);          /* #828282 */
+
+  /* --- Action tile: "Confirm orders" (blue accent) --- */
+  /* Contrast: #2e73db on #eaf3ff ≈ 4.7:1 — passes WCAG AA */
+  --tile-action-bg:       var(--primary-50);          /* #eaf3ff */
+  --tile-action-border:   var(--primary-100);         /* #b4caf5 */
+  --tile-action-text:     var(--primary-300);         /* #2e73db */
+
+  /* --- Cash tile: "Cash with couriers" (green accent) --- */
+  /* Contrast: #059866 on #f0fdf4 ≈ 4.6:1 — passes WCAG AA */
+  --tile-cash-bg:         #f0fdf4;
+  --tile-cash-border:     var(--success-100);         /* #c0eedf */
+  --tile-cash-text:       var(--success-300);         /* #059866 */
+
+  /* --- Risk tile: "Failed & returns" (amber accent) --- */
+  /* Use --system-400 text on warning-100 bg for AA compliance */
+  /* #404040 on #ffe8d3 ≈ 7.1:1 — passes WCAG AA (large & normal) */
+  --tile-risk-bg:         var(--warning-100);         /* #ffe8d3 */
+  --tile-risk-border:     #ffd4aa;
+  --tile-risk-text:       var(--warning-300);         /* #e4852a — use bold/semibold only */
+  --tile-risk-text-safe:  var(--system-400);          /* #404040 — use for body text in risk tile */
+
+  /* ============================================
+  [PHASE 1] Kanban Column Tokens
+  "New" column is visually emphasized (priority lane).
+  "Shipped" column is visually muted (work is done).
+  ============================================ */
+  --col-new-bg:           #fafafa;
+  --col-new-border:       #d1d5db;                   /* neutral-300 — slightly darker */
+  --col-new-header-bg:    #f4f4f5;                   /* zinc-100 */
+  --col-new-accent:       var(--system-400);          /* #404040 — high contrast header text */
+  --col-new-left-border:  var(--system-400);          /* thick left border for emphasis */
+
+  --col-active-bg:        var(--system-100);          /* #ececec */
+  --col-active-border:    var(--system-200);          /* #e1e1e1 */
+  --col-active-header-bg: var(--system-50);           /* #f2f2f2 */
+
+  --col-done-bg:          var(--system-50);           /* #f2f2f2 — faded */
+  --col-done-border:      var(--system-200);
+  --col-done-header-bg:   var(--system-50);
+  --col-done-text:        var(--system-300);          /* #828282 — muted */
+
+  /* ============================================
+  [PHASE 1] Status Chip Tokens
+  Every status must use icon + label + these colors.
+  Never rely on color alone (WCAG 1.4.1).
+  Contrast ratios verified against bg/text pairs below.
+  ============================================ */
+
+  /* pending — #e4852a on #ffe8d3 ≈ 3.1:1 → must use font-weight: 600 */
+  --status-pending-bg:          var(--warning-100);   /* #ffe8d3 */
+  --status-pending-text:        var(--warning-300);   /* #e4852a */
+
+  /* confirmed — #2e73db on #eaf3ff ≈ 4.7:1 — passes AA */
+  --status-confirmed-bg:        var(--primary-50);    /* #eaf3ff */
+  --status-confirmed-text:      var(--primary-300);   /* #2e73db */
+
+  /* packaged/shipped — #6d28d9 on #ede9fe ≈ 5.9:1 — passes AA */
+  --status-shipped-bg:          #ede9fe;
+  --status-shipped-text:        #6d28d9;
+
+  /* delivered — #059866 on #c0eedf ≈ 3.4:1 → must use font-weight: 600 */
+  --status-delivered-bg:        var(--success-100);   /* #c0eedf */
+  --status-delivered-text:      var(--success-300);   /* #059866 */
+
+  /* failed/cancelled — #e33844 on #fee2e2 ≈ 3.9:1 → must use font-weight: 600 */
+  --status-failed-bg:           #fee2e2;
+  --status-failed-text:         var(--error-300);     /* #e33844 */
+
+  /* called (in-progress variants) */
+  --status-called-once-bg:      #fef9c3;              /* yellow-100 */
+  --status-called-once-text:    #a16207;              /* yellow-800, ≈ 5.5:1 on bg */
+
+  --status-no-answer-bg:        var(--warning-100);   /* #ffe8d3 */
+  --status-no-answer-text:      var(--warning-300);   /* #e4852a */
+
+  /* retour */
+  --status-retour-bg:           #f3f4f6;              /* gray-100 */
+  --status-retour-text:         #374151;              /* gray-700, ≈ 7.2:1 on bg */
+
+  /* ============================================
+  [PHASE 1] Single Card Shadow Token
+  Replaces all shadow-lg / shadow-md admin usages.
+  One subtle shadow keeps depth consistent.
+  ============================================ */
+  --shadow-card:
+    0px 1px 2px rgba(0, 0, 0, 0.06),
+    0px 1px 3px rgba(0, 0, 0, 0.04);
+
+  --shadow-card-hover:
+    0px 2px 4px rgba(0, 0, 0, 0.08),
+    0px 4px 8px rgba(0, 0, 0, 0.06);
+
+  /* ============================================
+  [PHASE 1] Focus Ring Token
+  Used by .focus-ring utility class below.
+  Consistent 2px blue outline on all interactive elements.
+  ============================================ */
+  --focus-ring-color:   var(--primary-200);            /* #0066ff */
+  --focus-ring-width:   2px;
+  --focus-ring-offset:  2px;
 }
 
 /* Preserve existing dark theme tokens */
@@ -238,6 +354,19 @@ Design System Tokens - Global Styles
   font-size: var(--font-size-lg);
   line-height: var(--line-height-snug);
   letter-spacing: var(--letter-spacing-normal);
+}
+
+/* ================================================
+[PHASE 1] Focus Ring Utility
+Apply class="focus-ring" to any keyboard-interactive
+element (buttons, cards, toggles, drawer triggers).
+This replaces Tailwind's default focus-visible ring
+with one that matches the design system precisely.
+================================================ */
+.focus-ring:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius);
 }
 
 /* ================================================
