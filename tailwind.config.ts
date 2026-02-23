@@ -50,7 +50,24 @@ const config: Config = {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
-        // Design System Tokens
+        // Tracking Mode MVP Design System
+        tracking: {
+          bg: {
+            primary: "#FFFFFF",
+            secondary: "#F5F5F5",
+            card: "#F7F7F7",
+          },
+          text: {
+            primary: "#3A3A3A",
+            secondary: "#AAAAAA",
+          },
+          border: "#ECECEC",
+          interactive: {
+            DEFAULT: "#3A3A3A",
+            hover: "#1A1A1A",
+          }
+        },
+        // Legacy Design System Tokens
         system: {
           50: "var(--system-50)",
           100: "var(--system-100)",
@@ -84,12 +101,19 @@ const config: Config = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        // Tracking Mode MVP
+        "tracking-card": "24px",
+        "tracking-button": "9999px",
+        "tracking-input": "12px",
       },
       boxShadow: {
         "inside": "var(--shadow-inside-shadow)",
         "m": "var(--shadow-m-shadow)",
         "xl-brand": "var(--shadow-xl-shadow)",
         "blue-btn": "var(--shadow-bluebutton)",
+        // Tracking Mode MVP
+        "tracking-card": "0px 4px 16px rgba(0, 0, 0, 0.06)",
+        "tracking-elevated": "0px 8px 32px rgba(0, 0, 0, 0.08)",
       },
       typography: {
         DEFAULT: {
