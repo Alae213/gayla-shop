@@ -1,19 +1,27 @@
 import { v } from "convex/values";
 import { query, mutation, internalMutation } from "./_generated/server";
 
-// ─── Shared status union ──────────────────────────────────────────────────────
-const orderStatusValidator = v.union(
-  v.literal("Pending"),
-  v.literal("Confirmed"),
-  v.literal("Cancelled"),
-  v.literal("Called no respond"),
-  v.literal("Called 01"),
-  v.literal("Called 02"),
-  v.literal("Packaged"),
-  v.literal("Shipped"),
-  v.literal("Delivered"),
-  v.literal("Retour")
+// ─── Tracking Mode MVP Status Union ───────────────────────────────────────────
+const orderStatusMVPValidator = v.union(
+  v.literal("new"),
+  v.literal("confirmed"),
+  v.literal("packaged"),
+  v.literal("shipped"),
+  v.literal("canceled"),
+  v.literal("blocked")
 );
+
+type MVPStatus = "new" | "confirmed" | "packaged" | "shipped" | "canceled" | "blocked";
+
+// ─── Call Log Outcome Union ───────────────────────────────────────────────────
+const callOutcomeValidator = v.union(
+  v.literal("answered"), 
+  v.literal("no answer"), 
+  v.literal("wrong number"), 
+  v.literal("refused")
+);
+
+type CallOutcome = "answered" | "no answer" | "wrong number" | "refused";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
@@ -32,10 +40,10 @@ function pushStatusHistory(
 
 function pushCallLog(
   order: any,
-  outcome: "answered" | "no_answer",
+  outcome: CallOutcome,
   note?: string
-): Array<{ timestamp: number; outcome: "answered" | "no_answer"; note?: string }> {
-  const log: Array<{ timestamp: number; outcome: "answered" | "no_answer"; note?: string }> =
+): Array<{ timestamp: number; outcome: CallOutcome; note?: string }> {
+  const log: Array<{ timestamp: number; outcome: CallOutcome; note?: string }> =
     order.callLog ?? [];
   return [
     ...log,
@@ -52,7 +60,7 @@ function generateOrderNumber(): string {
 // ─── QUERIES ──────────────────────────────────────────────────────────────────
 
 export const list = query({
-  args: { status: v.optional(orderStatusValidator) },
+  args: { status: v.optional(orderStatusMVPValidator) },
   handler: async (ctx, args) => {
     let orders = await ctx.db.query("orders").collect();
     if (args.status) orders = orders.filter((o) => o.status === args.status);
@@ -83,27 +91,17 @@ export const getStats = query({
     const orders = await ctx.db.query("orders").collect();
     const counts: Record<string, number> = {
       total: orders.length,
-      Pending: 0, Confirmed: 0, Cancelled: 0,
-      "Called no respond": 0, "Called 01": 0, "Called 02": 0,
-      Packaged: 0, Shipped: 0, Delivered: 0, Retour: 0,
+      new: 0, confirmed: 0, packaged: 0, shipped: 0, canceled: 0, blocked: 0,
     };
     orders.forEach((order) => {
       const s = order.status;
       if (s && counts[s] !== undefined) counts[s]++;
     });
-    return {
-      ...counts,
-      active:
-        counts["Pending"] + counts["Called no respond"] +
-        counts["Called 01"] + counts["Called 02"] + counts["Confirmed"],
-      readyToShip: counts["Packaged"],
-      inTransit:   counts["Shipped"],
-      completed:   counts["Delivered"] + counts["Retour"] + counts["Cancelled"],
-    };
+    return counts;
   },
 });
 
-// ─── MUTATIONS — existing ─────────────────────────────────────────────────────
+// ─── MUTATIONS — Tracking Mode MVP ────────────────────────────────────────────
 
 export const create = mutation({
   args: {
@@ -143,7 +141,7 @@ export const create = mutation({
 
     const totalAmount   = product.price + args.deliveryCost;
     const now           = Date.now();
-    const initialStatus = isBanned ? "Cancelled" : "Pending";
+    const initialStatus = isBanned ? "blocked" : "new";
 
     const orderId = await ctx.db.insert("orders", {
       orderNumber,
@@ -172,7 +170,7 @@ export const create = mutation({
         {
           status: initialStatus,
           timestamp: now,
-          ...(isBanned ? { reason: "Auto-cancelled — banned customer" } : {}),
+          ...(isBanned ? { reason: "Auto-blocked — banned customer" } : {}),
         },
       ],
     });
@@ -182,7 +180,7 @@ export const create = mutation({
 });
 
 export const updateStatus = mutation({
-  args: { id: v.id("orders"), status: orderStatusValidator, reason: v.optional(v.string()) },
+  args: { id: v.id("orders"), status: orderStatusMVPValidator, reason: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.id);
     if (!order) throw new Error("Order not found");
@@ -192,7 +190,7 @@ export const updateStatus = mutation({
   },
 });
 
-export const update = mutation({
+export const updateCustomerInfo = mutation({
   args: {
     id:              v.id("orders"),
     customerName:    v.optional(v.string()),
@@ -200,23 +198,87 @@ export const update = mutation({
     customerWilaya:  v.optional(v.string()),
     customerCommune: v.optional(v.string()),
     customerAddress: v.optional(v.string()),
-    deliveryType:    v.optional(v.union(v.literal("Domicile"), v.literal("Stopdesk"))),
-    deliveryCost:    v.optional(v.number()),
-    status:          v.optional(orderStatusValidator),
+    notes:           v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
     const order = await ctx.db.get(id);
     if (!order) throw new Error("Order not found");
-    let totalAmount   = order.totalAmount;
-    if (updates.deliveryCost !== undefined) totalAmount = (order.productPrice ?? 0) + updates.deliveryCost;
-    let statusHistory = order.statusHistory;
-    if (updates.status && updates.status !== order.status) {
-      statusHistory = pushStatusHistory(order, updates.status);
-    }
-    await ctx.db.patch(id, { ...updates, totalAmount, statusHistory, lastUpdated: Date.now() });
+    await ctx.db.patch(id, { ...updates, lastUpdated: Date.now() });
     return { success: true };
   },
+});
+
+// ─── MVP Bulk Actions ─────────────────────────────────────────────────────────
+
+export const bulkConfirm = mutation({
+  args: { ids: v.array(v.id("orders")) },
+  handler: async (ctx, args) => {
+    const results = { success: 0, failed: 0 };
+    for (const id of args.ids) {
+      const order = await ctx.db.get(id);
+      if (order && order.status === "new") {
+        const statusHistory = pushStatusHistory(order, "confirmed", "Bulk confirmed");
+        await ctx.db.patch(id, { status: "confirmed", statusHistory, lastUpdated: Date.now() });
+        results.success++;
+      } else {
+        results.failed++;
+      }
+    }
+    return results;
+  }
+});
+
+// ─── MVP Call Logging ─────────────────────────────────────────────────────────
+
+export const logCallOutcome = mutation({
+  args: {
+    orderId: v.id("orders"),
+    outcome: callOutcomeValidator,
+    note:    v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error("Order not found");
+    
+    const callLog = pushCallLog(order, args.outcome, args.note);
+    const callAttempts = (order.callAttempts ?? 0) + 1;
+    
+    // MVP Auto-cancel logic: If 2x "no answer", auto-cancel
+    const noAnswerCount = callLog.filter(log => log.outcome === "no answer").length;
+    
+    let newStatus = order.status;
+    let cancelReason;
+    let statusHistory = order.statusHistory ?? [];
+
+    if (noAnswerCount >= 2 && newStatus !== "canceled") {
+      newStatus = "canceled";
+      cancelReason = "Auto-canceled: No answer after 2 attempts";
+      statusHistory = pushStatusHistory(order, newStatus, cancelReason);
+    } else if (args.outcome === "wrong number" || args.outcome === "refused") {
+      newStatus = "canceled";
+      cancelReason = `Canceled by operator: ${args.outcome}`;
+      statusHistory = pushStatusHistory(order, newStatus, cancelReason);
+    } else if (args.outcome === "answered") {
+      // Typically the operator will manually confirm after they answer, 
+      // but we log the call attempt regardless.
+    }
+
+    await ctx.db.patch(order._id, {
+      callLog,
+      callAttempts,
+      status: newStatus,
+      ...(cancelReason ? { cancelReason } : {}),
+      ...(newStatus !== order.status ? { statusHistory } : {}),
+      lastUpdated: Date.now(),
+    });
+
+    return { 
+      success: true, 
+      autoCanceled: newStatus === "canceled" && order.status !== "canceled",
+      cancelReason 
+    };
+  }
 });
 
 export const remove = mutation({
@@ -224,158 +286,5 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);
     return { success: true };
-  },
-});
-
-// ─── MUTATIONS — Phase 1 ──────────────────────────────────────────────────────
-
-export const logCallAttempt = mutation({
-  args: {
-    orderId:  v.id("orders"),
-    outcome:  v.union(v.literal("answered"), v.literal("no_answer")),
-    note:     v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const order = await ctx.db.get(args.orderId);
-    if (!order) throw new Error("Order not found");
-    const currentAttempts = order.callAttempts ?? 0;
-    const newAttempts     = currentAttempts + 1;
-    const callLog         = pushCallLog(order, args.outcome, args.note);
-    let newStatus: string = order.status ?? "Pending";
-    if (args.outcome === "no_answer") {
-      if (currentAttempts === 0) newStatus = "Called 01";
-      else if (currentAttempts === 1) newStatus = "Called 02";
-    }
-    const statusHistory =
-      newStatus !== order.status
-        ? pushStatusHistory(order, newStatus, args.note)
-        : (order.statusHistory ?? []);
-    await ctx.db.patch(order._id, {
-      callAttempts: newAttempts,
-      callLog,
-      status:       newStatus as any,
-      statusHistory,
-      lastUpdated:  Date.now(),
-    });
-    return { success: true, newStatus, callAttempts: newAttempts };
-  },
-});
-
-export const addNote = mutation({
-  args: { orderId: v.id("orders"), text: v.string() },
-  handler: async (ctx, args) => {
-    const order = await ctx.db.get(args.orderId);
-    if (!order) throw new Error("Order not found");
-    const notes = order.adminNotes ?? [];
-    await ctx.db.patch(order._id, {
-      adminNotes:  [...notes, { text: args.text, timestamp: Date.now() }],
-      lastUpdated: Date.now(),
-    });
-    return { success: true };
-  },
-});
-
-export const banCustomer = mutation({
-  args: { phone: v.string(), isBanned: v.boolean() },
-  handler: async (ctx, args) => {
-    const orders = await ctx.db
-      .query("orders")
-      .withIndex("by_customer_phone", (q) => q.eq("customerPhone", args.phone))
-      .collect();
-    for (const order of orders) {
-      await ctx.db.patch(order._id, { isBanned: args.isBanned });
-    }
-    return { success: true, count: orders.length };
-  },
-});
-
-export const markRetour = mutation({
-  args: { orderId: v.id("orders"), reason: v.string() },
-  handler: async (ctx, args) => {
-    const order = await ctx.db.get(args.orderId);
-    if (!order) throw new Error("Order not found");
-    const statusHistory = pushStatusHistory(order, "Retour", args.reason);
-    await ctx.db.patch(order._id, {
-      status:       "Retour",
-      retourReason: args.reason,
-      fraudScore:   (order.fraudScore ?? 0) + 1,
-      statusHistory,
-      lastUpdated:  Date.now(),
-    });
-    return { success: true };
-  },
-});
-
-export const markCourierSent = mutation({
-  args: { orderId: v.id("orders"), trackingId: v.string() },
-  handler: async (ctx, args) => {
-    const order = await ctx.db.get(args.orderId);
-    if (!order) throw new Error("Order not found");
-    const statusHistory = pushStatusHistory(order, "Packaged");
-    await ctx.db.patch(order._id, {
-      status:            "Packaged",
-      courierTrackingId: args.trackingId,
-      courierSentAt:     Date.now(),
-      courierError:      undefined,
-      statusHistory,
-      lastUpdated:       Date.now(),
-    });
-    return { success: true };
-  },
-});
-
-export const markCourierFailed = mutation({
-  args: { orderId: v.id("orders"), error: v.string() },
-  handler: async (ctx, args) => {
-    const order = await ctx.db.get(args.orderId);
-    if (!order) throw new Error("Order not found");
-    const statusHistory = pushStatusHistory(order, order.status ?? "Pending", `Courier send failed: ${args.error}`);
-    await ctx.db.patch(order._id, { courierError: args.error, statusHistory, lastUpdated: Date.now() });
-    return { success: true };
-  },
-});
-
-// ─── ARCHIVE CLEANUP ──────────────────────────────────────────────────────────
-
-const TERMINAL_STATUSES = ["Delivered", "Retour", "Cancelled"] as const;
-const SIXTY_DAYS_MS     = 60 * 24 * 60 * 60 * 1000;
-
-export const getArchiveCleanupPreview = query({
-  handler: async (ctx) => {
-    const orders   = await ctx.db.query("orders").collect();
-    const terminal = orders.filter((o) =>
-      (TERMINAL_STATUSES as readonly string[]).includes(o.status ?? "")
-    );
-    if (terminal.length === 0) {
-      return { eligibleCount: 0, totalTerminal: 0, oldestCreationTime: null };
-    }
-    const cutoff   = Date.now() - SIXTY_DAYS_MS;
-    const eligible = terminal.filter((o) => o._creationTime < cutoff);
-    const oldest   = Math.min(...terminal.map((o) => o._creationTime));
-    return { eligibleCount: eligible.length, totalTerminal: terminal.length, oldestCreationTime: oldest };
-  },
-});
-
-export const purgeOldArchive = mutation({
-  handler: async (ctx) => {
-    const cutoff   = Date.now() - SIXTY_DAYS_MS;
-    const orders   = await ctx.db.query("orders").collect();
-    const toDelete = orders.filter(
-      (o) =>
-        (TERMINAL_STATUSES as readonly string[]).includes(o.status ?? "") &&
-        o._creationTime < cutoff
-    );
-    for (const order of toDelete) await ctx.db.delete(order._id);
-    return { deleted: toDelete.length };
-  },
-});
-
-export const purgeByIds = mutation({
-  args: { ids: v.array(v.id("orders")) },
-  handler: async (ctx, args) => {
-    for (const id of args.ids) {
-      await ctx.db.delete(id);
-    }
-    return { deleted: args.ids.length };
   },
 });
