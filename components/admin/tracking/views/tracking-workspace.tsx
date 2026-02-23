@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { TrackingPanel } from "@/components/admin/tracking/ui/tracking-panel";
@@ -9,6 +9,8 @@ import { Search, LayoutGrid, LayoutList, Ban, ArrowDownUp, Filter } from "lucide
 import { TrackingKanbanBoard } from "@/components/admin/tracking/views/tracking-kanban-board";
 import { TrackingListView } from "@/components/admin/tracking/views/tracking-list-view";
 import { TrackingOrderDetails } from "@/components/admin/tracking/views/tracking-order-details";
+import { TrackingBulkActionBar } from "@/components/admin/tracking/views/tracking-bulk-action-bar";
+import { toast } from "sonner";
 
 type TrackingView = "kanban" | "list" | "blacklist";
 
@@ -17,6 +19,7 @@ export function TrackingWorkspace() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<Id<"orders"> | null>(null);
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<Id<"orders">>>(new Set());
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Fetch raw MVP orders
   const orders = useQuery(api.orders.list, {});
@@ -24,6 +27,9 @@ export function TrackingWorkspace() {
     api.orders.getById,
     selectedOrderId ? { id: selectedOrderId } : "skip"
   );
+  
+  const bulkConfirm = useMutation(api.orders.bulkConfirm);
+  // (In a real app, bulk dispatch and bulk cancel mutations would be defined similarly)
 
   const activeOrders = orders?.filter(o => ["new", "confirmed", "packaged", "shipped"].includes(o.status ?? ""));
   const blacklistedOrders = orders?.filter(o => ["canceled", "blocked"].includes(o.status ?? ""));
@@ -52,7 +58,6 @@ export function TrackingWorkspace() {
   };
 
   const handleSelectAll = (ids: Id<"orders">[]) => {
-    // If all provided ids are selected, deselect them. Otherwise, select all.
     const allSelected = ids.every(id => selectedOrderIds.has(id));
     setSelectedOrderIds(prev => {
       const next = new Set(prev);
@@ -65,8 +70,63 @@ export function TrackingWorkspace() {
     });
   };
 
+  const handleClearSelection = () => {
+    setSelectedOrderIds(new Set());
+  };
+
+  // Bulk Actions
+  const handleBulkConfirm = async () => {
+    if (selectedOrderIds.size === 0) return;
+    setIsProcessing(true);
+    try {
+      const results = await bulkConfirm({ ids: Array.from(selectedOrderIds) });
+      
+      if (results.success > 0 && results.failed === 0) {
+        toast.success(`Successfully confirmed ${results.success} orders`);
+      } else if (results.success > 0 && results.failed > 0) {
+        toast.warning(`${results.success} confirmed, ${results.failed} failed — view details`);
+      } else {
+        toast.error(`Failed to confirm ${results.failed} orders`);
+      }
+      
+      // Clear selection after successful action
+      handleClearSelection();
+    } catch (error) {
+      toast.error("An error occurred during bulk confirmation");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleBulkDispatch = async () => {
+    // Placeholder for Courier API Integration
+    setIsProcessing(true);
+    setTimeout(() => {
+      toast.info("Yalidin integration required for dispatch");
+      setIsProcessing(false);
+    }, 1000);
+  };
+
+  const handleBulkPrint = async () => {
+    // Placeholder for PDF Label Generation
+    setIsProcessing(true);
+    setTimeout(() => {
+      toast.info("Generating PDF labels...");
+      setIsProcessing(false);
+    }, 1000);
+  };
+
+  const handleBulkCancel = async () => {
+    // Placeholder for Bulk Cancel Integration
+    setIsProcessing(true);
+    setTimeout(() => {
+      toast.error("Bulk cancel endpoint required");
+      setIsProcessing(false);
+    }, 1000);
+  };
+
   return (
-    <div className="flex flex-col h-full w-full bg-[#F5F5F5]">
+    <div className="relative flex flex-col h-full w-full bg-[#F5F5F5]">
       {/* ── View Controls Toolbar ────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-8 py-4 bg-white border-b border-[#ECECEC]">
         
@@ -157,6 +217,19 @@ export function TrackingWorkspace() {
           </div>
         )}
       </div>
+
+      {/* ── Bulk Action Bar ────────────────────────────────────────────────────── */}
+      {selectedOrderIds.size > 0 && (
+        <TrackingBulkActionBar 
+          selectedIds={selectedOrderIds}
+          onClearSelection={handleClearSelection}
+          onBulkConfirm={handleBulkConfirm}
+          onBulkDispatch={handleBulkDispatch}
+          onBulkPrint={handleBulkPrint}
+          onBulkCancel={handleBulkCancel}
+          isProcessing={isProcessing}
+        />
+      )}
 
       {/* ── Right Panel: Progressive Disclosure ──────────────────────────────── */}
       <TrackingPanel 
