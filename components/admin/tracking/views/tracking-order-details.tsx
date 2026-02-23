@@ -78,12 +78,12 @@ export function TrackingOrderDetails({ order, onClose }: TrackingOrderDetailsPro
   };
 
   return (
-    <div className="flex flex-col gap-8 h-full pb-24">
+    <div className="flex flex-col gap-8 h-full pb-24" role="region" aria-label={`Order details for ${order.orderNumber}`}>
       {/* Header Info */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <StatusPill status={order.status} />
-          <span className="text-[13px] text-[#AAAAAA]">
+          <span className="text-[13px] text-[#AAAAAA]" aria-label="Creation date">
             {format(order._creationTime, "MMM d, yyyy 'at' HH:mm")}
           </span>
         </div>
@@ -91,26 +91,38 @@ export function TrackingOrderDetails({ order, onClose }: TrackingOrderDetailsPro
         <div>
           <h1 className="text-[24px] font-semibold text-[#3A3A3A] mb-1">{order.customerName}</h1>
           <div className="flex items-center gap-2 text-[#AAAAAA] text-[15px]">
-            <span className="font-mono bg-[#F5F5F5] px-2 py-0.5 rounded-md">{order.orderNumber}</span>
+            <span className="font-mono bg-[#F5F5F5] px-2 py-0.5 rounded-md" aria-label={`Order number: ${order.orderNumber}`}>{order.orderNumber}</span>
           </div>
         </div>
       </div>
 
       {/* Customer Details Form */}
-      <div className="flex flex-col gap-4 bg-[#F7F7F7] p-6 rounded-tracking-card border border-[#ECECEC]">
+      <section className="flex flex-col gap-4 bg-[#F7F7F7] p-6 rounded-tracking-card border border-[#ECECEC]" aria-labelledby="customer-details-heading">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-[14px] font-semibold text-[#AAAAAA] uppercase tracking-wider">Customer Details</h3>
+          <h3 id="customer-details-heading" className="text-[14px] font-semibold text-[#AAAAAA] uppercase tracking-wider">Customer Details</h3>
           {!isEditing ? (
-            <button onClick={() => setIsEditing(true)} className="p-1.5 text-[#AAAAAA] hover:text-[#3A3A3A] hover:bg-white rounded-md transition-colors">
-              <Edit2 className="w-4 h-4" />
+            <button 
+              onClick={() => setIsEditing(true)} 
+              className="p-1.5 text-[#AAAAAA] hover:text-[#3A3A3A] hover:bg-white rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#AAAAAA]"
+              aria-label="Edit customer details"
+            >
+              <Edit2 className="w-4 h-4" aria-hidden="true" />
             </button>
           ) : (
             <div className="flex gap-2">
-              <button onClick={() => setIsEditing(false)} className="p-1.5 text-rose-500 hover:bg-white rounded-md transition-colors">
-                <X className="w-4 h-4" />
+              <button 
+                onClick={() => setIsEditing(false)} 
+                className="p-1.5 text-rose-500 hover:bg-white rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#AAAAAA]"
+                aria-label="Cancel editing"
+              >
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
-              <button onClick={handleSave} className="p-1.5 text-emerald-600 hover:bg-white rounded-md transition-colors">
-                <Check className="w-4 h-4" />
+              <button 
+                onClick={handleSave} 
+                className="p-1.5 text-emerald-600 hover:bg-white rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#AAAAAA]"
+                aria-label="Save customer details"
+              >
+                <Check className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
           )}
@@ -118,13 +130,14 @@ export function TrackingOrderDetails({ order, onClose }: TrackingOrderDetailsPro
 
         <div className="space-y-4">
           <div className="flex gap-3">
-            <Phone className="w-5 h-5 text-[#AAAAAA] mt-0.5 shrink-0" />
+            <Phone className="w-5 h-5 text-[#AAAAAA] mt-0.5 shrink-0" aria-hidden="true" />
             {isEditing ? (
               <input 
                 type="text" 
                 value={editForm.customerPhone}
                 onChange={e => setEditForm(prev => ({...prev, customerPhone: e.target.value}))}
-                className="w-full bg-white border border-[#ECECEC] rounded-md px-3 py-1.5 text-[15px] focus:outline-none focus:border-[#3A3A3A]"
+                aria-label="Customer phone number"
+                className="w-full bg-white border border-[#ECECEC] rounded-md px-3 py-1.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#AAAAAA]"
               />
             ) : (
               <span className="text-[15px] font-medium text-[#3A3A3A]">{order.customerPhone}</span>
@@ -132,7 +145,7 @@ export function TrackingOrderDetails({ order, onClose }: TrackingOrderDetailsPro
           </div>
 
           <div className="flex gap-3">
-            <MapPin className="w-5 h-5 text-[#AAAAAA] mt-0.5 shrink-0" />
+            <MapPin className="w-5 h-5 text-[#AAAAAA] mt-0.5 shrink-0" aria-hidden="true" />
             <div className="flex flex-col gap-2 w-full">
               {isEditing ? (
                 <>
@@ -141,7 +154,8 @@ export function TrackingOrderDetails({ order, onClose }: TrackingOrderDetailsPro
                     placeholder="Address"
                     value={editForm.customerAddress}
                     onChange={e => setEditForm(prev => ({...prev, customerAddress: e.target.value}))}
-                    className="w-full bg-white border border-[#ECECEC] rounded-md px-3 py-1.5 text-[15px] focus:outline-none focus:border-[#3A3A3A]"
+                    aria-label="Customer address"
+                    className="w-full bg-white border border-[#ECECEC] rounded-md px-3 py-1.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#AAAAAA]"
                   />
                   <div className="grid grid-cols-2 gap-2">
                     <input 
@@ -149,14 +163,16 @@ export function TrackingOrderDetails({ order, onClose }: TrackingOrderDetailsPro
                       placeholder="Commune"
                       value={editForm.customerCommune}
                       onChange={e => setEditForm(prev => ({...prev, customerCommune: e.target.value}))}
-                      className="bg-white border border-[#ECECEC] rounded-md px-3 py-1.5 text-[15px] focus:outline-none focus:border-[#3A3A3A]"
+                      aria-label="Customer commune"
+                      className="bg-white border border-[#ECECEC] rounded-md px-3 py-1.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#AAAAAA]"
                     />
                     <input 
                       type="text" 
                       placeholder="Wilaya"
                       value={editForm.customerWilaya}
                       onChange={e => setEditForm(prev => ({...prev, customerWilaya: e.target.value}))}
-                      className="bg-white border border-[#ECECEC] rounded-md px-3 py-1.5 text-[15px] focus:outline-none focus:border-[#3A3A3A]"
+                      aria-label="Customer wilaya"
+                      className="bg-white border border-[#ECECEC] rounded-md px-3 py-1.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#AAAAAA]"
                     />
                   </div>
                 </>
@@ -170,13 +186,13 @@ export function TrackingOrderDetails({ order, onClose }: TrackingOrderDetailsPro
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Order Summary */}
-      <div className="flex flex-col gap-4">
-        <h3 className="text-[14px] font-semibold text-[#AAAAAA] uppercase tracking-wider">Order Summary</h3>
+      <section className="flex flex-col gap-4" aria-labelledby="order-summary-heading">
+        <h3 id="order-summary-heading" className="text-[14px] font-semibold text-[#AAAAAA] uppercase tracking-wider">Order Summary</h3>
         <div className="flex items-center gap-4 bg-white border border-[#ECECEC] rounded-tracking-card p-4">
-          <div className="w-16 h-16 bg-[#F5F5F5] rounded-xl flex items-center justify-center shrink-0">
+          <div className="w-16 h-16 bg-[#F5F5F5] rounded-xl flex items-center justify-center shrink-0" aria-hidden="true">
             <Box className="w-6 h-6 text-[#AAAAAA]" />
           </div>
           <div className="flex-1">
@@ -194,23 +210,27 @@ export function TrackingOrderDetails({ order, onClose }: TrackingOrderDetailsPro
             <div className="text-[12px] text-[#AAAAAA]">incl. delivery</div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Contextual Actions Panel (Fixed at Bottom) */}
-      <div className="fixed bottom-0 right-0 w-[480px] bg-white border-t border-[#ECECEC] p-6 shadow-[0_-8px_32px_rgba(0,0,0,0.04)] z-50 flex flex-col gap-3">
+      <div 
+        className="fixed bottom-0 right-0 w-[480px] bg-white border-t border-[#ECECEC] p-6 shadow-[0_-8px_32px_rgba(0,0,0,0.04)] z-50 flex flex-col gap-3"
+        role="group"
+        aria-label="Order actions"
+      >
         
         {/* NEW STATE: Call Logging */}
         {order.status === "new" && (
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[13px] font-medium text-[#AAAAAA]">Call Attempts: {order.callAttempts || 0}/2</span>
+              <span className="text-[13px] font-medium text-[#AAAAAA]" aria-live="polite">Call Attempts: {order.callAttempts || 0}/2</span>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <TrackingButton variant="secondary" onClick={() => handleCallLog("no answer")}>No Answer</TrackingButton>
-              <TrackingButton variant="secondary" onClick={() => handleCallLog("wrong number")} className="text-rose-600">Wrong Num</TrackingButton>
-              <TrackingButton variant="secondary" onClick={() => handleCallLog("refused")} className="text-rose-600">Refused</TrackingButton>
+              <TrackingButton variant="secondary" onClick={() => handleCallLog("wrong number")} className="text-rose-600 hover:text-rose-700">Wrong Num</TrackingButton>
+              <TrackingButton variant="secondary" onClick={() => handleCallLog("refused")} className="text-rose-600 hover:text-rose-700">Refused</TrackingButton>
               <TrackingButton variant="primary" onClick={() => handleStatusChange("confirmed")} className="gap-2">
-                Confirm <ArrowRight className="w-4 h-4" />
+                Confirm <ArrowRight className="w-4 h-4" aria-hidden="true" />
               </TrackingButton>
             </div>
           </div>
@@ -219,9 +239,9 @@ export function TrackingOrderDetails({ order, onClose }: TrackingOrderDetailsPro
         {/* CONFIRMED STATE: Dispatch */}
         {order.status === "confirmed" && (
           <div className="flex gap-3">
-            <TrackingButton variant="secondary" onClick={() => handleStatusChange("canceled")} className="flex-1 text-rose-600">Cancel Order</TrackingButton>
+            <TrackingButton variant="secondary" onClick={() => handleStatusChange("canceled")} className="flex-1 text-rose-600 hover:text-rose-700">Cancel Order</TrackingButton>
             <TrackingButton variant="primary" onClick={() => handleStatusChange("packaged")} className="flex-[2] gap-2">
-              Send to Yalidin <ArrowRight className="w-4 h-4" />
+              Send to Yalidin <ArrowRight className="w-4 h-4" aria-hidden="true" />
             </TrackingButton>
           </div>
         )}
@@ -231,7 +251,7 @@ export function TrackingOrderDetails({ order, onClose }: TrackingOrderDetailsPro
           <div className="flex gap-3">
             <TrackingButton variant="secondary" onClick={() => {}} className="flex-[2]">Print Label</TrackingButton>
             <TrackingButton variant="primary" onClick={() => handleStatusChange("shipped")} className="flex-1 gap-2">
-              Ship <ArrowRight className="w-4 h-4" />
+              Ship <ArrowRight className="w-4 h-4" aria-hidden="true" />
             </TrackingButton>
           </div>
         )}
