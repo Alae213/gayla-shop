@@ -48,18 +48,15 @@ export default defineSchema({
     deliveryCost:     v.number(),
     totalAmount:      v.optional(v.number()),
     quantity:         v.optional(v.number()),
+    // Tracking Mode MVP Core Statuses
     status: v.optional(
       v.union(
-        v.literal("Pending"),
-        v.literal("Confirmed"),
-        v.literal("Called no respond"),
-        v.literal("Called 01"),
-        v.literal("Called 02"),
-        v.literal("Cancelled"),
-        v.literal("Packaged"),
-        v.literal("Shipped"),
-        v.literal("Delivered"),
-        v.literal("Retour"),
+        v.literal("new"),
+        v.literal("confirmed"),
+        v.literal("packaged"),
+        v.literal("shipped"),
+        v.literal("canceled"),
+        v.literal("blocked")
       )
     ),
     selectedVariant: v.optional(v.object({
@@ -74,9 +71,15 @@ export default defineSchema({
       reason:    v.optional(v.string()),
     }))),
     callAttempts: v.optional(v.number()),
+    // Updated callLog structure based on MVP specs
     callLog: v.optional(v.array(v.object({
       timestamp: v.number(),
-      outcome:   v.union(v.literal("answered"), v.literal("no_answer")),
+      outcome:   v.union(
+        v.literal("answered"), 
+        v.literal("no answer"), 
+        v.literal("wrong number"), 
+        v.literal("refused")
+      ),
       note:      v.optional(v.string()),
     }))),
     adminNotes: v.optional(v.array(v.object({
@@ -84,6 +87,7 @@ export default defineSchema({
       timestamp: v.number(),
     }))),
     isBanned:          v.optional(v.boolean()),
+    cancelReason:      v.optional(v.string()), // Added for tracking mode MVP
     retourReason:      v.optional(v.string()),
     fraudScore:        v.optional(v.number()),
     courierTrackingId: v.optional(v.string()),
