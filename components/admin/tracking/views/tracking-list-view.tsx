@@ -36,7 +36,7 @@ export function TrackingListView({
           <TrackingCheckbox 
             checked={isAllSelected}
             onCheckedChange={() => onSelectAll(orderIds)}
-            aria-label="Select all orders"
+            aria-label={isAllSelected ? "Deselect all orders" : "Select all orders"}
           />
         </div>
         <div>Order</div>
@@ -47,15 +47,24 @@ export function TrackingListView({
       </div>
 
       {/* Table Body */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" role="list">
         {orders.map(order => {
           const isSelected = selectedIds.has(order._id);
           
           return (
             <div 
               key={order._id}
+              role="listitem"
+              tabIndex={0}
+              aria-label={`Order ${order.orderNumber} by ${order.customerName}, total ${order.totalAmount} DZD, status ${order.status}`}
               onClick={() => onOrderClick(order._id)}
-              className={`grid grid-cols-[48px_minmax(120px,1fr)_minmax(180px,2fr)_minmax(120px,1fr)_minmax(100px,1fr)_minmax(120px,1fr)] items-center px-6 py-4 border-b border-[#ECECEC] cursor-pointer transition-colors ${isSelected ? 'bg-[#F5F5F5]' : 'bg-white hover:bg-[#F7F7F7]'}`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onOrderClick(order._id);
+                }
+              }}
+              className={`grid grid-cols-[48px_minmax(120px,1fr)_minmax(180px,2fr)_minmax(120px,1fr)_minmax(100px,1fr)_minmax(120px,1fr)] items-center px-6 py-4 border-b border-[#ECECEC] cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#AAAAAA] ${isSelected ? 'bg-[#F5F5F5]' : 'bg-white hover:bg-[#F7F7F7]'}`}
             >
               <div 
                 className="flex items-center justify-center" 
@@ -67,6 +76,7 @@ export function TrackingListView({
                 <TrackingCheckbox 
                   checked={isSelected}
                   onChange={() => {}} // handled by onClick wrapper
+                  tabIndex={-1}
                   aria-label={`Select order ${order.orderNumber}`}
                 />
               </div>
@@ -86,7 +96,7 @@ export function TrackingListView({
 
         {orders.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 rounded-full bg-[#F5F5F5] flex items-center justify-center mb-4 text-[#AAAAAA]">
+            <div className="w-16 h-16 rounded-full bg-[#F5F5F5] flex items-center justify-center mb-4 text-[#AAAAAA]" aria-hidden="true">
               {isBlacklist ? <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg> : <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg>}
             </div>
             <h3 className="text-[16px] font-semibold text-[#3A3A3A]">No orders found</h3>
