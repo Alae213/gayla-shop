@@ -41,7 +41,7 @@ interface TrackingKanbanBoardProps {
   blacklistCount?: number;
 }
 
-// hold is included so "wrong number" orders remain visible in the kanban
+// hold column is included so wrong-number orders remain visible
 const KANBAN_COLUMNS: { id: MVPStatus; title: string; accent?: string }[] = [
   { id: "new",       title: "new" },
   { id: "confirmed", title: "confirmed" },
@@ -51,6 +51,14 @@ const KANBAN_COLUMNS: { id: MVPStatus; title: string; accent?: string }[] = [
 ];
 
 const VALID_COLUMNS = new Set<string>(KANBAN_COLUMNS.map(c => c.id));
+
+// Build a short variant label from an order, e.g. "M / Red"
+function variantLabel(order: Order): string {
+  const parts: string[] = [];
+  if (order.selectedVariant?.size)  parts.push(order.selectedVariant.size);
+  if (order.selectedVariant?.color) parts.push(order.selectedVariant.color);
+  return parts.join(" / ");
+}
 
 // ── Draggable card wrapper
 function SortableOrderCard({
@@ -81,6 +89,8 @@ function SortableOrderCard({
       <TrackingOrderCard
         orderNumber={order.orderNumber}
         customerName={order.customerName}
+        productName={order.productName}
+        productVariant={variantLabel(order)}
         totalPrice={order.totalAmount ?? 0}
         status={order._normalizedStatus ?? order.status ?? "new"}
         date={formatDistanceToNow(order._creationTime, { addSuffix: true })}
@@ -98,7 +108,6 @@ export function TrackingKanbanBoard({
   onToggleSelect,
   onSelectAll,
   onOrderClick,
-  blacklistCount = 0,
 }: TrackingKanbanBoardProps) {
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const updateStatus = useMutation(api.orders.updateStatus);
@@ -127,7 +136,6 @@ export function TrackingKanbanBoard({
       if (!over) return null;
 
       const overId = over.id as string;
-
       if (VALID_COLUMNS.has(overId)) return overId as MVPStatus;
 
       const overData = over.data?.current as { columnId?: MVPStatus } | undefined;
@@ -183,7 +191,7 @@ export function TrackingKanbanBoard({
           const hasSelected   = columnOrderIds.some(id => selectedIds.has(id));
           const totalValue    = column.items.reduce((sum, o) => sum + (o.totalAmount ?? 0), 0);
 
-          // hide the hold column entirely when empty
+          // Hide the hold column entirely when empty
           if (column.id === "hold" && column.items.length === 0) return null;
 
           return (
@@ -215,7 +223,6 @@ export function TrackingKanbanBoard({
                       >
                         {column.title}
                       </h3>
-                      {/* badge: orange ring for hold to draw attention */}
                       <span
                         className={`inline-flex items-center justify-center text-[12px] font-medium h-6 min-w-[24px] px-1.5 rounded-full ${
                           column.id === "hold"
@@ -276,6 +283,8 @@ export function TrackingKanbanBoard({
             <TrackingOrderCard
               orderNumber={activeOrder.orderNumber}
               customerName={activeOrder.customerName}
+              productName={activeOrder.productName}
+              productVariant={variantLabel(activeOrder)}
               totalPrice={activeOrder.totalAmount ?? 0}
               status={activeOrder._normalizedStatus ?? activeOrder.status ?? "new"}
               date={formatDistanceToNow(activeOrder._creationTime, { addSuffix: true })}

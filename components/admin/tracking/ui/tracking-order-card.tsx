@@ -6,6 +6,10 @@ import { TrackingCheckbox } from "./tracking-checkbox"
 export interface TrackingOrderCardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onClick'> {
   orderNumber: string
   customerName: string
+  /** Optional product name shown on the card */
+  productName?: string
+  /** Optional variant string, e.g. "M / Red" */
+  productVariant?: string
   totalPrice: number
   status: OrderStatus
   date: string
@@ -15,39 +19,33 @@ export interface TrackingOrderCardProps extends Omit<React.HTMLAttributes<HTMLDi
 }
 
 export const TrackingOrderCard = React.forwardRef<HTMLDivElement, TrackingOrderCardProps>(
-  ({ 
-    className, 
-    orderNumber, 
-    customerName, 
-    totalPrice, 
-    status, 
+  ({
+    className,
+    orderNumber,
+    customerName,
+    productName,
+    productVariant,
+    totalPrice,
+    status,
     date,
-    selected = false, 
-    onSelectChange, 
+    selected = false,
+    onSelectChange,
     onCardClick,
-    ...props 
+    ...props
   }, ref) => {
-    
+
     const handleCheckboxChange = (checked: boolean) => {
       onSelectChange?.(checked)
     }
 
     const handleCardClick = (e: React.MouseEvent | React.KeyboardEvent) => {
-      // Prevent clicking the card if we're interacting with the checkbox
       const target = e.target as HTMLElement
-      if (target.closest('label') || target.tagName.toLowerCase() === 'input') {
-        return
-      }
-      
-      // For keyboard events, only trigger on Enter or Space
+      if (target.closest('label') || target.tagName.toLowerCase() === 'input') return
       if (e.type === 'keydown') {
         const keyEvent = e as React.KeyboardEvent
-        if (keyEvent.key !== 'Enter' && keyEvent.key !== ' ') {
-          return
-        }
-        keyEvent.preventDefault() // prevent page scroll on Space
+        if (keyEvent.key !== 'Enter' && keyEvent.key !== ' ') return
+        keyEvent.preventDefault()
       }
-      
       onCardClick?.()
     }
 
@@ -59,7 +57,9 @@ export const TrackingOrderCard = React.forwardRef<HTMLDivElement, TrackingOrderC
         role="button"
         tabIndex={0}
         aria-pressed={selected}
-        aria-label={`Order ${orderNumber} from ${customerName}, total ${totalPrice} DZD, status ${status}`}
+        aria-label={`Order ${orderNumber}${
+          productName ? `, ${productName}` : ""
+        } from ${customerName}, total ${totalPrice} DZD, status ${status}`}
         className={cn(
           "group relative flex flex-col gap-4 p-5 rounded-tracking-card transition-all duration-200 cursor-pointer text-[#3A3A3A] select-none text-left",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#AAAAAA] focus-visible:ring-offset-2",
@@ -70,17 +70,17 @@ export const TrackingOrderCard = React.forwardRef<HTMLDivElement, TrackingOrderC
         )}
         {...props}
       >
-        {/* Header: Checkbox (visible on hover or if selected) + Status */}
+        {/* Header: Checkbox (visible on hover/selected) + Status */}
         <div className="flex items-center justify-between">
           <div className={cn(
             "transition-opacity duration-200",
             selected ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
           )}>
-            <TrackingCheckbox 
-              checked={selected} 
-              onCheckedChange={handleCheckboxChange} 
+            <TrackingCheckbox
+              checked={selected}
+              onCheckedChange={handleCheckboxChange}
               aria-label={`Select order ${orderNumber}`}
-              tabIndex={-1} // Prevent double-tabbing into card then checkbox; card click handles it conceptually, though users can still click it.
+              tabIndex={-1}
             />
           </div>
           <StatusPill status={status} />
@@ -88,7 +88,15 @@ export const TrackingOrderCard = React.forwardRef<HTMLDivElement, TrackingOrderC
 
         {/* Content */}
         <div className="flex flex-col gap-1">
-          <span className="text-[15px] font-semibold">{orderNumber}</span>
+          <span className="text-[15px] font-semibold font-mono">{orderNumber}</span>
+          {productName && (
+            <span className="text-[13px] font-medium text-[#3A3A3A] truncate leading-snug">
+              {productName}
+              {productVariant && (
+                <span className="text-[#AAAAAA] font-normal"> · {productVariant}</span>
+              )}
+            </span>
+          )}
           <span className="text-[13px] text-[#AAAAAA]">{customerName}</span>
         </div>
 
