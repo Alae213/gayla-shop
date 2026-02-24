@@ -23,6 +23,18 @@ const callOutcomeValidator = v.union(
 
 type CallOutcome = "answered" | "no answer" | "wrong number" | "refused";
 
+// Line item validator
+const lineItemValidator = v.object({
+  productId: v.id("products"),
+  productName: v.string(),
+  productSlug: v.optional(v.string()),
+  quantity: v.number(),
+  unitPrice: v.number(),
+  variants: v.optional(v.record(v.string(), v.string())),
+  lineTotal: v.number(),
+  thumbnail: v.optional(v.string()),
+});
+
 // ─── Legacy → MVP status map ──────────────────────────────────────────────────────────────────────────────────────────────
 export function normalizeLegacyStatus(status: string | undefined): MVPStatus {
   switch (status) {
@@ -67,6 +79,17 @@ function pushCallLog(
   const log: Array<{ timestamp: number; outcome: CallOutcome; note?: string }> =
     order.callLog ?? [];
   return [...log, { timestamp: Date.now(), outcome, ...(note ? { note } : {}) }];
+}
+
+function pushChangeLog(
+  order: any,
+  action: string,
+  changes?: string,
+  adminName?: string
+): Array<{ timestamp: number; adminName?: string; action: string; changes?: string }> {
+  const log: Array<{ timestamp: number; adminName?: string; action: string; changes?: string }> =
+    order.changeLog ?? [];
+  return [...log, { timestamp: Date.now(), action, ...(changes ? { changes } : {}), ...(adminName ? { adminName } : {}) }];
 }
 
 function generateOrderNumber(): string {
@@ -189,6 +212,52 @@ export const create = mutation({
     });
 
     return { orderId, orderNumber, totalAmount };
+  },
+});
+
+// ─── UPDATE LINE ITEMS ───────────────────────────────────────────────────────────────────────────────────────────────
+
+export const updateLineItems = mutation({
+  args: {
+    id: v.id("orders"),
+    lineItems: v.array(lineItemValidator),
+    adminName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.id);
+    if (!order) throw new Error("Order not found");
+
+    // Calculate new subtotal and total
+    const subtotal = args.lineItems.reduce((sum, item) => sum + item.lineTotal, 0);
+    const newTotalAmount = subtotal + order.deliveryCost;
+
+    // Generate change summary
+    const previousCount = order.lineItems?.length ?? 1;
+    const newCount = args.lineItems.length;
+    const previousTotal = order.totalAmount ?? order.productPrice! + order.deliveryCost;
+    
+    const changeSummary = [
+      `Items: ${previousCount} → ${newCount}`,
+      `Subtotal: ${previousTotal - order.deliveryCost} DA → ${subtotal} DA`,
+      `Total: ${previousTotal} DA → ${newTotalAmount} DA`,
+    ].join(", ");
+
+    // Log the change
+    const changeLog = pushChangeLog(
+      order,
+      "line_items_updated",
+      changeSummary,
+      args.adminName
+    );
+
+    await ctx.db.patch(args.id, {
+      lineItems: args.lineItems,
+      totalAmount: newTotalAmount,
+      changeLog,
+      lastUpdated: Date.now(),
+    });
+
+    return { success: true, newTotalAmount };
   },
 });
 
