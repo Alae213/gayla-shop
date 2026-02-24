@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { notFound, useParams } from "next/navigation";
 import { OrderForm } from "@/components/products/order-form";
+import { AddToCartButton } from "@/components/products/add-to-cart-button";
 import { formatPrice } from "@/lib/utils";
 import { ImageIcon } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
@@ -61,6 +62,16 @@ export default function ProductDetailPage() {
   if (product === null) notFound();
 
   const currentImage = product.images?.[selectedImageIndex]?.url;
+  const isActive = product.status === "Active";
+  const thumbnail = product.images?.[0]?.url ?? null;
+
+  // Extract variants from existing schema (size/color)
+  const variants: Record<string, string> = {};
+  if (product.variants && product.variants.length > 0) {
+    const firstVariant = product.variants[0];
+    if (firstVariant.size) variants.size = firstVariant.size;
+    if (firstVariant.color) variants.color = firstVariant.color;
+  }
 
   return (
     <div className="page-container py-10 md:py-14">
@@ -141,6 +152,22 @@ export default function ProductDetailPage() {
               className="prose prose-sm max-w-none text-system-300 leading-relaxed"
               dangerouslySetInnerHTML={{ __html: product.description }}
             />
+          )}
+
+          {/* Add to Cart Button - Only for Active products */}
+          {isActive && (
+            <div className="pb-4">
+              <AddToCartButton
+                productId={product._id}
+                productName={product.title}
+                productSlug={product.slug}
+                productPrice={product.price}
+                thumbnail={thumbnail}
+                variants={variants}
+                isActive={isActive}
+                className="w-full"
+              />
+            </div>
           )}
 
           <OrderForm product={product} />
