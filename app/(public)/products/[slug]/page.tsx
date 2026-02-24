@@ -3,7 +3,7 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { notFound, useParams } from "next/navigation";
-import { OrderForm } from "@/components/products/order-form";
+import { ProductActions } from "@/components/product/product-actions";
 import { formatPrice } from "@/lib/utils";
 import { ImageIcon } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
@@ -143,7 +143,7 @@ export default function ProductDetailPage() {
             />
           )}
 
-          <OrderForm product={product} />
+          <ProductActions product={product} />
         </div>
       </div>
     </div>
