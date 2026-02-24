@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
-// ─── MVP Status Union ────────────────────────────────────────────────────────────────────────────────────
+// ─── MVP Status Union ──────────────────────────────────────────────────────────────────────────────────────────────
 const orderStatusMVPValidator = v.union(
   v.literal("new"),
   v.literal("confirmed"),
@@ -35,7 +35,7 @@ const lineItemValidator = v.object({
   thumbnail: v.optional(v.string()),
 });
 
-// ─── Legacy → MVP status map ──────────────────────────────────────────────────────────────────────────────────────────────
+// ─── Legacy → MVP status map ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 export function normalizeLegacyStatus(status: string | undefined): MVPStatus {
   switch (status) {
     case "new":       return "new";
@@ -98,7 +98,7 @@ function generateOrderNumber(): string {
   return `GAY-${timestamp}-${random}`;
 }
 
-// ─── QUERIES ──────────────────────────────────────────────────────────────────────────────────────────────
+// ─── QUERIES ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export const list = query({
   args: {},
@@ -141,7 +141,7 @@ export const getStats = query({
   },
 });
 
-// ─── CREATE ───────────────────────────────────────────────────────────────────────────────────────────────
+// ─── CREATE ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export const create = mutation({
   args: {
@@ -215,7 +215,7 @@ export const create = mutation({
   },
 });
 
-// ─── UPDATE LINE ITEMS ───────────────────────────────────────────────────────────────────────────────────────────────
+// ─── UPDATE LINE ITEMS ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export const updateLineItems = mutation({
   args: {
@@ -261,7 +261,57 @@ export const updateLineItems = mutation({
   },
 });
 
-// ─── UPDATE STATUS ───────────────────────────────────────────────────────────────────────────────────────────
+// ─── UPDATE DELIVERY DESTINATION ────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+export const updateDeliveryDestination = mutation({
+  args: {
+    id: v.id("orders"),
+    wilaya: v.string(),
+    commune: v.string(),
+    newDeliveryCost: v.number(),
+    adminName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.id);
+    if (!order) throw new Error("Order not found");
+
+    // Calculate new total
+    const subtotal = order.lineItems
+      ? order.lineItems.reduce((sum, item) => sum + item.lineTotal, 0)
+      : order.productPrice ?? 0;
+    
+    const newTotalAmount = subtotal + args.newDeliveryCost;
+    const previousTotal = order.totalAmount;
+
+    // Generate change summary
+    const changeSummary = [
+      `Delivery: ${order.customerWilaya}, ${order.customerCommune} → ${args.wilaya}, ${args.commune}`,
+      `Cost: ${order.deliveryCost} DA → ${args.newDeliveryCost} DA`,
+      `Total: ${previousTotal} DA → ${newTotalAmount} DA`,
+    ].join(", ");
+
+    // Log the change
+    const changeLog = pushChangeLog(
+      order,
+      "delivery_updated",
+      changeSummary,
+      args.adminName
+    );
+
+    await ctx.db.patch(args.id, {
+      customerWilaya: args.wilaya,
+      customerCommune: args.commune,
+      deliveryCost: args.newDeliveryCost,
+      totalAmount: newTotalAmount,
+      changeLog,
+      lastUpdated: Date.now(),
+    });
+
+    return { success: true, newTotalAmount };
+  },
+});
+
+// ─── UPDATE STATUS ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export const updateStatus = mutation({
   args: { id: v.id("orders"), status: orderStatusMVPValidator, reason: v.optional(v.string()) },
@@ -335,7 +385,7 @@ export const remove = mutation({
   },
 });
 
-// ─── BULK ACTIONS ────────────────────────────────────────────────────────────────────────────────────────────
+// ─── BULK ACTIONS ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export const bulkConfirm = mutation({
   args: { ids: v.array(v.id("orders")) },
@@ -401,7 +451,7 @@ export const bulkCancel = mutation({
   },
 });
 
-// ─── UNBLOCK ───────────────────────────────────────────────────────────────────────────────────────────────
+// ─── UNBLOCK ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export const unblockCustomer = mutation({
   args: { id: v.id("orders") },
@@ -445,7 +495,7 @@ export const bulkUnblock = mutation({
   },
 });
 
-// ─── CALL LOGGING ───────────────────────────────────────────────────────────────────────────────────────────
+// ─── CALL LOGGING ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export const logCallOutcome = mutation({
   args: {
@@ -500,7 +550,7 @@ export const logCallOutcome = mutation({
   },
 });
 
-// ─── RESET CALL ATTEMPTS (for Undo auto-cancel) ─────────────────────────────────────────────────────────────────────────────────────
+// ─── RESET CALL ATTEMPTS (for Undo auto-cancel) ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export const resetCallAttempts = mutation({
   args: { id: v.id("orders") },
@@ -521,7 +571,7 @@ export const resetCallAttempts = mutation({
   },
 });
 
-// ─── ADMIN NOTES ─────────────────────────────────────────────────────────────────────────────────────────────
+// ─── ADMIN NOTES ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export const addNote = mutation({
   args: {
@@ -544,7 +594,7 @@ export const addNote = mutation({
   },
 });
 
-// ─── BAN/UNBAN CUSTOMER ──────────────────────────────────────────────────────────────────────────────────────
+// ─── BAN/UNBAN CUSTOMER ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export const banCustomer = mutation({
   args: {
@@ -575,7 +625,7 @@ export const banCustomer = mutation({
   },
 });
 
-// ─── MARK AS RETOUR ──────────────────────────────────────────────────────────────────────────────────────────
+// ─── MARK AS RETOUR ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export const markRetour = mutation({
   args: {
@@ -603,7 +653,7 @@ export const markRetour = mutation({
   },
 });
 
-// ─── AUTO-PURGE ARCHIVE ──────────────────────────────────────────────────────────────────────────────────────────────────
+// ─── AUTO-PURGE ARCHIVE ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
  * Deletes terminal orders (canceled / blocked) older than 60 days.
@@ -640,7 +690,7 @@ export const purgeOldArchive = mutation({
   },
 });
 
-// ─── ONE-TIME MIGRATION ──────────────────────────────────────────────────────────────────────────────────────────────────
+// ─── ONE-TIME MIGRATION ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export const migrateOrderStatuses = mutation({
   args: {},
