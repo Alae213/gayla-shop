@@ -224,6 +224,40 @@ export const updateCustomerInfo = mutation({
   },
 });
 
+export const update = mutation({
+  args: {
+    id:              v.id("orders"),
+    customerName:    v.optional(v.string()),
+    customerPhone:   v.optional(v.string()),
+    customerWilaya:  v.optional(v.string()),
+    customerCommune: v.optional(v.string()),
+    customerAddress: v.optional(v.string()),
+    deliveryCost:    v.optional(v.number()),
+    status:          v.optional(v.string()), // Accept any string, normalize internally
+  },
+  handler: async (ctx, args) => {
+    const { id, status, ...updates } = args;
+    const order = await ctx.db.get(id);
+    if (!order) throw new Error("Order not found");
+    
+    const patches: any = { ...updates, lastUpdated: Date.now() };
+    
+    // Handle status update with normalization
+    if (status !== undefined) {
+      const normalizedStatus = normalizeLegacyStatus(status);
+      const currentNormalized = normalizeLegacyStatus(order.status);
+      if (normalizedStatus !== currentNormalized) {
+        const statusHistory = pushStatusHistory(order, normalizedStatus, "Updated via order details modal");
+        patches.status = normalizedStatus;
+        patches.statusHistory = statusHistory;
+      }
+    }
+    
+    await ctx.db.patch(id, patches);
+    return { success: true };
+  },
+});
+
 export const remove = mutation({
   args: { id: v.id("orders") },
   handler: async (ctx, args) => {
