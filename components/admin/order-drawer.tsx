@@ -32,6 +32,7 @@ import {
 import { toast } from "sonner";
 import { OrderLineItemEditor } from "@/components/admin/order-line-item-editor";
 import { OrderDeliveryEditor } from "@/components/admin/order-delivery-editor";
+import { OrderHistoryTimeline } from "@/components/admin/order-history-timeline";
 
 // ─── Types ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -331,12 +332,18 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     }
   };
 
-  const handleDeliverySave = async (wilaya: string, commune: string, newCost: number) => {
+  const handleDeliverySave = async (updates: {
+    wilaya: string;
+    commune: string;
+    deliveryType: "Domicile" | "Stopdesk";
+    deliveryCost: number;
+  }) => {
     await updateDeliveryDestination({
       id: order._id,
-      wilaya,
-      commune,
-      newDeliveryCost: newCost,
+      wilaya: updates.wilaya,
+      commune: updates.commune,
+      deliveryType: updates.deliveryType,
+      newDeliveryCost: updates.deliveryCost,
     });
     onSuccess(); // Refresh order data
   };
@@ -661,7 +668,18 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
             <Separator />
 
-            {/* § 3 CUSTOMER */}
+            {/* § 3 DELIVERY */}
+            <OrderDeliveryEditor
+              currentWilaya={order.customerWilaya}
+              currentCommune={order.customerCommune}
+              currentDeliveryType={order.deliveryType}
+              currentDeliveryCost={order.deliveryCost}
+              onSave={handleDeliverySave}
+            />
+
+            <Separator />
+
+            {/* § 4 CUSTOMER */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -706,22 +724,10 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                         onChange={(e) => setFormData((p) => ({ ...p, customerPhone: e.target.value }))} className="mt-1.5" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="cw" className="text-xs flex items-center gap-1"><MapPin className="h-3 w-3" /> Wilaya</Label>
-                      <Input id="cw" value={formData.customerWilaya}
-                        onChange={(e) => setFormData((p) => ({ ...p, customerWilaya: e.target.value }))} className="mt-1.5" />
-                    </div>
-                    <div>
-                      <Label htmlFor="cc" className="text-xs flex items-center gap-1"><MapPin className="h-3 w-3" /> Commune</Label>
-                      <Input id="cc" value={formData.customerCommune}
-                        onChange={(e) => setFormData((p) => ({ ...p, customerCommune: e.target.value }))} className="mt-1.5" />
-                    </div>
-                  </div>
                   <div>
                     <Label htmlFor="ca" className="text-xs flex items-center gap-1"><Home className="h-3 w-3" /> Address</Label>
                     <Input id="ca" value={formData.customerAddress}
-                      onChange="(e) => setFormData((p) => ({ ...p, customerAddress: e.target.value }))} className="mt-1.5" />
+                      onChange={(e) => setFormData((p) => ({ ...p, customerAddress: e.target.value }))} className="mt-1.5" />
                   </div>
                 </div>
               ) : (
@@ -730,26 +736,14 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                   <Row icon={<Phone />}  label="Phone"    value={
                     <a href={`tel:${order.customerPhone}`} className="font-medium text-indigo-600 hover:underline">{order.customerPhone}</a>
                   } />
-                  <div className="flex items-start justify-between">
-                    <Row icon={<MapPin />} label="Location" value={`${order.customerWilaya}, ${order.customerCommune}`} />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsDeliveryEditorOpen(true)}
-                      className="gap-1.5 text-indigo-600 hover:text-indigo-700 -mt-1"
-                    >
-                      <Edit2 className="h-3 w-3" /> Edit Delivery
-                    </Button>
-                  </div>
                   <Row icon={<Home />}   label="Address"  value={order.customerAddress} />
-                  <Row icon={<Truck />}  label="Delivery" value={<Badge variant="outline">{order.deliveryType}</Badge>} />
                 </div>
               )}
             </div>
 
             <Separator />
 
-            {/* § 4 CUSTOMER RISK */}
+            {/* § 5 CUSTOMER RISK */}
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
               <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                 <Shield className="h-4 w-4 text-gray-500" /> Customer Risk
@@ -801,7 +795,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
               )}
             </div>
 
-            {/* § 5 CALL LOG */}
+            {/* § 6 CALL LOG */}
             {showCallLog && (
               <>
                 <Separator />
@@ -868,7 +862,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
             <Separator />
 
-            {/* § 6 INTERNAL NOTES */}
+            {/* § 7 INTERNAL NOTES */}
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                 <FileText className="h-4 w-4 text-gray-500" /> Internal Notes
@@ -898,46 +892,27 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
             <Separator />
 
-            {/* § 7 STATUS HISTORY */}
+            {/* § 8 HISTORY TIMELINE */}
             <div>
               <button onClick={() => setIsTimelineOpen((p) => !p)}
                 className="w-full flex items-center justify-between text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors py-1">
                 <span className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-gray-400" />
-                  Status History
-                  {(order.statusHistory?.length ?? 0) > 0 && (
+                  Order History
+                  {((order.statusHistory?.length ?? 0) + (order.changeLog?.length ?? 0)) > 0 && (
                     <span className="bg-gray-100 text-gray-500 text-xs px-1.5 py-0.5 rounded-full font-normal">
-                      {order.statusHistory!.length}
+                      {(order.statusHistory?.length ?? 0) + (order.changeLog?.length ?? 0)}
                     </span>
                   )}
                 </span>
                 {isTimelineOpen ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
               </button>
               {isTimelineOpen && (
-                <div className="mt-3 pl-4 border-l-2 border-gray-200 space-y-3">
-                  {order.statusHistory && order.statusHistory.length > 0 ? (
-                    [...order.statusHistory].reverse().map((entry, i) => {
-                      const ec = STATUS_CFG[entry.status as OrderStatus];
-                      return (
-                        <div key={i} className="relative">
-                          <div className="absolute -left-[1.3rem] mt-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-gray-400 shadow-sm" />
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${
-                                ec ? `${ec.bg} ${ec.color}` : "bg-gray-100 text-gray-600 border-gray-200"
-                              }`}>
-                                {ec?.icon} {entry.status}
-                              </span>
-                              {entry.reason && <p className="text-xs text-gray-400 mt-0.5 ml-1">{entry.reason}</p>}
-                            </div>
-                            <span className="text-xs text-gray-400 shrink-0">{fmt(entry.timestamp)}</span>
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <p className="text-xs text-gray-400 py-2">No history yet.</p>
-                  )}
+                <div className="mt-4">
+                  <OrderHistoryTimeline
+                    statusHistory={order.statusHistory}
+                    changeLog={order.changeLog}
+                  />
                 </div>
               )}
             </div>
@@ -960,17 +935,6 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
           </div>
         </SheetContent>
       </Sheet>
-
-      {/* Delivery Editor Modal */}
-      <OrderDeliveryEditor
-        isOpen={isDeliveryEditorOpen}
-        onClose={() => setIsDeliveryEditorOpen(false)}
-        currentWilaya={order.customerWilaya}
-        currentCommune={order.customerCommune}
-        currentDeliveryCost={order.deliveryCost}
-        deliveryType={order.deliveryType}
-        onSave={handleDeliverySave}
-      />
     </>
   );
 }
