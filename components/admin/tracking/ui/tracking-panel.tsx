@@ -33,14 +33,14 @@ export function TrackingPanel({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, handleDismiss]);
 
-  // Trap body scroll while panel is open
+  // Prevent body scroll while panel is open.
+  // We save and restore any existing overflow value so we don’t clobber
+  // a parent layout that sets its own overflow.
   React.useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => { document.body.style.overflow = ""; };
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -49,15 +49,19 @@ export function TrackingPanel({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/10 z-[100] transition-opacity duration-250 animate-in fade-in"
+        className="fixed inset-0 bg-black/10 z-[100] animate-in fade-in duration-200"
         onClick={handleDismiss}
         aria-hidden="true"
       />
 
-      {/* Slide-in Panel — outer scroll is here */}
+      {/* Slide-in Panel
+          • Full-width on mobile, 480px on sm+, never wider than 100vw
+          • duration-300 (duration-250 is not a valid Tailwind value) */}
       <div
         className={cn(
-          "fixed top-0 right-0 h-full w-[480px] bg-white z-[110] shadow-tracking-elevated transition-transform duration-250 ease-out transform animate-in slide-in-from-right flex flex-col",
+          "fixed top-0 right-0 h-full w-full sm:w-[480px] max-w-[100vw] bg-white z-[110]",
+          "shadow-tracking-elevated flex flex-col",
+          "animate-in slide-in-from-right duration-300 ease-out",
           className
         )}
         role="dialog"
@@ -67,7 +71,7 @@ export function TrackingPanel({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-[#ECECEC] shrink-0">
-          <h2 id="panel-title" className="text-[18px] font-semibold text-[#3A3A3A] m-0">
+          <h2 id="panel-title" className="text-[18px] font-semibold text-[#3A3A3A] m-0 truncate pr-4">
             {title}
           </h2>
           <TrackingButton
@@ -75,6 +79,7 @@ export function TrackingPanel({
             size="icon"
             onClick={handleDismiss}
             aria-label="Close panel"
+            className="shrink-0"
           >
             <X className="w-5 h-5" />
           </TrackingButton>
