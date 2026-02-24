@@ -6,26 +6,32 @@ import { TrackingButton } from "./tracking-button";
 export interface TrackingPanelProps extends React.HTMLAttributes<HTMLDivElement> {
   isOpen: boolean;
   onClose: () => void;
+  /** If provided, fires instead of onClose for backdrop, X button, and Escape.
+   *  Use this to let the child component intercept the close (e.g. unsaved-changes guard). */
+  onRequestClose?: () => void;
   title?: string;
 }
 
 export function TrackingPanel({
   isOpen,
   onClose,
+  onRequestClose,
   title,
   children,
   className,
   ...props
 }: TrackingPanelProps) {
-  // Close on Escape
+  const handleDismiss = onRequestClose ?? onClose;
+
+  // Close on Escape — respects onRequestClose
   React.useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleDismiss();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, handleDismiss]);
 
   // Trap body scroll while panel is open
   React.useEffect(() => {
@@ -44,7 +50,7 @@ export function TrackingPanel({
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/10 z-[100] transition-opacity duration-250 animate-in fade-in"
-        onClick={onClose}
+        onClick={handleDismiss}
         aria-hidden="true"
       />
 
@@ -67,7 +73,7 @@ export function TrackingPanel({
           <TrackingButton
             variant="icon"
             size="icon"
-            onClick={onClose}
+            onClick={handleDismiss}
             aria-label="Close panel"
           >
             <X className="w-5 h-5" />

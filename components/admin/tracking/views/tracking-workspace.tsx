@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -54,6 +54,30 @@ export function TrackingWorkspace() {
   const [listStatusFilter, setListStatusFilter] = useState<MVPStatus | "all">("all");
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
+  // ── Ref that holds the current handleRequestClose from TrackingOrderDetails.
+  // Updated via onRegisterRequestClose whenever the dirty state changes.
+  const panelRequestCloseRef = useRef<(() => void) | null>(null);
+
+  const handleRegisterRequestClose = useCallback((fn: () => void) => {
+    panelRequestCloseRef.current = fn;
+  }, []);
+
+  // Routes panel dismiss (backdrop / X / Escape) through the child interceptor.
+  // Falls back to direct close when no order is loaded yet.
+  const handlePanelRequestClose = useCallback(() => {
+    if (panelRequestCloseRef.current) {
+      panelRequestCloseRef.current();
+    } else {
+      setSelectedOrderId(null);
+    }
+  }, []);
+
+  // Called by the dialog's "Leave anyway" action — bypasses the guard.
+  const handlePanelClose = useCallback(() => {
+    panelRequestCloseRef.current = null;
+    setSelectedOrderId(null);
+  }, []);
+
   const orders = useQuery(api.orders.list, {});
   const selectedOrder = useQuery(
     api.orders.getById,
@@ -86,7 +110,7 @@ export function TrackingWorkspace() {
   const filteredActive    = applySearch(activeOrders);
   const filteredBlacklist = applySearch(blacklistOrders);
 
-  // Sort (Fix #17)
+  // Sort
   const sortFn = (a: any, b: any) => {
     switch (sortOrder) {
       case "date_asc":    return a._creationTime - b._creationTime;
@@ -97,7 +121,7 @@ export function TrackingWorkspace() {
   };
   const sortedActive = filteredActive ? [...filteredActive].sort(sortFn) : [];
 
-  // Filter for list view (Fix #16)
+  // Filter for list view
   const filteredForList = listStatusFilter === "all"
     ? sortedActive
     : sortedActive.filter(o => o._normalizedStatus === listStatusFilter);
@@ -268,7 +292,7 @@ export function TrackingWorkspace() {
             />
           </div>
 
-          {/* Sort (Fix #17) */}
+          {/* Sort */}
           <div className="relative">
             <button
               aria-label="Sort orders"
@@ -295,7 +319,7 @@ export function TrackingWorkspace() {
             )}
           </div>
 
-          {/* Filter — list view only (Fix #16) */}
+          {/* Filter — list view only */}
           {view === "list" && (
             <div className="relative">
               <button
@@ -396,13 +420,15 @@ export function TrackingWorkspace() {
       {/* Right Panel */}
       <TrackingPanel
         isOpen={selectedOrderId !== null}
-        onClose={() => setSelectedOrderId(null)}
+        onClose={handlePanelClose}
+        onRequestClose={handlePanelRequestClose}
         title={selectedOrder ? `Order ${selectedOrder.orderNumber}` : "Loading..."}
       >
         {selectedOrder ? (
           <TrackingOrderDetails
             order={{ ...selectedOrder, _normalizedStatus: normalizeLegacyStatus(selectedOrder.status) }}
-            onClose={() => setSelectedOrderId(null)}
+            onClose={handlePanelClose}
+            onRegisterRequestClose={handleRegisterRequestClose}
           />
         ) : (
           <div className="flex items-center justify-center py-12">
