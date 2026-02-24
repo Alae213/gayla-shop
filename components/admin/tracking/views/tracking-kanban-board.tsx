@@ -27,6 +27,7 @@ import { TrackingOrderCard } from "../ui/tracking-order-card";
 import { TrackingCheckbox } from "../ui/tracking-checkbox";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { Ban } from "lucide-react";
 
 export type Order = any;
 
@@ -41,7 +42,8 @@ interface TrackingKanbanBoardProps {
   blacklistCount?: number;
 }
 
-// hold column is included so wrong-number orders remain visible
+// hold column is visible so wrong-number orders remain trackable,
+// but it is NOT a valid drag target — hold is set only via call log.
 const KANBAN_COLUMNS: { id: MVPStatus; title: string; accent?: string }[] = [
   { id: "new",       title: "new" },
   { id: "confirmed", title: "confirmed" },
@@ -50,9 +52,23 @@ const KANBAN_COLUMNS: { id: MVPStatus; title: string; accent?: string }[] = [
   { id: "hold",      title: "hold", accent: "text-orange-500" },
 ];
 
+// Columns that can receive a drop. "hold" is intentionally excluded.
+const DRAGGABLE_TARGETS = new Set<MVPStatus>(["new", "confirmed", "packaged", "shipped"]);
+
+// Forward-only transition map. Each status lists the statuses it may move TO via drag.
+// Backward moves are rejected to prevent accidental data corruption.
+const ALLOWED_TRANSITIONS: Record<MVPStatus, MVPStatus[]> = {
+  new:       ["confirmed"],
+  confirmed: ["packaged", "new"],   // allow reverting to new (e.g. customer callback)
+  packaged:  ["shipped", "confirmed"],
+  shipped:   [],                    // shipped is terminal for drag; use action bar to revert
+  hold:      ["new"],               // only Resume as New is allowed (via action bar, not drag)
+  canceled:  [],
+  blocked:   [],
+};
+
 const VALID_COLUMNS = new Set<string>(KANBAN_COLUMNS.map(c => c.id));
 
-// Build a short variant label from an order, e.g. "M / Red"
 function variantLabel(order: Order): string {
   const parts: string[] = [];
   if (order.selectedVariant?.size)  parts.push(order.selectedVariant.size);
@@ -60,7 +76,7 @@ function variantLabel(order: Order): string {
   return parts.join(" / ");
 }
 
-// ── Draggable card wrapper
+// Draggable card wrapper
 function SortableOrderCard({
   order,
   selected,
@@ -108,6 +124,7 @@ export function TrackingKanbanBoard({
   onToggleSelect,
   onSelectAll,
   onOrderClick,
+  blacklistCount = 0,
 }: TrackingKanbanBoardProps) {
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const updateStatus = useMutation(api.orders.updateStatus);
@@ -165,6 +182,24 @@ export function TrackingKanbanBoard({
     const currentStatus = getColumn(order);
     if (currentStatus === targetColumnId) return;
 
+    // FIX 17A: Block drag onto the hold column — hold is set only via
+    // wrong-number call log, never by manual drag.
+    if (!DRAGGABLE_TARGETS.has(targetColumnId)) {
+      toast.warning(`"${targetColumnId}" cannot be set by dragging`);
+      return;
+    }
+
+    // FIX 17A: Enforce the allowed transition map so operators can’t skip
+    // stages or make accidental backward jumps (e.g. new → shipped).
+    const allowed = ALLOWED_TRANSITIONS[currentStatus] ?? [];
+    if (!allowed.includes(targetColumnId)) {
+      toast.warning(
+        `Cannot move from “${currentStatus}” to “${targetColumnId}” by dragging`,
+        { description: "Use the order panel to change this status." }
+      );
+      return;
+    }
+
     try {
       await updateStatus({ id: orderId as Id<"orders">, status: targetColumnId });
       toast.success(`Order moved to ${targetColumnId}`);
@@ -180,100 +215,119 @@ export function TrackingKanbanBoard({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div
-        className="flex h-full gap-6 overflow-x-auto pb-4"
-        role="region"
-        aria-label="Kanban Board"
-      >
-        {columns.map(column => {
-          const columnOrderIds = column.items.map(o => o._id);
-          const isAllSelected = columnOrderIds.length > 0 && columnOrderIds.every(id => selectedIds.has(id));
-          const hasSelected   = columnOrderIds.some(id => selectedIds.has(id));
-          const totalValue    = column.items.reduce((sum, o) => sum + (o.totalAmount ?? 0), 0);
+      <div className="flex flex-col h-full">
+        <div
+          className="flex flex-1 gap-6 overflow-x-auto pb-4"
+          role="region"
+          aria-label="Kanban Board"
+        >
+          {columns.map(column => {
+            const columnOrderIds = column.items.map(o => o._id);
+            const isAllSelected = columnOrderIds.length > 0 && columnOrderIds.every(id => selectedIds.has(id));
+            const hasSelected   = columnOrderIds.some(id => selectedIds.has(id));
+            const totalValue    = column.items.reduce((sum, o) => sum + (o.totalAmount ?? 0), 0);
 
-          // Hide the hold column entirely when empty
-          if (column.id === "hold" && column.items.length === 0) return null;
+            // Hide the hold column entirely when empty
+            if (column.id === "hold" && column.items.length === 0) return null;
 
-          return (
-            <SortableContext
-              key={column.id}
-              id={column.id}
-              items={columnOrderIds}
-              strategy={verticalListSortingStrategy}
-            >
-              <section
-                className="flex flex-col w-[320px] shrink-0"
-                aria-labelledby={`kanban-col-${column.id}`}
+            return (
+              <SortableContext
+                key={column.id}
+                id={column.id}
+                items={columnOrderIds}
+                strategy={verticalListSortingStrategy}
               >
-                {/* Column Header */}
-                <div className="group relative flex items-center justify-between mb-4 px-2 py-1">
-                  <div className="flex items-center gap-3">
-                    <TrackingCheckbox
-                      checked={isAllSelected}
-                      onCheckedChange={() => onSelectAll(columnOrderIds)}
-                      aria-label={`${isAllSelected ? "Deselect" : "Select"} all ${column.title} orders`}
-                      className={isAllSelected || hasSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"}
-                    />
-                    <div className="flex items-center gap-2">
-                      <h3
-                        id={`kanban-col-${column.id}`}
-                        className={`text-[15px] font-semibold lowercase ${
-                          column.accent ?? "text-[#3A3A3A]"
-                        }`}
-                      >
-                        {column.title}
-                      </h3>
-                      <span
-                        className={`inline-flex items-center justify-center text-[12px] font-medium h-6 min-w-[24px] px-1.5 rounded-full ${
-                          column.id === "hold"
-                            ? "bg-orange-100 text-orange-600"
-                            : "bg-[#ECECEC] text-[#AAAAAA]"
-                        }`}
-                        aria-label={`${column.items.length} orders`}
-                      >
-                        {column.items.length}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Column total on hover */}
-                  <div
-                    className="absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white shadow-tracking-elevated px-3 py-1.5 rounded-md text-[13px] font-medium text-[#3A3A3A] pointer-events-none z-10 whitespace-nowrap -top-10"
-                    aria-hidden="true"
-                  >
-                    {totalValue.toLocaleString()} DZD
-                  </div>
-                </div>
-
-                {/* Drop zone + cards */}
-                <div
-                  id={column.id}
-                  className={`flex flex-col gap-4 overflow-y-auto h-full px-1 pb-12 rounded-xl ${
-                    column.id === "hold" ? "bg-orange-50/40" : ""
-                  }`}
-                  role="list"
-                  aria-label={`${column.title} column`}
+                <section
+                  className="flex flex-col w-[320px] shrink-0"
+                  aria-labelledby={`kanban-col-${column.id}`}
                 >
-                  {column.items.map(order => (
-                    <SortableOrderCard
-                      key={order._id}
-                      order={order}
-                      selected={selectedIds.has(order._id)}
-                      onSelectChange={() => onToggleSelect(order._id)}
-                      onCardClick={() => onOrderClick(order._id)}
-                    />
-                  ))}
-
-                  {column.items.length === 0 && (
-                    <div className="flex items-center justify-center p-8 border-2 border-dashed border-[#ECECEC] rounded-tracking-card min-h-[120px]">
-                      <p className="text-[14px] text-[#AAAAAA]">Drop here</p>
+                  {/* Column Header */}
+                  <div className="group relative flex items-center justify-between mb-4 px-2 py-1">
+                    <div className="flex items-center gap-3">
+                      <TrackingCheckbox
+                        checked={isAllSelected}
+                        onCheckedChange={() => onSelectAll(columnOrderIds)}
+                        aria-label={`${
+                          isAllSelected ? "Deselect" : "Select"
+                        } all ${column.title} orders`}
+                        className={
+                          isAllSelected || hasSelected
+                            ? "opacity-100"
+                            : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                        }
+                      />
+                      <div className="flex items-center gap-2">
+                        <h3
+                          id={`kanban-col-${column.id}`}
+                          className={`text-[15px] font-semibold lowercase ${
+                            column.accent ?? "text-[#3A3A3A]"
+                          }`}
+                        >
+                          {column.title}
+                        </h3>
+                        <span
+                          className={`inline-flex items-center justify-center text-[12px] font-medium h-6 min-w-[24px] px-1.5 rounded-full ${
+                            column.id === "hold"
+                              ? "bg-orange-100 text-orange-600"
+                              : "bg-[#ECECEC] text-[#AAAAAA]"
+                          }`}
+                          aria-label={`${column.items.length} orders`}
+                        >
+                          {column.items.length}
+                        </span>
+                      </div>
                     </div>
-                  )}
-                </div>
-              </section>
-            </SortableContext>
-          );
-        })}
+
+                    {/* Column total on hover */}
+                    <div
+                      className="absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white shadow-tracking-elevated px-3 py-1.5 rounded-md text-[13px] font-medium text-[#3A3A3A] pointer-events-none z-10 whitespace-nowrap -top-10"
+                      aria-hidden="true"
+                    >
+                      {totalValue.toLocaleString()} DZD
+                    </div>
+                  </div>
+
+                  {/* Drop zone + cards */}
+                  <div
+                    id={column.id}
+                    className={`flex flex-col gap-4 overflow-y-auto h-full px-1 pb-12 rounded-xl ${
+                      column.id === "hold" ? "bg-orange-50/40" : ""
+                    }`}
+                    role="list"
+                    aria-label={`${column.title} column`}
+                  >
+                    {column.items.map(order => (
+                      <SortableOrderCard
+                        key={order._id}
+                        order={order}
+                        selected={selectedIds.has(order._id)}
+                        onSelectChange={() => onToggleSelect(order._id)}
+                        onCardClick={() => onOrderClick(order._id)}
+                      />
+                    ))}
+
+                    {column.items.length === 0 && (
+                      <div className="flex items-center justify-center p-8 border-2 border-dashed border-[#ECECEC] rounded-tracking-card min-h-[120px]">
+                        <p className="text-[14px] text-[#AAAAAA]">Drop here</p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              </SortableContext>
+            );
+          })}
+        </div>
+
+        {/* FIX 17B: Surface blacklistCount as a board footer note so the
+            operator always knows how many orders are in the blacklist tab. */}
+        {blacklistCount > 0 && (
+          <div className="flex items-center gap-2 px-2 py-2 text-[12px] text-rose-500 select-none">
+            <Ban className="w-3.5 h-3.5 shrink-0" />
+            <span>
+              {blacklistCount} order{blacklistCount !== 1 ? "s" : ""} in Blacklist
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Drag overlay */}
