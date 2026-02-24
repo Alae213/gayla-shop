@@ -2,7 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // ─── products ──────────────────────────────────────────────────────────────
+  // ─── products ────────────────────────────────────────────────────────────
   products: defineTable({
     title: v.string(),
     slug: v.string(),
@@ -17,10 +17,22 @@ export default defineSchema({
     images: v.optional(
       v.array(v.object({ storageId: v.string(), url: v.string() }))
     ),
+    // Legacy variant structure (kept for backward compatibility)
     variants: v.optional(
       v.array(v.object({
         size: v.optional(v.string()),
         color: v.optional(v.string()),
+      }))
+    ),
+    // New flexible variant groups structure
+    variantGroups: v.optional(
+      v.array(v.object({
+        name: v.string(), // e.g., "Size", "Color", "Material"
+        values: v.array(v.object({
+          label: v.string(), // e.g., "M", "Red", "Cotton"
+          enabled: v.boolean(), // Whether this variant is available
+          order: v.number(), // Display order (0-based)
+        })),
       }))
     ),
     viewCount: v.optional(v.number()),
@@ -32,13 +44,36 @@ export default defineSchema({
     .index("by_slug", ["slug"])
     .index("by_status", ["status"]),
 
-  // ─── orders ────────────────────────────────────────────────────────────────
+  // ─── orders ─────────────────────────────────────────────────────────────
   orders: defineTable({
     orderNumber: v.string(),
-    productId: v.id("products"),
+    // Legacy single-product fields (kept for backward compatibility)
+    productId: v.optional(v.id("products")),
     productName: v.optional(v.string()),
     productPrice: v.optional(v.number()),
     productSlug: v.optional(v.string()),
+    quantity: v.optional(v.number()),
+    selectedVariant: v.optional(v.object({
+      size: v.optional(v.string()),
+      color: v.optional(v.string()),
+    })),
+    
+    // New multi-item line items structure
+    lineItems: v.optional(
+      v.array(v.object({
+        productId: v.id("products"),
+        productName: v.string(),
+        productSlug: v.optional(v.string()),
+        quantity: v.number(),
+        unitPrice: v.number(),
+        // Flexible variant selection (e.g., { size: "M", color: "Red" })
+        variants: v.optional(v.record(v.string(), v.string())),
+        lineTotal: v.number(),
+        thumbnail: v.optional(v.string()),
+      }))
+    ),
+    
+    // Customer & Delivery Info
     customerName: v.string(),
     customerPhone: v.string(),
     customerWilaya: v.string(),
@@ -47,7 +82,7 @@ export default defineSchema({
     deliveryType: v.union(v.literal("Stopdesk"), v.literal("Domicile")),
     deliveryCost: v.number(),
     totalAmount: v.optional(v.number()),
-    quantity: v.optional(v.number()),
+    
     // Tracking Mode MVP Core Statuses (includes "hold" for wrong-number flow)
     // v.string() fallback accepts legacy values like "Pending" so they don't
     // block schema validation — normalizeLegacyStatus() maps them at read time.
@@ -63,10 +98,6 @@ export default defineSchema({
         v.string()
       )
     ),
-    selectedVariant: v.optional(v.object({
-      size: v.optional(v.string()),
-      color: v.optional(v.string()),
-    })),
     notes: v.optional(v.string()),
     statusHistory: v.optional(v.array(v.object({
       status: v.string(),
@@ -89,6 +120,16 @@ export default defineSchema({
       text: v.string(),
       timestamp: v.number(),
     }))),
+    
+    // Admin order editing change log
+    changeLog: v.optional(v.array(v.object({
+      timestamp: v.number(),
+      adminId: v.optional(v.id("adminUsers")),
+      adminName: v.optional(v.string()),
+      action: v.string(), // e.g., "line_item_added", "quantity_updated", "delivery_changed"
+      changes: v.optional(v.string()), // JSON string of changes for detailed tracking
+    }))),
+    
     isBanned: v.optional(v.boolean()),
     cancelReason: v.optional(v.string()),
     retourReason: v.optional(v.string()),
@@ -104,7 +145,7 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_customer_phone", ["customerPhone"]),
 
-  // ─── deliveryCosts ─────────────────────────────────────────────────────────
+  // ─── deliveryCosts ───────────────────────────────────────────────────────
   deliveryCosts: defineTable({
     wilayaId: v.number(),
     wilayaName: v.string(),
@@ -116,7 +157,7 @@ export default defineSchema({
   })
     .index("by_wilayaId", ["wilayaId"]),
 
-  // ─── siteContent ───────────────────────────────────────────────────────────
+  // ─── siteContent ───────────────────────────────────────────────────────
   siteContent: defineTable({
     heroTitle: v.optional(v.string()),
     heroSubtitle: v.optional(v.string()),
@@ -131,7 +172,7 @@ export default defineSchema({
     updatedAt: v.optional(v.number()),
   }),
 
-  // ─── adminUsers ────────────────────────────────────────────────────────────
+  // ─── adminUsers ──────────────────────────────────────────────────────
   adminUsers: defineTable({
     username: v.optional(v.string()),
     passwordHash: v.string(),
