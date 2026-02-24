@@ -452,6 +452,88 @@ export const resetCallAttempts = mutation({
   },
 });
 
+// ─── ADMIN NOTES ─────────────────────────────────────────────────────────────────────────────────────────────
+
+export const addNote = mutation({
+  args: {
+    orderId: v.id("orders"),
+    text:    v.string(),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error("Order not found");
+    
+    const adminNotes = order.adminNotes ?? [];
+    const newNote = { text: args.text, timestamp: Date.now() };
+    
+    await ctx.db.patch(args.orderId, {
+      adminNotes: [...adminNotes, newNote],
+      lastUpdated: Date.now(),
+    });
+    
+    return { success: true };
+  },
+});
+
+// ─── BAN/UNBAN CUSTOMER ──────────────────────────────────────────────────────────────────────────────────────
+
+export const banCustomer = mutation({
+  args: {
+    phone:    v.string(),
+    isBanned: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    // Update all orders from this phone number
+    const orders = await ctx.db
+      .query("orders")
+      .withIndex("by_customer_phone", (q) => q.eq("customerPhone", args.phone))
+      .collect();
+    
+    for (const order of orders) {
+      const statusHistory = args.isBanned
+        ? pushStatusHistory(order, "blocked", "Customer banned by admin")
+        : pushStatusHistory(order, normalizeLegacyStatus(order.status), "Customer unbanned by admin");
+      
+      await ctx.db.patch(order._id, {
+        isBanned: args.isBanned,
+        ...(args.isBanned ? { status: "blocked" } : {}),
+        statusHistory,
+        lastUpdated: Date.now(),
+      });
+    }
+    
+    return { success: true, affectedOrders: orders.length };
+  },
+});
+
+// ─── MARK AS RETOUR ──────────────────────────────────────────────────────────────────────────────────────────
+
+export const markRetour = mutation({
+  args: {
+    orderId: v.id("orders"),
+    reason:  v.string(),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error("Order not found");
+    
+    const statusHistory = pushStatusHistory(order, "canceled", `Retour: ${args.reason}`);
+    
+    // Increment fraud score for retours
+    const fraudScore = (order.fraudScore ?? 0) + 1;
+    
+    await ctx.db.patch(args.orderId, {
+      status: "canceled",
+      retourReason: args.reason,
+      fraudScore,
+      statusHistory,
+      lastUpdated: Date.now(),
+    });
+    
+    return { success: true };
+  },
+});
+
 // ─── AUTO-PURGE ARCHIVE ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
