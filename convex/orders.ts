@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
-// ─── MVP Status Union ────────────────────────────────────────────────────────────────────────────────
+// ─── MVP Status Union ────────────────────────────────────────────────────────────────────────────────────
 const orderStatusMVPValidator = v.union(
   v.literal("new"),
   v.literal("confirmed"),
@@ -23,8 +23,8 @@ const callOutcomeValidator = v.union(
 
 type CallOutcome = "answered" | "no answer" | "wrong number" | "refused";
 
-// ─── Legacy → MVP status map ──────────────────────────────────────────────────────────────────────────────
-ex port function normalizeLegacyStatus(status: string | undefined): MVPStatus {
+// ─── Legacy → MVP status map ──────────────────────────────────────────────────────────────────────────────────────────────
+export function normalizeLegacyStatus(status: string | undefined): MVPStatus {
   switch (status) {
     case "new":       return "new";
     case "confirmed": return "confirmed";
@@ -75,7 +75,7 @@ function generateOrderNumber(): string {
   return `GAY-${timestamp}-${random}`;
 }
 
-// ─── QUERIES ──────────────────────────────────────────────────────────────────────────────────────
+// ─── QUERIES ──────────────────────────────────────────────────────────────────────────────────────────────
 
 export const list = query({
   args: {},
@@ -118,7 +118,7 @@ export const getStats = query({
   },
 });
 
-// ─── CREATE ───────────────────────────────────────────────────────────────────────────────────────
+// ─── CREATE ───────────────────────────────────────────────────────────────────────────────────────────────
 
 export const create = mutation({
   args: {
@@ -192,7 +192,7 @@ export const create = mutation({
   },
 });
 
-// ─── UPDATE STATUS ───────────────────────────────────────────────────────────────────────────────────
+// ─── UPDATE STATUS ───────────────────────────────────────────────────────────────────────────────────────────
 
 export const updateStatus = mutation({
   args: { id: v.id("orders"), status: orderStatusMVPValidator, reason: v.optional(v.string()) },
@@ -232,7 +232,7 @@ export const remove = mutation({
   },
 });
 
-// ─── BULK ACTIONS ──────────────────────────────────────────────────────────────────────────────────────
+// ─── BULK ACTIONS ────────────────────────────────────────────────────────────────────────────────────────────
 
 export const bulkConfirm = mutation({
   args: { ids: v.array(v.id("orders")) },
@@ -302,7 +302,7 @@ export const bulkCancel = mutation({
   },
 });
 
-// ─── UNBLOCK ───────────────────────────────────────────────────────────────────────────────────────
+// ─── UNBLOCK ───────────────────────────────────────────────────────────────────────────────────────────────
 
 export const unblockCustomer = mutation({
   args: { id: v.id("orders") },
@@ -346,7 +346,7 @@ export const bulkUnblock = mutation({
   },
 });
 
-// ─── CALL LOGGING ───────────────────────────────────────────────────────────────────────────────────────
+// ─── CALL LOGGING ───────────────────────────────────────────────────────────────────────────────────────────
 
 export const logCallOutcome = mutation({
   args: {
@@ -404,7 +404,7 @@ export const logCallOutcome = mutation({
   },
 });
 
-// ─── RESET CALL ATTEMPTS (for Undo auto-cancel) ───────────────────────────────────────────────────────────
+// ─── RESET CALL ATTEMPTS (for Undo auto-cancel) ─────────────────────────────────────────────────────────────────────────────────────
 
 export const resetCallAttempts = mutation({
   args: { id: v.id("orders") },
@@ -413,7 +413,7 @@ export const resetCallAttempts = mutation({
     if (!order) throw new Error("Order not found");
     // Strip only "no answer" entries from the log; keep answered/wrong-number/refused
     const callLog     = (order.callLog ?? []).filter((l: any) => l.outcome !== "no answer");
-    const callAttempts = 0; // no-answer count is now 0
+    const callAttempts = 0;
     const statusHistory = pushStatusHistory(order, "new", "Auto-cancel undone by admin");
     await ctx.db.patch(args.id, {
       callAttempts,
@@ -426,7 +426,7 @@ export const resetCallAttempts = mutation({
   },
 });
 
-// ─── ONE-TIME MIGRATION ──────────────────────────────────────────────────────────────────────────────────────
+// ─── ONE-TIME MIGRATION ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 export const migrateOrderStatuses = mutation({
   args: {},
