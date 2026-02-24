@@ -1,5 +1,6 @@
 "use client";
 
+// Fixed: Uses api.orders.update mutation which handles status normalization
 import { useState, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
