@@ -48,6 +48,8 @@ const KANBAN_COLUMNS: { id: MVPStatus; title: string }[] = [
   { id: "shipped",   title: "shipped" },
 ];
 
+const VALID_COLUMNS = new Set<string>(KANBAN_COLUMNS.map(c => c.id));
+
 // ── Draggable card wrapper
 function SortableOrderCard({
   order,
@@ -62,7 +64,8 @@ function SortableOrderCard({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: order._id,
-    data: { order },
+    // Attach which column this card belongs to so DnD context can resolve it
+    data: { type: "card", order, columnId: order._normalizedStatus ?? order.status ?? "new" },
   });
 
   const style = {
@@ -117,32 +120,63 @@ export function TrackingKanbanBoard({
     setActiveOrder(order ?? null);
   }, [orders]);
 
+  /**
+   * Resolve the target column from a DragEndEvent.
+   *
+   * `over.id` can be:
+   *   - a column id string (e.g. "confirmed")  → when dropped on the empty drop-zone
+   *   - a card _id string                      → when dropped on top of another card
+   *
+   * In the card case we look up that card's column via `over.data.current.columnId`
+   * or by finding the order in our list.
+   */
+  const resolveTargetColumn = useCallback(
+    (event: DragEndEvent): MVPStatus | null => {
+      const { over } = event;
+      if (!over) return null;
+
+      const overId = over.id as string;
+
+      // 1. over.id is a known column id — simple case
+      if (VALID_COLUMNS.has(overId)) return overId as MVPStatus;
+
+      // 2. over.id is a card id — get that card’s column
+      //    First try the data attached by SortableOrderCard
+      const overData = over.data?.current as { columnId?: MVPStatus } | undefined;
+      if (overData?.columnId && VALID_COLUMNS.has(overData.columnId)) {
+        return overData.columnId;
+      }
+
+      // 3. Fallback: look the order up in the orders list
+      const overOrder = orders.find(o => o._id === overId);
+      if (overOrder) return getColumn(overOrder);
+
+      return null;
+    },
+    [orders]
+  );
+
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     setActiveOrder(null);
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    const { active } = event;
 
-    // Determine target column
+    const targetColumnId = resolveTargetColumn(event);
+    if (!targetColumnId) return;
+
     const orderId = active.id as string;
-    const targetColumnId = over.id as MVPStatus;
-    const validColumns = new Set(KANBAN_COLUMNS.map(c => c.id));
-    if (!validColumns.has(targetColumnId)) return;
-
     const order = orders.find(o => o._id === orderId);
     if (!order) return;
 
     const currentStatus = getColumn(order);
-    if (currentStatus === targetColumnId) return;
+    if (currentStatus === targetColumnId) return; // no-op: same column
 
-    // Status advancement: only allow forward moves, not backward except within KANBAN_COLUMNS
-    // Allow any cross-column move for admin flexibility
     try {
       await updateStatus({ id: orderId as Id<"orders">, status: targetColumnId });
       toast.success(`Order moved to ${targetColumnId}`);
     } catch {
       toast.error("Failed to update order status");
     }
-  }, [orders, updateStatus]);
+  }, [orders, updateStatus, resolveTargetColumn]);
 
   return (
     <DndContext
@@ -209,7 +243,7 @@ export function TrackingKanbanBoard({
 
                 {/* Drop zone + cards */}
                 <div
-                  id={column.id}  // DnD uses this as the over.id when dropping onto column
+                  id={column.id}  {/* DnD uses this as over.id when dropping onto the column background */}
                   className="flex flex-col gap-4 overflow-y-auto h-full px-1 pb-12 rounded-xl"
                   role="list"
                   aria-label={`${column.title} column`}
