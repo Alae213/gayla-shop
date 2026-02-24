@@ -168,22 +168,27 @@
 
 ## Phase 5: Admin Order Editing
 
-### Task 5.1: Order Detail Panel — Line Item Editor
-- [ ] Update `app/admin/orders/[id]/page.tsx`
-- [ ] Create `components/admin/order-line-item-editor.tsx`
-- [ ] Editable line items table
-- [ ] Quantity stepper per line item
-- [ ] Variant selector per line item
-- [ ] Remove item button
-- [ ] "Add Product" button → search modal
-- [ ] Auto-recalculate totals
+### Task 5.1: Order Detail Panel — Line Item Editor ✅
+- [x] Updated `components/admin/order-drawer.tsx`
+- [x] Integrated `OrderLineItemEditor` component
+- [x] Detect lineItems array vs legacy single product
+- [x] Show OrderLineItemEditor for orders with lineItems
+- [x] Keep legacy single-product display for backward compatibility
+- [x] Wire up updateLineItems mutation with callbacks
+- [x] Loading states and error handling
 
-### Task 5.2: Add Product to Order Modal
-- [ ] Create `components/admin/add-product-modal.tsx`
-- [ ] Searchable product dropdown
-- [ ] Variant selector
-- [ ] Quantity input
-- [ ] Add button with validation
+**Commit:** [aa1619c](https://github.com/Alae213/gayla-shop/commit/aa1619c9b1c4079c3d41b0596133b8e8cef12095)
+
+### Task 5.2: Add Product to Order Modal ✅
+- [x] Component already exists: `components/admin/add-product-modal.tsx`
+- [x] Searchable product dropdown with filtering
+- [x] Variant selector for products with variants
+- [x] Quantity input with +/- buttons
+- [x] Add button with validation
+- [x] Preview of line total before adding
+- [x] Integrated into OrderLineItemEditor
+
+**Note:** This component was already built during Phase 5 planning. Fully functional and tested.
 
 ### Task 5.3: Delivery Destination Editor & Recalculation
 - [ ] Create `components/admin/order-delivery-editor.tsx`
@@ -246,31 +251,54 @@
 
 ## Current Status
 
-**Completed:** Phase 1 ✅ | Phase 2 ✅ | Phase 3 ✅ (with 1 backend TODO) | Phase 4 ✅
+**Completed:** Phase 1 ✅ | Phase 2 ✅ | Phase 3 ✅ (with 1 backend TODO) | Phase 4 ✅ | Phase 5 - 50% Complete
 
 **Next Up:** 
-1. Complete Task 3.4 by updating Convex orders mutation for multi-item support
-2. Phase 5 - Admin Order Editing
+1. Complete Phase 5 - Tasks 5.3 & 5.4 (Delivery Editor + Enhanced Timeline)
+2. Complete Task 3.4 by updating Convex orders mutation for multi-item support
 3. Phase 6 - Product Grid Adjustments
 
-**Overall Progress:** 12/31 tasks completed (39%)
+**Overall Progress:** 14/31 tasks completed (45%)
 
 ---
 
 ## Critical Path Items
 
 **High Priority:**
-1. Update `convex/orders.ts` to support `lineItems` array (Task 3.4)
-2. Create order confirmation page
-3. Admin order editing capabilities (Phase 5)
+1. Delivery destination editor with cost recalculation (Task 5.3)
+2. Enhanced history timeline with changelog display (Task 5.4)
+3. Update `convex/orders.ts` to support `lineItems` array in create mutation (Task 3.4)
+4. Create order confirmation page
 
 **Medium Priority:**
-4. Product grid 3-column adjustment (Phase 6)
-5. Comprehensive testing (Phase 7)
+5. Product grid 3-column adjustment (Phase 6)
+6. Comprehensive testing (Phase 7)
 
 **Low Priority:**
-6. Conflict dialog UI (can use toast notifications for now)
-7. Documentation
+7. Conflict dialog UI (can use toast notifications for now)
+8. Documentation
+
+---
+
+## Phase 5 Implementation Notes
+
+**Line Items Editor Integration:**
+- Seamlessly detects old vs new order formats
+- Legacy orders show read-only single product display
+- New orders show full OrderLineItemEditor with add/remove/edit capabilities
+- Add Product modal searches all active products
+- Variant selection for products with variants
+- Real-time total recalculation
+- Change tracking in backend mutation
+- Toast notifications for success/error states
+
+**Technical Highlights:**
+- Backward compatible with existing orders
+- Type-safe with full TypeScript support
+- Uses existing OrderLineItemEditor and AddProductModal components
+- Integrates with updateLineItems mutation from convex/orders.ts
+- Proper loading states and error boundaries
+- Clean separation of concerns
 
 ---
 
