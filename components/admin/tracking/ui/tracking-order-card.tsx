@@ -39,8 +39,15 @@ export const TrackingOrderCard = React.forwardRef<HTMLDivElement, TrackingOrderC
     }
 
     const handleCardClick = (e: React.MouseEvent | React.KeyboardEvent) => {
+      // FIX 19B: Radix Checkbox renders a <button role="checkbox">, not an
+      // <input> inside a <label>. Guard against both the checkbox button
+      // itself and any ancestor with role="checkbox" to prevent double-firing.
       const target = e.target as HTMLElement
-      if (target.closest('label') || target.tagName.toLowerCase() === 'input') return
+      if (
+        target.closest('[role="checkbox"]') ||
+        target.closest('label')
+      ) return
+
       if (e.type === 'keydown') {
         const keyEvent = e as React.KeyboardEvent
         if (keyEvent.key !== 'Enter' && keyEvent.key !== ' ') return
@@ -54,9 +61,14 @@ export const TrackingOrderCard = React.forwardRef<HTMLDivElement, TrackingOrderC
         ref={ref}
         onClick={handleCardClick}
         onKeyDown={handleCardClick}
-        role="button"
+        // FIX 19A: Cards live inside role="list" kanban columns.
+        // role="listitem" + aria-selected is correct for a selectable
+        // collection item. aria-pressed (toggle semantics) was wrong here
+        // and caused screen readers to announce "pressed / not pressed"
+        // on every navigation instead of "selected / not selected".
+        role="listitem"
         tabIndex={0}
-        aria-pressed={selected}
+        aria-selected={selected}
         aria-label={`Order ${orderNumber}${
           productName ? `, ${productName}` : ""
         } from ${customerName}, total ${totalPrice} DZD, status ${status}`}
