@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Id } from "@/convex/_generated/dataModel";
 import { TrackingButton } from "../ui/tracking-button";
-import { X, CheckCircle2, Package, Printer, Trash2 } from "lucide-react";
+import { X, CheckCircle2, Package, Printer, Trash2, ShieldOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface TrackingBulkActionBarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -13,7 +13,9 @@ export interface TrackingBulkActionBarProps extends React.HTMLAttributes<HTMLDiv
   onBulkDispatch: () => void;
   onBulkPrint: () => void;
   onBulkCancel: () => void;
+  onBulkUnblock?: () => void;
   isProcessing?: boolean;
+  isBlacklist?: boolean;
 }
 
 export function TrackingBulkActionBar({
@@ -23,7 +25,9 @@ export function TrackingBulkActionBar({
   onBulkDispatch,
   onBulkPrint,
   onBulkCancel,
+  onBulkUnblock,
   isProcessing = false,
+  isBlacklist = false,
   className,
   ...props
 }: TrackingBulkActionBarProps) {
@@ -32,7 +36,7 @@ export function TrackingBulkActionBar({
   if (count === 0) return null;
 
   return (
-    <div 
+    <div
       className={cn(
         "fixed bottom-8 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-6 bg-[#1A1A1A] text-white px-6 py-4 rounded-tracking-card shadow-tracking-elevated animate-in slide-in-from-bottom-8 duration-300 ease-out",
         className
@@ -58,51 +62,76 @@ export function TrackingBulkActionBar({
 
       {/* Action Buttons */}
       <div className="flex items-center gap-3">
-        <TrackingButton 
-          variant="secondary" 
-          size="sm" 
-          onClick={onBulkConfirm}
-          disabled={isProcessing}
-          className="bg-transparent text-white border-[#3A3A3A] hover:bg-[#3A3A3A] hover:text-white gap-2"
-        >
-          {isProcessing ? <div className="w-4 h-4 border-2 border-[#ECECEC] border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-          Confirm All
-        </TrackingButton>
+        {isBlacklist ? (
+          /* Blacklist mode: only show Unblock */
+          <TrackingButton
+            variant="secondary"
+            size="sm"
+            onClick={onBulkUnblock}
+            disabled={isProcessing}
+            className="bg-transparent text-emerald-400 border-[#3A3A3A] hover:bg-emerald-500/10 hover:text-emerald-400 hover:border-emerald-500/20 gap-2"
+          >
+            {isProcessing ? (
+              <div className="w-4 h-4 border-2 border-[#ECECEC] border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <ShieldOff className="w-4 h-4" />
+            )}
+            Unblock Selected
+          </TrackingButton>
+        ) : (
+          /* Normal mode: Confirm, Dispatch, Print, Cancel */
+          <>
+            <TrackingButton
+              variant="secondary"
+              size="sm"
+              onClick={onBulkConfirm}
+              disabled={isProcessing}
+              className="bg-transparent text-white border-[#3A3A3A] hover:bg-[#3A3A3A] hover:text-white gap-2"
+            >
+              {isProcessing ? (
+                <div className="w-4 h-4 border-2 border-[#ECECEC] border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4" />
+              )}
+              Confirm All
+            </TrackingButton>
 
-        <TrackingButton 
-          variant="secondary" 
-          size="sm" 
-          onClick={onBulkDispatch}
-          disabled={isProcessing}
-          className="bg-transparent text-white border-[#3A3A3A] hover:bg-[#3A3A3A] hover:text-white gap-2"
-        >
-          <Package className="w-4 h-4" />
-          Send to Yalidin
-        </TrackingButton>
+            <TrackingButton
+              variant="secondary"
+              size="sm"
+              onClick={onBulkDispatch}
+              disabled={isProcessing}
+              className="bg-transparent text-white border-[#3A3A3A] hover:bg-[#3A3A3A] hover:text-white gap-2"
+            >
+              <Package className="w-4 h-4" />
+              Send to Yalidin
+            </TrackingButton>
 
-        <TrackingButton 
-          variant="secondary" 
-          size="sm" 
-          onClick={onBulkPrint}
-          disabled={isProcessing}
-          className="bg-transparent text-white border-[#3A3A3A] hover:bg-[#3A3A3A] hover:text-white gap-2"
-        >
-          <Printer className="w-4 h-4" />
-          Print Labels
-        </TrackingButton>
+            <TrackingButton
+              variant="secondary"
+              size="sm"
+              onClick={onBulkPrint}
+              disabled={isProcessing}
+              className="bg-transparent text-white border-[#3A3A3A] hover:bg-[#3A3A3A] hover:text-white gap-2"
+            >
+              <Printer className="w-4 h-4" />
+              Print Labels
+            </TrackingButton>
 
-        <div className="w-[1px] h-6 bg-[#3A3A3A] mx-1" />
+            <div className="w-[1px] h-6 bg-[#3A3A3A] mx-1" />
 
-        <TrackingButton 
-          variant="secondary" 
-          size="sm" 
-          onClick={onBulkCancel}
-          disabled={isProcessing}
-          className="bg-transparent text-rose-400 border-[#3A3A3A] hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/20 gap-2"
-        >
-          <Trash2 className="w-4 h-4" />
-          Cancel Selected
-        </TrackingButton>
+            <TrackingButton
+              variant="secondary"
+              size="sm"
+              onClick={onBulkCancel}
+              disabled={isProcessing}
+              className="bg-transparent text-rose-400 border-[#3A3A3A] hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/20 gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Cancel Selected
+            </TrackingButton>
+          </>
+        )}
       </div>
     </div>
   );
