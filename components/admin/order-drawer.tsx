@@ -45,6 +45,8 @@ export type OrderStatus =
   | "Delivered"
   | "Retour";
 
+type MVPStatus = "new" | "confirmed" | "packaged" | "shipped" | "canceled" | "blocked" | "hold";
+
 export interface Order {
   _id: Id<"orders">;
   _creationTime: number;
@@ -80,6 +82,24 @@ interface OrderDrawerProps {
   onClose: () => void;
   order: Order | null;
   onSuccess: () => void;
+}
+
+// ─── Status Normalizer ────────────────────────────────────────────────────────────────────────
+
+function normalizeLegacyStatus(status: OrderStatus): MVPStatus {
+  switch (status) {
+    case "Pending":           return "new";
+    case "Confirmed":         return "confirmed";
+    case "Called no respond": return "new";
+    case "Called 01":         return "new";
+    case "Called 02":         return "new";
+    case "Packaged":          return "packaged";
+    case "Shipped":           return "shipped";
+    case "Delivered":         return "shipped";
+    case "Cancelled":         return "canceled";
+    case "Retour":            return "canceled";
+    default:                  return "new";
+  }
 }
 
 // ─── Status display config ────────────────────────────────────────────────────────────────────────────────────
@@ -295,14 +315,15 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
       const previousStatus = order.status;
       setIsActioning(true);
       try {
-        await updateOrderStatus({ id: order._id, status: btn.toStatus });
+        // Normalize legacy status to MVP status before calling mutation
+        await updateOrderStatus({ id: order._id, status: normalizeLegacyStatus(btn.toStatus) });
         onSuccess();
         toast.success(`${btn.icon} ${btn.label}`, {
           action: {
             label: "Undo",
             onClick: async () => {
               try {
-                await updateOrderStatus({ id: order._id, status: previousStatus });
+                await updateOrderStatus({ id: order._id, status: normalizeLegacyStatus(previousStatus) });
                 onSuccess();
                 toast.info(`↩ Reverted to ${previousStatus}`);
               } catch (e: any) {
@@ -336,9 +357,10 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
       if (pendingAction.useRetour) {
         await markRetour({ orderId: order._id, reason: actionReason });
       } else {
+        // Normalize legacy status to MVP status before calling mutation
         await updateOrderStatus({
           id: order._id,
-          status: pendingAction.toStatus,
+          status: normalizeLegacyStatus(pendingAction.toStatus),
           ...(actionReason ? { reason: actionReason } : {}),
         });
       }
