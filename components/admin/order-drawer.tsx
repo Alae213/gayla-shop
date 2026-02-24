@@ -30,6 +30,7 @@ import {
   Info, PhoneCall, PhoneOff, Shield, FileText, CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { OrderLineItemEditor } from "@/components/admin/order-line-item-editor";
 
 // ─── Types ───────────────────────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,17 @@ export type OrderStatus =
 
 type MVPStatus = "new" | "confirmed" | "packaged" | "shipped" | "canceled" | "blocked" | "hold";
 
+interface LineItem {
+  productId: Id<"products">;
+  productName: string;
+  productSlug?: string;
+  quantity: number;
+  unitPrice: number;
+  variants?: Record<string, string>;
+  lineTotal: number;
+  thumbnail?: string;
+}
+
 export interface Order {
   _id: Id<"orders">;
   _creationTime: number;
@@ -59,16 +71,20 @@ export interface Order {
   customerAddress: string;
   deliveryType: "Domicile" | "Stopdesk";
   deliveryCost: number;
-  productName: string;
-  productPrice: number;
+  // Legacy single-product fields
+  productName?: string;
+  productPrice?: number;
   productSlug?: string;
   selectedVariant?: { size?: string; color?: string };
+  // New multi-product field
+  lineItems?: LineItem[];
   totalAmount: number;
   lastUpdated: number;
   callAttempts?: number;
   callLog?: Array<{ timestamp: number; outcome: "answered" | "no_answer"; note?: string }>;
   statusHistory?: Array<{ status: string; timestamp: number; reason?: string }>;
   adminNotes?: Array<{ text: string; timestamp: number }>;
+  changeLog?: Array<{ timestamp: number; adminName?: string; action: string; changes?: string }>;
   fraudScore?: number;
   isBanned?: boolean;
   courierSentAt?: number;
@@ -207,11 +223,13 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
   const [isSavingNote,  setIsSavingNote]  = useState(false);
   const [isTimelineOpen,setIsTimelineOpen]= useState(false);
   const [isBanning,     setIsBanning]     = useState(false);
+  const [editedLineItems, setEditedLineItems] = useState<LineItem[]>([]);
 
   const reasonSelectRef = useRef<HTMLButtonElement>(null);
 
   const updateOrder       = useMutation(api.orders.update);
   const updateOrderStatus = useMutation(api.orders.updateStatus);
+  const updateLineItems   = useMutation(api.orders.updateLineItems);
   const logCallOutcome    = useMutation(api.orders.logCallOutcome);
   const addNote           = useMutation(api.orders.addNote);
   const banCustomer       = useMutation(api.orders.banCustomer);
@@ -255,6 +273,9 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
   const isBanned     = order.isBanned     ?? false;
   const showCallLog  = CALL_LOG_STATUSES.includes(order.status);
 
+  // Detect if order has lineItems (new format) or legacy single product
+  const hasLineItems = order.lineItems && order.lineItems.length > 0;
+
   const hasAnswered   = order.callLog?.some((e) => e.outcome === "answered") ?? false;
   const callLogLocked = hasAnswered || callAttempts >= 2;
   const twoNoAnswers  = callAttempts >= 2 && !hasAnswered;
@@ -290,6 +311,22 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     }
   };
 
+  const handleLineItemsUpdate = (items: LineItem[]) => {
+    setEditedLineItems(items);
+  };
+
+  const handleLineItemsSave = async () => {
+    try {
+      await updateLineItems({
+        id: order._id,
+        lineItems: editedLineItems,
+      });
+      onSuccess();
+    } catch (e: any) {
+      throw e; // Re-throw to be handled by OrderLineItemEditor
+    }
+  };
+
   const handleCallLog = async (outcome: "answered" | "no_answer") => {
     if (callLogLocked) return;
     if (outcome === "answered" && hasAnswered) return;
@@ -315,7 +352,6 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
       const previousStatus = order.status;
       setIsActioning(true);
       try {
-        // Normalize legacy status to MVP status before calling mutation
         await updateOrderStatus({ id: order._id, status: normalizeLegacyStatus(btn.toStatus) });
         onSuccess();
         toast.success(`${btn.icon} ${btn.label}`, {
@@ -340,7 +376,6 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
       }
     } else {
       setPendingAction(btn);
-      // Fix 2: auto-prefill reason when cancelling a 2× no-answer order
       setActionReason(
         twoNoAnswers && btn.toStatus === "Cancelled"
           ? TWO_NO_ANSWER_REASON
@@ -357,7 +392,6 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
       if (pendingAction.useRetour) {
         await markRetour({ orderId: order._id, reason: actionReason });
       } else {
-        // Normalize legacy status to MVP status before calling mutation
         await updateOrderStatus({
           id: order._id,
           status: normalizeLegacyStatus(pendingAction.toStatus),
@@ -534,69 +568,81 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
           <Separator />
 
-          {/* § 2 ORDERED PRODUCT */}
-          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border-2 border-indigo-100">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                <Package className="h-5 w-5 text-indigo-600" /> Ordered Product
-              </h3>
-              <Badge variant="secondary" className="text-xs">Read-only</Badge>
+          {/* § 2 ORDER ITEMS (NEW) or ORDERED PRODUCT (LEGACY) */}
+          {hasLineItems ? (
+            // NEW FORMAT: Multiple line items with editing capability
+            <OrderLineItemEditor
+              orderId={order._id}
+              lineItems={order.lineItems!}
+              deliveryCost={order.deliveryCost}
+              onUpdate={handleLineItemsUpdate}
+              onSave={handleLineItemsSave}
+            />
+          ) : (
+            // LEGACY FORMAT: Single product read-only display
+            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border-2 border-indigo-100">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <Package className="h-5 w-5 text-indigo-600" /> Ordered Product
+                </h3>
+                <Badge variant="secondary" className="text-xs">Legacy Order</Badge>
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1 mr-4">
+                    <p className="text-xs text-gray-500 mb-1">Product</p>
+                    <p className="font-semibold text-gray-900">{order.productName}</p>
+                    {order.selectedVariant && (order.selectedVariant.size || order.selectedVariant.color) ? (
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {order.selectedVariant.size && <Badge variant="outline" className="text-xs">Size: {order.selectedVariant.size}</Badge>}
+                        {order.selectedVariant.color && <Badge variant="outline" className="text-xs">Color: {order.selectedVariant.color}</Badge>}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400 mt-1">No variants</p>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs text-gray-500 mb-1">Unit Price</p>
+                    <p className="font-bold text-gray-900 text-lg">{curr(order.productPrice!)}</p>
+                  </div>
+                </div>
+                <Separator className="bg-indigo-200" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Truck className="h-3 w-3" /> Type</p>
+                    <Badge variant="outline">{order.deliveryType}</Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><DollarSign className="h-3 w-3" /> Delivery</p>
+                    {isEditing ? (
+                      <Input type="number" value={formData.deliveryCost}
+                        onChange={(e) => setFormData((p) => ({ ...p, deliveryCost: parseInt(e.target.value) || 0 }))}
+                        className="h-8 w-28" />
+                    ) : (
+                      <p className="font-medium text-gray-900 text-sm">{curr(order.deliveryCost)}</p>
+                    )}
+                  </div>
+                </div>
+                <Separator className="bg-indigo-200" />
+                <div className="bg-white rounded-lg p-4 border-2 border-indigo-200 space-y-2">
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>Products</span><span>{curr(order.productPrice!)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>Shipping</span>
+                    <span>+ {curr(isEditing ? formData.deliveryCost : order.deliveryCost)}</span>
+                  </div>
+                  <Separator className="my-1" />
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-gray-900">Total COD</span>
+                    <span className="font-bold text-xl text-gray-900">
+                      {curr(order.productPrice! + (isEditing ? formData.deliveryCost : order.deliveryCost))}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-start">
-                <div className="flex-1 mr-4">
-                  <p className="text-xs text-gray-500 mb-1">Product</p>
-                  <p className="font-semibold text-gray-900">{order.productName}</p>
-                  {order.selectedVariant && (order.selectedVariant.size || order.selectedVariant.color) ? (
-                    <div className="flex gap-2 mt-2 flex-wrap">
-                      {order.selectedVariant.size && <Badge variant="outline" className="text-xs">Size: {order.selectedVariant.size}</Badge>}
-                      {order.selectedVariant.color && <Badge variant="outline" className="text-xs">Color: {order.selectedVariant.color}</Badge>}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-400 mt-1">No variants</p>
-                  )}
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-xs text-gray-500 mb-1">Unit Price</p>
-                  <p className="font-bold text-gray-900 text-lg">{curr(order.productPrice)}</p>
-                </div>
-              </div>
-              <Separator className="bg-indigo-200" />
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Truck className="h-3 w-3" /> Type</p>
-                  <Badge variant="outline">{order.deliveryType}</Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><DollarSign className="h-3 w-3" /> Delivery</p>
-                  {isEditing ? (
-                    <Input type="number" value={formData.deliveryCost}
-                      onChange={(e) => setFormData((p) => ({ ...p, deliveryCost: parseInt(e.target.value) || 0 }))}
-                      className="h-8 w-28" />
-                  ) : (
-                    <p className="font-medium text-gray-900 text-sm">{curr(order.deliveryCost)}</p>
-                  )}
-                </div>
-              </div>
-              <Separator className="bg-indigo-200" />
-              <div className="bg-white rounded-lg p-4 border-2 border-indigo-200 space-y-2">
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>Products</span><span>{curr(order.productPrice)}</span>
-                </div>
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>Shipping</span>
-                  <span>+ {curr(isEditing ? formData.deliveryCost : order.deliveryCost)}</span>
-                </div>
-                <Separator className="my-1" />
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold text-gray-900">Total COD</span>
-                  <span className="font-bold text-xl text-gray-900">
-                    {curr(order.productPrice + (isEditing ? formData.deliveryCost : order.deliveryCost))}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
 
           <Separator />
 
