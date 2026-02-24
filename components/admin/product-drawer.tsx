@@ -20,18 +20,20 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { VariantGroupEditor, VariantGroup } from "./variant-group-editor";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Product {
-  _id:          Id<"products">;
-  title:        string;
-  slug:         string;
-  description?: string;
-  price:        number;
-  category?:    string;
-  images?:      { url: string; storageId: string }[];
-  status:       "Active" | "Draft" | "Out of stock";
+  _id:            Id<"products">;
+  title:          string;
+  slug:           string;
+  description?:   string;
+  price:          number;
+  category?:      string;
+  images?:        { url: string; storageId: string }[];
+  status:         "Active" | "Draft" | "Out of stock";
+  variantGroups?: VariantGroup[];
 }
 
 interface ProductDrawerProps {
@@ -98,6 +100,7 @@ export function ProductDrawer({
   const [price,            setPrice]            = useState<number>(0);
   const [status,           setStatus]           = useState<"Active" | "Draft" | "Out of stock">("Draft");
   const [images,           setImages]           = useState<{ url: string; storageId: string }[]>([]);
+  const [variantGroups,    setVariantGroups]    = useState<VariantGroup[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isSaving,         setIsSaving]         = useState(false);
 
@@ -131,6 +134,7 @@ export function ProductDrawer({
     setPrice(product.price);
     setStatus(product.status);
     setImages(product.images ?? []);
+    setVariantGroups(product.variantGroups ?? []);
     editor?.commands.setContent(product.description ?? "");
   }, [product, isOpen, editor]);
 
@@ -204,13 +208,14 @@ export function ProductDrawer({
     setIsSaving(true);
     try {
       await updateProduct({
-        id:          product._id,
-        title:       trimmedTitle,
-        slug:        newSlug,
-        description: description === "<p></p>" || description === "" ? undefined : description,
+        id:            product._id,
+        title:         trimmedTitle,
+        slug:          newSlug,
+        description:   description === "<p></p>" || description === "" ? undefined : description,
         price,
         status,
-        images:      imagesToSave,
+        images:        imagesToSave,
+        variantGroups: variantGroups.length > 0 ? variantGroups : undefined,
       });
       toast.success("Product saved!");
       onSuccess?.();
@@ -384,6 +389,12 @@ export function ProductDrawer({
               <EditorContent editor={editor} />
             </div>
           </div>
+
+          {/* Variant Groups Editor */}
+          <VariantGroupEditor
+            variantGroups={variantGroups}
+            onChange={setVariantGroups}
+          />
 
           {/* Status */}
           <div>
