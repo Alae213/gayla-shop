@@ -6,6 +6,7 @@ import { TrackingCheckbox } from "../ui/tracking-checkbox";
 import { StatusPill, OrderStatus } from "../ui/status-pill";
 import { formatDistanceToNow } from "date-fns";
 import { Order } from "./tracking-kanban-board";
+import { Ban, ListFilter } from "lucide-react";
 
 interface TrackingListViewProps {
   orders: Order[];
@@ -58,7 +59,6 @@ export function TrackingListView({
           const displayStatus: OrderStatus =
             (order._normalizedStatus ?? order.status ?? "new") as OrderStatus;
 
-          // Build a short product label, e.g. "Summer Dress · M / Red"
           const variantParts: string[] = [];
           if (order.selectedVariant?.size)  variantParts.push(order.selectedVariant.size);
           if (order.selectedVariant?.color) variantParts.push(order.selectedVariant.color);
@@ -133,24 +133,32 @@ export function TrackingListView({
           );
         })}
 
+        {/* FIX 18A: Context-aware empty states */}
         {orders.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div
               className="w-16 h-16 rounded-full bg-[#F5F5F5] flex items-center justify-center mb-4 text-[#AAAAAA]"
               aria-hidden="true"
             >
-              {isBlacklist ? (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" /><path d="m4.9 4.9 14.2 14.2" />
-                </svg>
-              ) : (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect width="20" height="14" x="2" y="5" rx="2" /><path d="M2 10h20" />
-                </svg>
-              )}
+              {isBlacklist
+                ? <Ban className="w-8 h-8" />
+                : <ListFilter className="w-8 h-8" />}
             </div>
-            <h3 className="text-[16px] font-semibold text-[#3A3A3A]">No orders found</h3>
-            <p className="text-[14px] text-[#AAAAAA] mt-1">Try adjusting your search or filters.</p>
+            {isBlacklist ? (
+              <>
+                <h3 className="text-[16px] font-semibold text-[#3A3A3A]">Blacklist is empty</h3>
+                <p className="text-[14px] text-[#AAAAAA] mt-1 max-w-xs">
+                  Canceled and blocked orders will appear here.
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 className="text-[16px] font-semibold text-[#3A3A3A]">No orders found</h3>
+                <p className="text-[14px] text-[#AAAAAA] mt-1 max-w-xs">
+                  Try adjusting your search or filter.
+                </p>
+              </>
+            )}
           </div>
         )}
       </div>

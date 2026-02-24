@@ -18,6 +18,13 @@ export interface TrackingBulkActionBarProps extends React.HTMLAttributes<HTMLDiv
   isBlacklist?: boolean;
 }
 
+// Reusable inline spinner for action buttons
+function Spinner() {
+  return (
+    <div className="w-4 h-4 border-2 border-[#ECECEC] border-t-transparent rounded-full animate-spin" />
+  );
+}
+
 export function TrackingBulkActionBar({
   selectedIds,
   onClearSelection,
@@ -63,23 +70,21 @@ export function TrackingBulkActionBar({
       {/* Action Buttons */}
       <div className="flex items-center gap-3">
         {isBlacklist ? (
-          /* Blacklist mode: only show Unblock */
+          /* Blacklist mode: only Unblock */
+          // FIX 18B: Guard against undefined onBulkUnblock before calling it
           <TrackingButton
             variant="secondary"
             size="sm"
-            onClick={onBulkUnblock}
-            disabled={isProcessing}
+            onClick={() => onBulkUnblock?.()}
+            disabled={isProcessing || !onBulkUnblock}
             className="bg-transparent text-emerald-400 border-[#3A3A3A] hover:bg-emerald-500/10 hover:text-emerald-400 hover:border-emerald-500/20 gap-2"
           >
-            {isProcessing ? (
-              <div className="w-4 h-4 border-2 border-[#ECECEC] border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <ShieldOff className="w-4 h-4" />
-            )}
+            {isProcessing ? <Spinner /> : <ShieldOff className="w-4 h-4" />}
             Unblock Selected
           </TrackingButton>
         ) : (
           /* Normal mode: Confirm, Dispatch, Print, Cancel */
+          // FIX 18B: Each button shows its own spinner during isProcessing
           <>
             <TrackingButton
               variant="secondary"
@@ -88,11 +93,7 @@ export function TrackingBulkActionBar({
               disabled={isProcessing}
               className="bg-transparent text-white border-[#3A3A3A] hover:bg-[#3A3A3A] hover:text-white gap-2"
             >
-              {isProcessing ? (
-                <div className="w-4 h-4 border-2 border-[#ECECEC] border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4" />
-              )}
+              {isProcessing ? <Spinner /> : <CheckCircle2 className="w-4 h-4" />}
               Confirm All
             </TrackingButton>
 
@@ -103,7 +104,7 @@ export function TrackingBulkActionBar({
               disabled={isProcessing}
               className="bg-transparent text-white border-[#3A3A3A] hover:bg-[#3A3A3A] hover:text-white gap-2"
             >
-              <Package className="w-4 h-4" />
+              {isProcessing ? <Spinner /> : <Package className="w-4 h-4" />}
               Send to Yalidin
             </TrackingButton>
 
@@ -114,7 +115,7 @@ export function TrackingBulkActionBar({
               disabled={isProcessing}
               className="bg-transparent text-white border-[#3A3A3A] hover:bg-[#3A3A3A] hover:text-white gap-2"
             >
-              <Printer className="w-4 h-4" />
+              {isProcessing ? <Spinner /> : <Printer className="w-4 h-4" />}
               Print Labels
             </TrackingButton>
 
@@ -127,7 +128,7 @@ export function TrackingBulkActionBar({
               disabled={isProcessing}
               className="bg-transparent text-rose-400 border-[#3A3A3A] hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/20 gap-2"
             >
-              <Trash2 className="w-4 h-4" />
+              {isProcessing ? <Spinner /> : <Trash2 className="w-4 h-4" />}
               Cancel Selected
             </TrackingButton>
           </>
