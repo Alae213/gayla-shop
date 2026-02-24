@@ -66,11 +66,11 @@ export function TrackingWorkspace() {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showBulkCancelDialog, setShowBulkCancelDialog] = useState(false);
 
-  // ── Refs for click-outside detection
+  // Refs for click-outside detection
   const sortDropdownRef   = useRef<HTMLDivElement>(null);
   const filterDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close both dropdowns when clicking outside of them
+  // Close both dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -88,20 +88,19 @@ export function TrackingWorkspace() {
         setShowFilterDropdown(false);
       }
     };
-
     if (showSortDropdown || showFilterDropdown) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showSortDropdown, showFilterDropdown]);
 
-  // Close both dropdowns whenever the view changes
+  // Close dropdowns on view change
   useEffect(() => {
     setShowSortDropdown(false);
     setShowFilterDropdown(false);
   }, [view]);
 
-  // ── Unsaved-changes panel close ref
+  // Unsaved-changes panel close ref
   const panelRequestCloseRef = useRef<(() => void) | null>(null);
 
   const handleRegisterRequestClose = useCallback((fn: () => void) => {
@@ -121,11 +120,35 @@ export function TrackingWorkspace() {
     setSelectedOrderId(null);
   }, []);
 
+  // FIX 16A: Reset the close-guard ref whenever a NEW order is selected, so
+  // a guard registered for order A can never fire while order B is open.
+  const handleSelectOrder = useCallback((id: Id<"orders">) => {
+    panelRequestCloseRef.current = null;
+    setSelectedOrderId(id);
+  }, []);
+
   const orders = useQuery(api.orders.list, {});
   const selectedOrder = useQuery(
     api.orders.getById,
     selectedOrderId ? { id: selectedOrderId } : "skip"
   );
+
+  // FIX 16B: Auto-close the panel when the open order transitions to a
+  // terminal status (auto-cancel, bulk-cancel, block). Skip if the operator
+  // has unsaved edits — let the unsaved-changes dialog handle that instead.
+  useEffect(() => {
+    if (!selectedOrder) return;
+    const normalized = normalizeLegacyStatus(selectedOrder.status);
+    if (TERMINAL_STATUSES.has(normalized)) {
+      // Only auto-close if there is no registered close-guard (i.e. no
+      // unsaved edits). If there IS a guard, the details panel will show
+      // the order's canceled/blocked action bar and the operator can close
+      // manually — consistent with the existing UX.
+      if (!panelRequestCloseRef.current) {
+        setSelectedOrderId(null);
+      }
+    }
+  }, [selectedOrder?.status]);
 
   const bulkConfirm          = useMutation(api.orders.bulkConfirm);
   const bulkCancel           = useMutation(api.orders.bulkCancel);
@@ -168,7 +191,7 @@ export function TrackingWorkspace() {
     ? sortedActive
     : sortedActive.filter(o => o._normalizedStatus === listStatusFilter);
 
-  // ── Selection handlers
+  // Selection handlers
   const handleToggleSelect = (id: Id<"orders">) => {
     setSelectedOrderIds(prev => {
       const next = new Set(prev);
@@ -189,7 +212,7 @@ export function TrackingWorkspace() {
 
   const handleClearSelection = () => setSelectedOrderIds(new Set());
 
-  // ── Bulk actions
+  // Bulk actions
   const handleBulkConfirm = async () => {
     if (!selectedOrderIds.size) return;
     setIsProcessing(true);
@@ -305,13 +328,15 @@ export function TrackingWorkspace() {
   return (
     <div className="relative flex flex-col h-full w-full bg-[#F5F5F5]">
 
-      {/* ── Bulk Cancel Confirmation Dialog ── */}
+      {/* Bulk Cancel Confirmation Dialog */}
       <AlertDialog open={showBulkCancelDialog} onOpenChange={setShowBulkCancelDialog}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
             <div className="flex items-center gap-2 text-rose-600 mb-1">
               <Trash2 className="h-5 w-5 shrink-0" />
-              <AlertDialogTitle className="text-rose-700">Cancel {selectedOrderIds.size} order{selectedOrderIds.size !== 1 ? "s" : ""}?</AlertDialogTitle>
+              <AlertDialogTitle className="text-rose-700">
+                Cancel {selectedOrderIds.size} order{selectedOrderIds.size !== 1 ? "s" : ""}?
+              </AlertDialogTitle>
             </div>
             <AlertDialogDescription>
               This will move all selected orders to <strong>Canceled</strong>. Shipped orders will be skipped. This action cannot be undone.
@@ -334,14 +359,21 @@ export function TrackingWorkspace() {
         <div className="flex items-center justify-between gap-4 px-8 py-3 bg-amber-50 border-b border-amber-200 text-amber-900 text-[13px]">
           <div className="flex items-center gap-2">
             <DatabaseZap className="w-4 h-4 shrink-0" />
-            <span><strong>{orders?.filter(o => !MVP_STATUSES.includes(o.status ?? "")).length} orders</strong> have legacy statuses. Run migration to permanently update them.</span>
+            <span>
+              <strong>
+                {orders?.filter(o => !MVP_STATUSES.includes(o.status ?? "")).length} orders
+              </strong>{" "}
+              have legacy statuses. Run migration to permanently update them.
+            </span>
           </div>
           <button
             onClick={handleMigrate}
             disabled={isMigrating}
             className="flex items-center gap-1.5 shrink-0 bg-amber-800 text-white text-[13px] font-medium px-4 py-1.5 rounded-full hover:bg-amber-900 disabled:opacity-60 transition-colors"
           >
-            {isMigrating ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <DatabaseZap className="w-3.5 h-3.5" />}
+            {isMigrating
+              ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              : <DatabaseZap className="w-3.5 h-3.5" />}
             {isMigrating ? "Migrating..." : "Run Migration"}
           </button>
         </div>
@@ -351,13 +383,18 @@ export function TrackingWorkspace() {
       <div className="flex items-center justify-between px-8 py-4 bg-white border-b border-[#ECECEC]">
         <div className="flex items-center bg-[#F7F7F7] p-1 rounded-tracking-input border border-[#ECECEC]">
           {(["kanban", "list"] as const).map(v => (
-            <button key={v}
+            <button
+              key={v}
               onClick={() => setView(v)}
               className={`flex items-center gap-2 px-4 py-2 rounded-tracking-input text-[14px] font-medium transition-colors ${
-                view === v ? "bg-white text-[#3A3A3A] shadow-sm" : "text-[#AAAAAA] hover:text-[#3A3A3A]"
+                view === v
+                  ? "bg-white text-[#3A3A3A] shadow-sm"
+                  : "text-[#AAAAAA] hover:text-[#3A3A3A]"
               }`}
             >
-              {v === "kanban" ? <LayoutGrid className="w-4 h-4" /> : <LayoutList className="w-4 h-4" />}
+              {v === "kanban"
+                ? <LayoutGrid className="w-4 h-4" />
+                : <LayoutList className="w-4 h-4" />}
               {v.charAt(0).toUpperCase() + v.slice(1)}
             </button>
           ))}
@@ -365,7 +402,9 @@ export function TrackingWorkspace() {
           <button
             onClick={() => setView("blacklist")}
             className={`flex items-center gap-2 px-4 py-2 rounded-tracking-input text-[14px] font-medium transition-colors ${
-              view === "blacklist" ? "bg-white text-rose-600 shadow-sm" : "text-[#AAAAAA] hover:text-rose-600"
+              view === "blacklist"
+                ? "bg-white text-rose-600 shadow-sm"
+                : "text-[#AAAAAA] hover:text-rose-600"
             }`}
           >
             <Ban className="w-4 h-4" /> Blacklist
@@ -501,7 +540,7 @@ export function TrackingWorkspace() {
                   selectedIds={selectedOrderIds}
                   onToggleSelect={handleToggleSelect}
                   onSelectAll={handleSelectAll}
-                  onOrderClick={setSelectedOrderId}
+                  onOrderClick={handleSelectOrder}
                   blacklistCount={blacklistOrders?.length ?? 0}
                 />
               ) : (
@@ -510,7 +549,7 @@ export function TrackingWorkspace() {
                   selectedIds={selectedOrderIds}
                   onToggleSelect={handleToggleSelect}
                   onSelectAll={handleSelectAll}
-                  onOrderClick={setSelectedOrderId}
+                  onOrderClick={handleSelectOrder}
                 />
               )
             )}
@@ -520,7 +559,7 @@ export function TrackingWorkspace() {
                 selectedIds={selectedOrderIds}
                 onToggleSelect={handleToggleSelect}
                 onSelectAll={handleSelectAll}
-                onOrderClick={setSelectedOrderId}
+                onOrderClick={handleSelectOrder}
                 isBlacklist
               />
             )}
