@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────────────────────
 
 export type OrderStatus =
   | "Pending"
@@ -82,7 +82,7 @@ interface OrderDrawerProps {
   onSuccess: () => void;
 }
 
-// ─── Status display config ────────────────────────────────────────────────────
+// ─── Status display config ────────────────────────────────────────────────────────────────────────────────────
 
 const STATUS_CFG: Record<OrderStatus, { color: string; bg: string; icon: string }> = {
   Pending:             { color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200",  icon: "⏳" },
@@ -97,7 +97,7 @@ const STATUS_CFG: Record<OrderStatus, { color: string; bg: string; icon: string 
   Retour:              { color: "text-slate-700",  bg: "bg-slate-50 border-slate-200",    icon: "↩"  },
 };
 
-// ─── Action definitions ───────────────────────────────────────────────────────
+// ─── Action definitions ─────────────────────────────────────────────────────────────────────────────────────────
 
 const CANCEL_REASONS = [
   "No answer after 2 attempts",
@@ -169,7 +169,7 @@ const CALL_LOG_STATUSES: OrderStatus[] = [
 // The pre-filled cancel reason used when 2× no-answer forces cancellation.
 const TWO_NO_ANSWER_REASON = "No answer after 2 attempts";
 
-// ─── Component ───────────────────────────────────────────────────────────────
+// ─── Component ───────────────────────────────────────────────────────────────────────────────────────────────
 
 export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerProps) {
 
@@ -192,7 +192,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
   const updateOrder       = useMutation(api.orders.update);
   const updateOrderStatus = useMutation(api.orders.updateStatus);
-  const logCallAttempt    = useMutation(api.orders.logCallAttempt);
+  const logCallOutcome    = useMutation(api.orders.logCallOutcome);
   const addNote           = useMutation(api.orders.addNote);
   const banCustomer       = useMutation(api.orders.banCustomer);
   const markRetour        = useMutation(api.orders.markRetour);
@@ -246,7 +246,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
 
   const primaryAction = !pendingAction && actionBtns.length > 0 ? actionBtns[0] : null;
 
-  // ─ Handlers ─────────────────────────────────────────────────────────────────
+  // ─ Handlers ───────────────────────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -275,7 +275,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     if (outcome === "answered" && hasAnswered) return;
     setIsLoggingCall(true);
     try {
-      await logCallAttempt({ orderId: order._id, outcome });
+      await logCallOutcome({ orderId: order._id, outcome: outcome === "answered" ? "answered" : "no answer" });
       toast.success(
         outcome === "answered"
           ? "📞 Logged — customer answered. Confirm or cancel below."
@@ -385,7 +385,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
     new Date(ts).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
   const curr = (n: number) => `${n.toLocaleString()} DA`;
 
-  // ─ Render ────────────────────────────────────────────────────────────────────
+  // ─ Render ────────────────────────────────────────────────────────────────────────────────────
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose} modal={false}>
@@ -394,7 +394,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
         hideClose
         className="w-[520px] max-w-[95vw] sm:max-w-[520px] p-0 flex flex-col border-l border-gray-200 shadow-2xl"
       >
-        {/* ══ HEADER ══════════════════════════════════════════════════════════ */}
+        {/* ══ HEADER ══════════════════════════════════════════════════════════════════ */}
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4 flex items-start justify-between shrink-0">
           <SheetHeader className="gap-1">
             <SheetTitle className="flex items-center gap-2 text-xl font-bold text-gray-900">
@@ -420,7 +420,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
           </Button>
         </div>
 
-        {/* ══ BODY ════════════════════════════════════════════════════════════ */}
+        {/* ══ BODY ════════════════════════════════════════════════════════════════════ */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
           {isBanned && (
@@ -443,7 +443,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
                 <div>
                   <p className="font-semibold text-amber-900 text-sm">2 unanswered call attempts</p>
                   <p className="text-xs text-amber-700 mt-0.5">
-                    The customer did not answer twice. “Confirm Order” has been removed.
+                    The customer did not answer twice. "Confirm Order" has been removed.
                     Please cancel this order below.
                   </p>
                 </div>
@@ -852,7 +852,7 @@ export function OrderDrawer({ isOpen, onClose, order, onSuccess }: OrderDrawerPr
           <div className="h-2" />
         </div>
 
-        {/* ══ FOOTER ══════════════════════════════════════════════════════════ */}
+        {/* ══ FOOTER ══════════════════════════════════════════════════════════════════ */}
         <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 shrink-0 flex items-center justify-between gap-3">
           {primaryAction ? (
             <Button size="sm" disabled={isActioning}
