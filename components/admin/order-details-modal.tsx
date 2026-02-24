@@ -112,7 +112,6 @@ export function OrderDetailsModal({
   });
 
   const updateOrder = useMutation(api.orders.update);
-  const updateOrderStatus = useMutation(api.orders.updateStatus);
 
   useEffect(() => {
     if (order) {
@@ -162,7 +161,8 @@ export function OrderDetailsModal({
     if (!order) return;
 
     try {
-      await updateOrderStatus({
+      // Use the update mutation which handles status normalization
+      await updateOrder({
         id: order._id,
         status: newStatus,
       });
