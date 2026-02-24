@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { TrackingButton } from "../ui/tracking-button";
@@ -24,7 +24,6 @@ import {
   Edit2,
   Check,
   X,
-  Box,
   ArrowRight,
   PhoneCall,
   PhoneOff,
@@ -50,8 +49,7 @@ interface TrackingOrderDetailsProps {
   onRegisterRequestClose?: (fn: () => void) => void;
 }
 
-// --- Call outcome meta
-// wrong number uses orange (matches hold status color) to distinguish from rose refused/canceled
+// Call outcome meta — wrong number uses orange to match the hold status it triggers
 const OUTCOME_META: Record<CallOutcome, {
   label: string;
   icon: React.ElementType;
@@ -65,7 +63,7 @@ const OUTCOME_META: Record<CallOutcome, {
   refused:        { label: "Refused",      icon: PhoneOff,       color: "text-rose-600",    bg: "bg-rose-50",    border: "border-rose-200" },
 };
 
-// --- DZ Phone formatter
+// DZ Phone formatter
 function formatDZPhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
   if (digits.startsWith("213") && digits.length >= 12) {
@@ -79,7 +77,18 @@ function formatDZPhone(raw: string): string {
   return raw;
 }
 
-// --- Order Timeline
+// Build the form snapshot from a live order object
+function orderToForm(order: Order) {
+  return {
+    customerPhone:   order.customerPhone   ?? "",
+    customerAddress: order.customerAddress ?? "",
+    customerWilaya:  order.customerWilaya  ?? "",
+    customerCommune: order.customerCommune ?? "",
+    notes:           order.notes           ?? "",
+  };
+}
+
+// Order Timeline
 function OrderTimeline({ entries }: { entries: Array<{ status: string; timestamp: number; reason?: string }> }) {
   const statusIcon: Record<string, React.ElementType> = {
     new:       PhoneCall,
@@ -114,7 +123,7 @@ function OrderTimeline({ entries }: { entries: Array<{ status: string; timestamp
   );
 }
 
-// --- Sub-component: Call History Timeline
+// Call History Timeline
 function CallLogHistory({ callLog }: { callLog: Array<{ timestamp: number; outcome: CallOutcome; note?: string }> }) {
   const [expanded, setExpanded] = useState(true);
 
@@ -134,7 +143,9 @@ function CallLogHistory({ callLog }: { callLog: Array<{ timestamp: number; outco
             {callLog.length} attempt{callLog.length !== 1 ? "s" : ""}
           </span>
         </h3>
-        {expanded ? <ChevronUp className="w-4 h-4 text-[#AAAAAA]" /> : <ChevronDown className="w-4 h-4 text-[#AAAAAA]" />}
+        {expanded
+          ? <ChevronUp className="w-4 h-4 text-[#AAAAAA]" />
+          : <ChevronDown className="w-4 h-4 text-[#AAAAAA]" />}
       </button>
 
       {expanded && (
@@ -156,7 +167,7 @@ function CallLogHistory({ callLog }: { callLog: Array<{ timestamp: number; outco
                   </div>
                   {entry.note && (
                     <p className="mt-1 text-[13px] text-[#555555] bg-white border border-[#ECECEC] rounded-lg p-2 italic leading-relaxed">
-                      "{entry.note}"
+                      &ldquo;{entry.note}&rdquo;
                     </p>
                   )}
                   <span className="mt-1 text-[11px] text-[#AAAAAA] uppercase tracking-wider font-medium">
@@ -172,11 +183,11 @@ function CallLogHistory({ callLog }: { callLog: Array<{ timestamp: number; outco
   );
 }
 
-// --- Sub-component: Call Attempt Progress Bar
+// Call Attempt Progress Bar
 function CallAttemptsBar({ attempts, max = 2 }: { attempts: number; max?: number }) {
   return (
     <div className="flex items-center justify-between mb-4">
-      <span className="text-[12px] font-medium text-[#AAAAAA] uppercase tracking-wider">Call attempts</span>
+      <span className="text-[12px] font-medium text-[#AAAAAA] uppercase tracking-wider">No-answer attempts</span>
       <div className="flex gap-1.5">
         {Array.from({ length: max }).map((_, i) => (
           <div
@@ -196,38 +207,52 @@ function CallAttemptsBar({ attempts, max = 2 }: { attempts: number; max?: number
   );
 }
 
-// --- Main Component
+// ── Main Component ────────────────────────────────────────────────────────────
 export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }: TrackingOrderDetailsProps) {
-  const [isEditing, setIsEditing]             = useState(false);
-  const [callNote, setCallNote]               = useState("");
-  const [showNoteInput, setShowNoteInput]     = useState(false);
-  const [pendingOutcome, setPendingOutcome]   = useState<CallOutcome | null>(null);
-  const [isLoggingCall, setIsLoggingCall]     = useState(false);
+  const [isEditing, setIsEditing]           = useState(false);
+  const [callNote, setCallNote]             = useState("");
+  const [showNoteInput, setShowNoteInput]   = useState(false);
+  const [pendingOutcome, setPendingOutcome] = useState<CallOutcome | null>(null);
+  const [isLoggingCall, setIsLoggingCall]   = useState(false);
   const [showNoCallWarning, setShowNoCallWarning] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
 
   const addressInputRef = useRef<HTMLInputElement>(null);
 
-  const [editForm, setEditForm] = useState({
-    customerPhone:   order.customerPhone,
-    customerAddress: order.customerAddress || "",
-    customerWilaya:  order.customerWilaya,
-    customerCommune: order.customerCommune || "",
-    notes:           order.notes || "",
-  });
+  // Initialise form from order
+  const [editForm, setEditForm] = useState(() => orderToForm(order));
+
+  // ── FIX 15A: Re-sync editForm whenever the live Convex order changes,
+  //    BUT only when the operator is NOT actively editing — otherwise we'd
+  //    stomp on their in-progress keystrokes.
+  useEffect(() => {
+    if (!isEditing) {
+      setEditForm(orderToForm(order));
+    }
+  }, [
+    order.customerPhone,
+    order.customerAddress,
+    order.customerWilaya,
+    order.customerCommune,
+    order.notes,
+    isEditing,
+  ]);
 
   const updateCustomerInfo = useMutation(api.orders.updateCustomerInfo);
   const logCallOutcome     = useMutation(api.orders.logCallOutcome);
   const updateStatus       = useMutation(api.orders.updateStatus);
   const resetCallAttempts  = useMutation(api.orders.resetCallAttempts);
 
-  const effectiveStatus: MVPStatus = (order as any)._normalizedStatus ?? order.status ?? "new";
-  const callLog: Array<{ timestamp: number; outcome: CallOutcome; note?: string }> = (order as any).callLog ?? [];
+  const effectiveStatus: MVPStatus =
+    (order as any)._normalizedStatus ?? order.status ?? "new";
+  const callLog: Array<{ timestamp: number; outcome: CallOutcome; note?: string }> =
+    (order as any).callLog ?? [];
   const callAttempts = (order as any).callAttempts ?? 0;
-  const statusHistory: Array<{ status: string; timestamp: number; reason?: string }> = (order as any).statusHistory ?? [];
+  const statusHistory: Array<{ status: string; timestamp: number; reason?: string }> =
+    (order as any).statusHistory ?? [];
 
-  // ── Detect unsaved changes
+  // Detect unsaved changes
   const hasUnsavedChanges = isEditing && (
     editForm.customerPhone   !== (order.customerPhone   ?? "") ||
     editForm.customerAddress !== (order.customerAddress ?? "") ||
@@ -236,8 +261,8 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     editForm.notes           !== (order.notes           ?? "")
   );
 
-  // ── Intercepted close
-  const handleRequestClose = React.useCallback(() => {
+  // Intercepted close — guard against unsaved changes
+  const handleRequestClose = useCallback(() => {
     if (hasUnsavedChanges) {
       setShowUnsavedDialog(true);
     } else {
@@ -249,7 +274,8 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     onRegisterRequestClose?.(handleRequestClose);
   }, [handleRequestClose, onRegisterRequestClose]);
 
-  // --- Handlers
+  // ── Handlers ─────────────────────────────────────────────────────────────
+
   const handleSave = async () => {
     try {
       await updateCustomerInfo({ id: order._id, ...editForm });
@@ -260,10 +286,16 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     }
   };
 
+  const handleDiscard = () => {
+    setEditForm(orderToForm(order)); // restore to current server state
+    setIsEditing(false);
+  };
+
   const handleOutcomeClick = (outcome: CallOutcome) => {
     setPendingOutcome(outcome);
     setShowNoteInput(true);
     setCallNote("");
+    setShowNoCallWarning(false); // dismiss warning when operator picks an outcome
   };
 
   const handleUndoCancel = async () => {
@@ -299,7 +331,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
       } else if ((result as any).wrongNumber) {
         toast.warning("Wrong number — order placed on hold. Please correct the phone number.");
       } else {
-        toast.success(`\u2713 ${meta.label} logged`);
+        toast.success(`✓ ${meta.label} logged`);
       }
 
       setShowNoteInput(false);
@@ -328,12 +360,20 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     }
   };
 
+  // ── FIX 15B: Dismiss warning flag BEFORE calling handleStatusChange so
+  //    there is no frame where both warning and confirm-pending are true.
   const handleConfirmClick = () => {
     if (callLog.length === 0) {
       setShowNoCallWarning(true);
     } else {
+      setShowNoCallWarning(false);
       handleStatusChange("confirmed");
     }
+  };
+
+  const handleConfirmAnyway = () => {
+    setShowNoCallWarning(false);
+    handleStatusChange("confirmed");
   };
 
   const handleDispatchClick = async () => {
@@ -349,10 +389,14 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     toast.success("Order sent to Yalidin");
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* ── Unsaved Changes Dialog ── */}
-      <AlertDialog open={showUnsavedDialog} onOpenChange={(open) => { if (!open) setShowUnsavedDialog(false); }}>
+      {/* Unsaved Changes Dialog */}
+      <AlertDialog
+        open={showUnsavedDialog}
+        onOpenChange={(open) => { if (!open) setShowUnsavedDialog(false); }}
+      >
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
             <div className="flex items-center gap-2 text-amber-600 mb-1">
@@ -364,9 +408,15 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowUnsavedDialog(false)}>Stay &amp; save</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setShowUnsavedDialog(false)}>
+              Stay &amp; save
+            </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => { setIsEditing(false); setShowUnsavedDialog(false); onClose(); }}
+              onClick={() => {
+                setIsEditing(false);
+                setShowUnsavedDialog(false);
+                onClose();
+              }}
               className="bg-gray-900 hover:bg-gray-700 text-white"
             >
               Leave anyway
@@ -378,7 +428,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
       <div className="flex flex-col h-full bg-white">
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
 
-          {/* ── Header */}
+          {/* Header */}
           <header className="mb-10">
             <div className="flex items-center gap-2 text-[12px] font-medium text-[#AAAAAA] uppercase tracking-[0.1em] mb-2">
               <Clock className="w-3.5 h-3.5" />
@@ -395,10 +445,15 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             </div>
           </header>
 
-          {/* ── Customer Details */}
+          {/* Customer Details */}
           <section className="mb-10" aria-labelledby="customer-heading">
             <div className="flex items-center justify-between mb-4">
-              <h3 id="customer-heading" className="text-[14px] font-semibold text-[#3A3A3A] uppercase tracking-wider">Customer Details</h3>
+              <h3
+                id="customer-heading"
+                className="text-[14px] font-semibold text-[#3A3A3A] uppercase tracking-wider"
+              >
+                Customer Details
+              </h3>
               {!isEditing ? (
                 <button
                   onClick={() => setIsEditing(true)}
@@ -417,7 +472,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
                     <Check className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => setIsEditing(false)}
+                    onClick={handleDiscard}
                     className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-md transition-colors"
                     aria-label="Discard changes"
                   >
@@ -439,12 +494,16 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
                       type="tel"
                       value={editForm.customerPhone}
                       onChange={e => setEditForm(p => ({ ...p, customerPhone: e.target.value }))}
-                      onBlur={e => setEditForm(p => ({ ...p, customerPhone: formatDZPhone(e.target.value) }))}
+                      onBlur={e =>
+                        setEditForm(p => ({ ...p, customerPhone: formatDZPhone(e.target.value) }))
+                      }
                       aria-label="Phone"
                       className="w-full bg-white border border-[#ECECEC] rounded-md px-3 py-1.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#AAAAAA]"
                     />
                   ) : (
-                    <span className="text-[15px] text-[#3A3A3A] font-medium tracking-wide">{order.customerPhone}</span>
+                    <span className="text-[15px] text-[#3A3A3A] font-medium tracking-wide">
+                      {order.customerPhone}
+                    </span>
                   )}
                 </div>
               </div>
@@ -497,13 +556,23 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             </div>
           </section>
 
-          {/* ── Order Summary */}
-          <section className="mb-10 bg-[#F7F7F7] rounded-2xl p-6 border border-[#ECECEC]" aria-labelledby="summary-heading">
-            <h3 id="summary-heading" className="text-[12px] font-bold text-[#AAAAAA] uppercase tracking-wider mb-4">Order Summary</h3>
+          {/* Order Summary */}
+          <section
+            className="mb-10 bg-[#F7F7F7] rounded-2xl p-6 border border-[#ECECEC]"
+            aria-labelledby="summary-heading"
+          >
+            <h3
+              id="summary-heading"
+              className="text-[12px] font-bold text-[#AAAAAA] uppercase tracking-wider mb-4"
+            >
+              Order Summary
+            </h3>
             <div className="space-y-2 text-[14px] text-[#3A3A3A]">
               <div className="flex justify-between items-start gap-4">
                 <div>
-                  <h4 className="text-[16px] font-bold text-[#3A3A3A] leading-tight mb-1">{order.productName || "Product Name Missing"}</h4>
+                  <h4 className="text-[16px] font-bold text-[#3A3A3A] leading-tight mb-1">
+                    {order.productName || "Product Name Missing"}
+                  </h4>
                   {order.selectedVariant && (
                     <div className="text-[13px] text-[#AAAAAA]">
                       {order.selectedVariant.size && `Size: ${order.selectedVariant.size}`}
@@ -512,7 +581,9 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
                     </div>
                   )}
                 </div>
-                <span className="text-[15px] font-semibold shrink-0">{order.productPrice ?? 0} DZD</span>
+                <span className="text-[15px] font-semibold shrink-0">
+                  {order.productPrice ?? 0} DZD
+                </span>
               </div>
               <div className="flex justify-between text-[#AAAAAA] border-t border-[#ECECEC] pt-2">
                 <span>Delivery ({order.deliveryType ?? "—"})</span>
@@ -520,20 +591,28 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
               </div>
               <div className="flex justify-between font-bold pt-2 border-t border-[#ECECEC]">
                 <span>Total (COD)</span>
-                <span className="text-[18px] font-black text-[#3A3A3A] tracking-tighter">{order.totalAmount ?? 0} DZD</span>
+                <span className="text-[18px] font-black text-[#3A3A3A] tracking-tighter">
+                  {order.totalAmount ?? 0} DZD
+                </span>
               </div>
             </div>
           </section>
 
-          {/* ── Call Log History */}
+          {/* Call Log History */}
           {(effectiveStatus === "new" || effectiveStatus === "hold" || callLog.length > 0) && (
             <CallLogHistory callLog={callLog} />
           )}
 
-          {/* ── Order Timeline */}
+          {/* Order Timeline */}
           {statusHistory.length > 0 && (
-            <section className="mt-8 pt-6 border-t border-[#ECECEC]" aria-labelledby="timeline-heading">
-              <h3 id="timeline-heading" className="text-[14px] font-semibold text-[#3A3A3A] mb-4 flex items-center gap-2">
+            <section
+              className="mt-8 pt-6 border-t border-[#ECECEC]"
+              aria-labelledby="timeline-heading"
+            >
+              <h3
+                id="timeline-heading"
+                className="text-[14px] font-semibold text-[#3A3A3A] mb-4 flex items-center gap-2"
+              >
                 <Clock className="w-4 h-4 text-[#AAAAAA]" />
                 Order Timeline
               </h3>
@@ -541,7 +620,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             </section>
           )}
 
-          {/* ── Courier tracking link (shipped) */}
+          {/* Courier tracking link (shipped) */}
           {effectiveStatus === "shipped" && (order as any).courierTrackingId && (
             <a
               href={`https://yalidin.com/track/${(order as any).courierTrackingId}`}
@@ -554,10 +633,10 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
           )}
         </div>
 
-        {/* ── Fixed Bottom Action Bar */}
+        {/* Fixed Bottom Action Bar */}
         <div className="p-6 bg-white border-t border-[#ECECEC] shadow-[0_-8px_32px_rgba(0,0,0,0.04)] z-20">
 
-          {/* NEW: Call Logging panel */}
+          {/* NEW — Call logging panel */}
           {effectiveStatus === "new" && !showNoteInput && (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <CallAttemptsBar attempts={callAttempts} />
@@ -565,9 +644,9 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
               {showNoCallWarning && (
                 <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-800 text-[13px] mb-3 animate-in fade-in">
                   <TriangleAlert className="w-4 h-4 shrink-0" />
-                  <span>This order has no call log. Confirm anyway?</span>
+                  <span>No call logged yet. Confirm anyway?</span>
                   <button
-                    onClick={() => { setShowNoCallWarning(false); handleStatusChange("confirmed"); }}
+                    onClick={handleConfirmAnyway}
                     className="ml-auto font-bold underline whitespace-nowrap"
                   >
                     Confirm
@@ -576,22 +655,41 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
               )}
 
               <div className="grid grid-cols-2 gap-2">
-                <TrackingButton variant="secondary" onClick={() => handleOutcomeClick("answered")} className="gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
+                <TrackingButton
+                  variant="secondary"
+                  onClick={() => handleOutcomeClick("answered")}
+                  className="gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                >
                   <PhoneCall className="w-4 h-4" /> Answered
                 </TrackingButton>
-                <TrackingButton variant="secondary" onClick={() => handleOutcomeClick("no answer")} className="gap-1.5 text-amber-600 border-amber-200 hover:bg-amber-50">
+                <TrackingButton
+                  variant="secondary"
+                  onClick={() => handleOutcomeClick("no answer")}
+                  className="gap-1.5 text-amber-600 border-amber-200 hover:bg-amber-50"
+                >
                   <PhoneMissed className="w-4 h-4" /> No Answer
                 </TrackingButton>
-                {/* Wrong Number uses orange to match the hold status it triggers */}
-                <TrackingButton variant="secondary" onClick={() => handleOutcomeClick("wrong number")} className="gap-1.5 text-orange-600 border-orange-200 hover:bg-orange-50">
+                <TrackingButton
+                  variant="secondary"
+                  onClick={() => handleOutcomeClick("wrong number")}
+                  className="gap-1.5 text-orange-600 border-orange-200 hover:bg-orange-50"
+                >
                   <PhoneForwarded className="w-4 h-4" /> Wrong Number
                 </TrackingButton>
-                <TrackingButton variant="secondary" onClick={() => handleOutcomeClick("refused")} className="gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50">
+                <TrackingButton
+                  variant="secondary"
+                  onClick={() => handleOutcomeClick("refused")}
+                  className="gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50"
+                >
                   <PhoneOff className="w-4 h-4" /> Refused
                 </TrackingButton>
               </div>
 
-              <TrackingButton variant="primary" onClick={handleConfirmClick} className="w-full gap-2 mt-2 h-12 text-[15px]">
+              <TrackingButton
+                variant="primary"
+                onClick={handleConfirmClick}
+                className="w-full gap-2 mt-2 h-12 text-[15px]"
+              >
                 <Check className="w-5 h-5" /> Confirm Order
               </TrackingButton>
             </div>
@@ -613,15 +711,22 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
                 <textarea
                   value={callNote}
                   onChange={e => setCallNote(e.target.value)}
-                  placeholder="Add a note (customer said, follow up time...)"
+                  placeholder="Add a note (customer said, follow-up time...)"
                   rows={3}
                   aria-label="Call note"
                   className="w-full pl-3 pr-3 pt-9 pb-3 bg-[#F7F7F7] border border-[#ECECEC] rounded-xl text-[14px] text-[#3A3A3A] placeholder-[#AAAAAA] resize-none focus:outline-none focus:ring-2 focus:ring-[#AAAAAA] transition leading-relaxed"
                 />
               </div>
               <div className="flex gap-2">
-                <TrackingButton variant="secondary" onClick={handleCancelNote} className="flex-1">Cancel</TrackingButton>
-                <TrackingButton variant="primary" onClick={handleLogCall} disabled={isLoggingCall} className="flex-[2] gap-2 h-11">
+                <TrackingButton variant="secondary" onClick={handleCancelNote} className="flex-1">
+                  Cancel
+                </TrackingButton>
+                <TrackingButton
+                  variant="primary"
+                  onClick={handleLogCall}
+                  disabled={isLoggingCall}
+                  className="flex-[2] gap-2 h-11"
+                >
                   {isLoggingCall
                     ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     : <Check className="w-4 h-4" aria-hidden="true" />}
@@ -631,7 +736,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             </div>
           )}
 
-          {/* HOLD: Wrong number state — orange palette, not rose */}
+          {/* HOLD — Wrong number state */}
           {effectiveStatus === "hold" && (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="flex items-center gap-2 p-3 bg-orange-50 rounded-xl border border-orange-200 text-orange-700 text-[13px]">
@@ -655,23 +760,42 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             </div>
           )}
 
-          {/* CONFIRMED: Dispatch */}
+          {/* CONFIRMED — Dispatch */}
           {effectiveStatus === "confirmed" && (
             <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
               {showCancelConfirm ? (
                 <div className="space-y-3 p-4 bg-rose-50 rounded-xl border border-rose-200 animate-in zoom-in-95">
                   <p className="text-[13px] text-rose-700 font-medium">Cancel this order?</p>
                   <div className="flex gap-2">
-                    <TrackingButton variant="secondary" onClick={() => setShowCancelConfirm(false)} className="flex-1">Keep it</TrackingButton>
-                    <TrackingButton onClick={() => { setShowCancelConfirm(false); handleStatusChange("canceled"); }} className="flex-1 bg-rose-600 hover:bg-rose-700 text-white">
+                    <TrackingButton
+                      variant="secondary"
+                      onClick={() => setShowCancelConfirm(false)}
+                      className="flex-1"
+                    >
+                      Keep it
+                    </TrackingButton>
+                    <TrackingButton
+                      onClick={() => { setShowCancelConfirm(false); handleStatusChange("canceled"); }}
+                      className="flex-1 bg-rose-600 hover:bg-rose-700 text-white"
+                    >
                       Yes, cancel
                     </TrackingButton>
                   </div>
                 </div>
               ) : (
                 <div className="flex gap-3">
-                  <TrackingButton variant="secondary" onClick={() => setShowCancelConfirm(true)} className="flex-1 text-rose-600 hover:bg-rose-50 h-12">Cancel</TrackingButton>
-                  <TrackingButton variant="primary" onClick={handleDispatchClick} className="flex-[2] gap-2 h-12">
+                  <TrackingButton
+                    variant="secondary"
+                    onClick={() => setShowCancelConfirm(true)}
+                    className="flex-1 text-rose-600 hover:bg-rose-50 h-12"
+                  >
+                    Cancel
+                  </TrackingButton>
+                  <TrackingButton
+                    variant="primary"
+                    onClick={handleDispatchClick}
+                    className="flex-[2] gap-2 h-12"
+                  >
                     Send to Yalidin <ArrowRight className="w-5 h-5" aria-hidden="true" />
                   </TrackingButton>
                 </div>
@@ -679,13 +803,21 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             </div>
           )}
 
-          {/* PACKAGED: Print & Ship */}
+          {/* PACKAGED — Print & Ship */}
           {effectiveStatus === "packaged" && (
             <div className="flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <TrackingButton variant="secondary" onClick={() => window.open(`/api/labels/${order._id}`, "_blank")} className="flex-[2] h-12">
+              <TrackingButton
+                variant="secondary"
+                onClick={() => window.open(`/api/labels/${order._id}`, "_blank")}
+                className="flex-[2] h-12"
+              >
                 Print Label
               </TrackingButton>
-              <TrackingButton variant="primary" onClick={() => handleStatusChange("shipped")} className="flex-1 gap-2 h-12">
+              <TrackingButton
+                variant="primary"
+                onClick={() => handleStatusChange("shipped")}
+                className="flex-1 gap-2 h-12"
+              >
                 Ship <ArrowRight className="w-5 h-5" aria-hidden="true" />
               </TrackingButton>
             </div>
