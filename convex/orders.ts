@@ -268,6 +268,7 @@ export const updateDeliveryDestination = mutation({
     id: v.id("orders"),
     wilaya: v.string(),
     commune: v.string(),
+    deliveryType: v.union(v.literal("Domicile"), v.literal("Stopdesk")),
     newDeliveryCost: v.number(),
     adminName: v.optional(v.string()),
   },
@@ -285,7 +286,8 @@ export const updateDeliveryDestination = mutation({
 
     // Generate change summary
     const changeSummary = [
-      `Delivery: ${order.customerWilaya}, ${order.customerCommune} → ${args.wilaya}, ${args.commune}`,
+      `Destination: ${order.customerWilaya}, ${order.customerCommune} → ${args.wilaya}, ${args.commune}`,
+      `Type: ${order.deliveryType} → ${args.deliveryType}`,
       `Cost: ${order.deliveryCost} DA → ${args.newDeliveryCost} DA`,
       `Total: ${previousTotal} DA → ${newTotalAmount} DA`,
     ].join(", ");
@@ -301,6 +303,7 @@ export const updateDeliveryDestination = mutation({
     await ctx.db.patch(args.id, {
       customerWilaya: args.wilaya,
       customerCommune: args.commune,
+      deliveryType: args.deliveryType,
       deliveryCost: args.newDeliveryCost,
       totalAmount: newTotalAmount,
       changeLog,
