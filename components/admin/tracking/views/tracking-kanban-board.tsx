@@ -41,11 +41,13 @@ interface TrackingKanbanBoardProps {
   blacklistCount?: number;
 }
 
-const KANBAN_COLUMNS: { id: MVPStatus; title: string }[] = [
+// hold is included so "wrong number" orders remain visible in the kanban
+const KANBAN_COLUMNS: { id: MVPStatus; title: string; accent?: string }[] = [
   { id: "new",       title: "new" },
   { id: "confirmed", title: "confirmed" },
   { id: "packaged",  title: "packaged" },
   { id: "shipped",   title: "shipped" },
+  { id: "hold",      title: "hold", accent: "text-orange-500" },
 ];
 
 const VALID_COLUMNS = new Set<string>(KANBAN_COLUMNS.map(c => c.id));
@@ -64,7 +66,6 @@ function SortableOrderCard({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: order._id,
-    // Attach which column this card belongs to so DnD context can resolve it
     data: { type: "card", order, columnId: order._normalizedStatus ?? order.status ?? "new" },
   });
 
@@ -120,16 +121,6 @@ export function TrackingKanbanBoard({
     setActiveOrder(order ?? null);
   }, [orders]);
 
-  /**
-   * Resolve the target column from a DragEndEvent.
-   *
-   * `over.id` can be:
-   *   - a column id string (e.g. "confirmed")  → when dropped on the empty drop-zone
-   *   - a card _id string                      → when dropped on top of another card
-   *
-   * In the card case we look up that card's column via `over.data.current.columnId`
-   * or by finding the order in our list.
-   */
   const resolveTargetColumn = useCallback(
     (event: DragEndEvent): MVPStatus | null => {
       const { over } = event;
@@ -137,17 +128,13 @@ export function TrackingKanbanBoard({
 
       const overId = over.id as string;
 
-      // 1. over.id is a known column id — simple case
       if (VALID_COLUMNS.has(overId)) return overId as MVPStatus;
 
-      // 2. over.id is a card id — get that card’s column
-      //    First try the data attached by SortableOrderCard
       const overData = over.data?.current as { columnId?: MVPStatus } | undefined;
       if (overData?.columnId && VALID_COLUMNS.has(overData.columnId)) {
         return overData.columnId;
       }
 
-      // 3. Fallback: look the order up in the orders list
       const overOrder = orders.find(o => o._id === overId);
       if (overOrder) return getColumn(overOrder);
 
@@ -168,7 +155,7 @@ export function TrackingKanbanBoard({
     if (!order) return;
 
     const currentStatus = getColumn(order);
-    if (currentStatus === targetColumnId) return; // no-op: same column
+    if (currentStatus === targetColumnId) return;
 
     try {
       await updateStatus({ id: orderId as Id<"orders">, status: targetColumnId });
@@ -196,6 +183,9 @@ export function TrackingKanbanBoard({
           const hasSelected   = columnOrderIds.some(id => selectedIds.has(id));
           const totalValue    = column.items.reduce((sum, o) => sum + (o.totalAmount ?? 0), 0);
 
+          // hide the hold column entirely when empty
+          if (column.id === "hold" && column.items.length === 0) return null;
+
           return (
             <SortableContext
               key={column.id}
@@ -219,12 +209,19 @@ export function TrackingKanbanBoard({
                     <div className="flex items-center gap-2">
                       <h3
                         id={`kanban-col-${column.id}`}
-                        className="text-[15px] font-semibold text-[#3A3A3A] lowercase"
+                        className={`text-[15px] font-semibold lowercase ${
+                          column.accent ?? "text-[#3A3A3A]"
+                        }`}
                       >
                         {column.title}
                       </h3>
+                      {/* badge: orange ring for hold to draw attention */}
                       <span
-                        className="inline-flex items-center justify-center bg-[#ECECEC] text-[#AAAAAA] text-[12px] font-medium h-6 min-w-[24px] px-1.5 rounded-full"
+                        className={`inline-flex items-center justify-center text-[12px] font-medium h-6 min-w-[24px] px-1.5 rounded-full ${
+                          column.id === "hold"
+                            ? "bg-orange-100 text-orange-600"
+                            : "bg-[#ECECEC] text-[#AAAAAA]"
+                        }`}
                         aria-label={`${column.items.length} orders`}
                       >
                         {column.items.length}
@@ -243,8 +240,10 @@ export function TrackingKanbanBoard({
 
                 {/* Drop zone + cards */}
                 <div
-                  id={column.id}  {/* DnD uses this as over.id when dropping onto the column background */}
-                  className="flex flex-col gap-4 overflow-y-auto h-full px-1 pb-12 rounded-xl"
+                  id={column.id}
+                  className={`flex flex-col gap-4 overflow-y-auto h-full px-1 pb-12 rounded-xl ${
+                    column.id === "hold" ? "bg-orange-50/40" : ""
+                  }`}
                   role="list"
                   aria-label={`${column.title} column`}
                 >
@@ -270,7 +269,7 @@ export function TrackingKanbanBoard({
         })}
       </div>
 
-      {/* Drag overlay: shows ghost card while dragging */}
+      {/* Drag overlay */}
       <DragOverlay>
         {activeOrder ? (
           <div className="opacity-95 rotate-2 scale-105 pointer-events-none">

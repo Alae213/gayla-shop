@@ -16,17 +16,19 @@ interface StatusConfig {
   icon: React.ElementType
   colorClass: string
   bgClass: string
+  borderClass: string
   label?: string
 }
 
 const statusConfigMap: Record<OrderStatus, StatusConfig> = {
-  new:       { icon: CircleDashed,   colorClass: "text-blue-600",    bgClass: "bg-blue-50" },
-  confirmed: { icon: CheckCircle2,   colorClass: "text-emerald-600", bgClass: "bg-emerald-50" },
-  packaged:  { icon: Package,        colorClass: "text-amber-600",   bgClass: "bg-amber-50" },
-  shipped:   { icon: Truck,          colorClass: "text-purple-600",  bgClass: "bg-purple-50" },
-  canceled:  { icon: XCircle,        colorClass: "text-rose-600",    bgClass: "bg-rose-50" },
-  blocked:   { icon: Ban,            colorClass: "text-gray-600",    bgClass: "bg-gray-100" },
-  hold:      { icon: PhoneForwarded, colorClass: "text-rose-500",    bgClass: "bg-rose-50", label: "hold" },
+  new:       { icon: CircleDashed,   colorClass: "text-blue-600",    bgClass: "bg-blue-50",    borderClass: "border-blue-200" },
+  confirmed: { icon: CheckCircle2,   colorClass: "text-emerald-600", bgClass: "bg-emerald-50", borderClass: "border-emerald-200" },
+  packaged:  { icon: Package,        colorClass: "text-amber-600",   bgClass: "bg-amber-50",   borderClass: "border-amber-200" },
+  shipped:   { icon: Truck,          colorClass: "text-purple-600",  bgClass: "bg-purple-50",  borderClass: "border-purple-200" },
+  canceled:  { icon: XCircle,        colorClass: "text-rose-600",    bgClass: "bg-rose-50",    borderClass: "border-rose-200" },
+  blocked:   { icon: Ban,            colorClass: "text-gray-600",    bgClass: "bg-gray-100",   borderClass: "border-gray-200" },
+  // hold = "wrong number" hold — visually orange/amber to distinguish from rose canceled
+  hold:      { icon: PhoneForwarded, colorClass: "text-orange-600",  bgClass: "bg-orange-50",  borderClass: "border-orange-200", label: "hold" },
 }
 
 export interface StatusPillProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -42,9 +44,10 @@ export function StatusPill({ status, className, ...props }: StatusPillProps) {
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium lowercase",
+        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium lowercase border",
         config.colorClass,
         config.bgClass,
+        config.borderClass,
         className
       )}
       {...props}
