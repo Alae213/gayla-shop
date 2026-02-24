@@ -11,6 +11,17 @@ import { TrackingListView } from "@/components/admin/tracking/views/tracking-lis
 import { TrackingOrderDetails } from "@/components/admin/tracking/views/tracking-order-details";
 import { TrackingBulkActionBar } from "@/components/admin/tracking/views/tracking-bulk-action-bar";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Trash2 } from "lucide-react";
 
 type TrackingView = "kanban" | "list" | "blacklist";
 type MVPStatus = "new" | "confirmed" | "packaged" | "shipped" | "canceled" | "blocked" | "hold";
@@ -53,17 +64,15 @@ export function TrackingWorkspace() {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [listStatusFilter, setListStatusFilter] = useState<MVPStatus | "all">("all");
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [showBulkCancelDialog, setShowBulkCancelDialog] = useState(false);
 
-  // ── Ref that holds the current handleRequestClose from TrackingOrderDetails.
-  // Updated via onRegisterRequestClose whenever the dirty state changes.
+  // ── Unsaved-changes panel close ref
   const panelRequestCloseRef = useRef<(() => void) | null>(null);
 
   const handleRegisterRequestClose = useCallback((fn: () => void) => {
     panelRequestCloseRef.current = fn;
   }, []);
 
-  // Routes panel dismiss (backdrop / X / Escape) through the child interceptor.
-  // Falls back to direct close when no order is loaded yet.
   const handlePanelRequestClose = useCallback(() => {
     if (panelRequestCloseRef.current) {
       panelRequestCloseRef.current();
@@ -72,7 +81,6 @@ export function TrackingWorkspace() {
     }
   }, []);
 
-  // Called by the dialog's "Leave anyway" action — bypasses the guard.
   const handlePanelClose = useCallback(() => {
     panelRequestCloseRef.current = null;
     setSelectedOrderId(null);
@@ -85,6 +93,7 @@ export function TrackingWorkspace() {
   );
 
   const bulkConfirm          = useMutation(api.orders.bulkConfirm);
+  const bulkCancel           = useMutation(api.orders.bulkCancel);
   const bulkUnblock          = useMutation(api.orders.bulkUnblock);
   const migrateOrderStatuses = useMutation(api.orders.migrateOrderStatuses);
 
@@ -110,7 +119,6 @@ export function TrackingWorkspace() {
   const filteredActive    = applySearch(activeOrders);
   const filteredBlacklist = applySearch(blacklistOrders);
 
-  // Sort
   const sortFn = (a: any, b: any) => {
     switch (sortOrder) {
       case "date_asc":    return a._creationTime - b._creationTime;
@@ -121,7 +129,6 @@ export function TrackingWorkspace() {
   };
   const sortedActive = filteredActive ? [...filteredActive].sort(sortFn) : [];
 
-  // Filter for list view
   const filteredForList = listStatusFilter === "all"
     ? sortedActive
     : sortedActive.filter(o => o._normalizedStatus === listStatusFilter);
@@ -179,11 +186,38 @@ export function TrackingWorkspace() {
     setIsProcessing(false);
   };
 
-  const handleBulkCancel = async () => {
+  // Opens the confirmation dialog — actual mutation fires from the dialog's confirm button
+  const handleBulkCancel = () => {
+    if (!selectedOrderIds.size) return;
+    setShowBulkCancelDialog(true);
+  };
+
+  // Fires after user confirms in the dialog
+  const executeBulkCancel = async () => {
+    setShowBulkCancelDialog(false);
     setIsProcessing(true);
-    await new Promise(r => setTimeout(r, 800));
-    toast.error("Bulk cancel coming soon");
-    setIsProcessing(false);
+    try {
+      const results = await bulkCancel({
+        ids: Array.from(selectedOrderIds),
+        reason: "Bulk canceled by admin",
+      });
+      const parts: string[] = [];
+      if (results.success > 0) parts.push(`${results.success} canceled`);
+      if (results.skipped  > 0) parts.push(`${results.skipped} already terminal`);
+      if (results.failed   > 0) parts.push(`${results.failed} failed`);
+      if (results.failed > 0) {
+        toast.warning(parts.join(" · "));
+      } else {
+        toast.success(`\u2713 ${parts.join(" · ")}`);
+      }
+      handleClearSelection();
+    } catch {
+      toast.error("Bulk cancel failed", {
+        action: { label: "Retry", onClick: executeBulkCancel },
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleBulkUnblock = async () => {
@@ -236,6 +270,30 @@ export function TrackingWorkspace() {
 
   return (
     <div className="relative flex flex-col h-full w-full bg-[#F5F5F5]">
+
+      {/* ── Bulk Cancel Confirmation Dialog ── */}
+      <AlertDialog open={showBulkCancelDialog} onOpenChange={setShowBulkCancelDialog}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-2 text-rose-600 mb-1">
+              <Trash2 className="h-5 w-5 shrink-0" />
+              <AlertDialogTitle className="text-rose-700">Cancel {selectedOrderIds.size} order{selectedOrderIds.size !== 1 ? "s" : ""}?</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription>
+              This will move all selected orders to <strong>Canceled</strong>. Shipped orders will be skipped. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep them</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeBulkCancel}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              Yes, cancel all
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Migration Banner */}
       {hasLegacyOrders && (

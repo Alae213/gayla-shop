@@ -26,7 +26,6 @@ type CallOutcome = "answered" | "no answer" | "wrong number" | "refused";
 // ─── Legacy → MVP status map ──────────────────────────────────────────────────
 export function normalizeLegacyStatus(status: string | undefined): MVPStatus {
   switch (status) {
-    // ── already MVP ──
     case "new":       return "new";
     case "confirmed": return "confirmed";
     case "packaged":  return "packaged";
@@ -34,7 +33,6 @@ export function normalizeLegacyStatus(status: string | undefined): MVPStatus {
     case "canceled":  return "canceled";
     case "blocked":   return "blocked";
     case "hold":      return "hold";
-    // ── legacy map ──
     case "Pending":           return "new";
     case "Confirmed":          return "confirmed";
     case "Called no respond":  return "new";
@@ -259,6 +257,49 @@ export const bulkConfirm = mutation({
   },
 });
 
+export const bulkCancel = mutation({
+  args: {
+    ids:    v.array(v.id("orders")),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const results = { success: 0, failed: 0, skipped: 0 };
+    const reason = args.reason ?? "Bulk canceled by admin";
+
+    for (const id of args.ids) {
+      try {
+        const order = await ctx.db.get(id);
+        if (!order) { results.failed++; continue; }
+
+        const normalized = normalizeLegacyStatus(order.status);
+        // Skip orders already in a terminal state
+        if (normalized === "canceled" || normalized === "blocked") {
+          results.skipped++;
+          continue;
+        }
+        // Do not allow canceling already-shipped orders
+        if (normalized === "shipped") {
+          results.failed++;
+          continue;
+        }
+
+        const statusHistory = pushStatusHistory(order, "canceled", reason);
+        await ctx.db.patch(id, {
+          status: "canceled",
+          cancelReason: reason,
+          statusHistory,
+          lastUpdated: Date.now(),
+        });
+        results.success++;
+      } catch {
+        results.failed++;
+      }
+    }
+
+    return results;
+  },
+});
+
 // ─── UNBLOCK ─────────────────────────────────────────────────────────────────
 
 export const unblockCustomer = mutation({
@@ -328,7 +369,6 @@ export const logCallOutcome = mutation({
       cancelReason = "Canceled: refused";
       statusHistory = pushStatusHistory(order, newStatus, cancelReason);
     } else if (args.outcome === "wrong number") {
-      // Enter hold state instead of canceling outright
       newStatus = "hold";
       statusHistory = pushStatusHistory(order, newStatus, "Wrong number reported — awaiting phone correction");
     } else if (noAnswerCount >= 2 && newStatus !== "canceled") {
@@ -365,7 +405,6 @@ export const resetCallAttempts = mutation({
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.id);
     if (!order) throw new Error("Order not found");
-    // Remove no-answer entries from call log and reset counter
     const callLog = (order.callLog ?? []).filter((l: any) => l.outcome !== "no answer");
     const statusHistory = pushStatusHistory(order, "new", "Auto-cancel undone by admin");
     await ctx.db.patch(args.id, {
