@@ -16,6 +16,10 @@ interface TrackingListViewProps {
   isBlacklist?: boolean;
 }
 
+// Single source of truth for the column layout.
+// Columns: checkbox | order# | customer | product | status | total | date
+const GRID = "grid-cols-[48px_minmax(110px,1fr)_minmax(160px,1.5fr)_minmax(160px,1.5fr)_minmax(110px,1fr)_minmax(90px,1fr)_minmax(110px,1fr)]";
+
 export function TrackingListView({
   orders,
   selectedIds,
@@ -26,12 +30,12 @@ export function TrackingListView({
 }: TrackingListViewProps) {
   const orderIds = orders.map(o => o._id);
   const isAllSelected = orderIds.length > 0 && orderIds.every(id => selectedIds.has(id));
-  const hasSelected = orderIds.some(id => selectedIds.has(id));
 
   return (
     <div className="flex flex-col h-full bg-white rounded-tracking-card border border-[#ECECEC] shadow-tracking-card overflow-hidden">
+
       {/* Table Header */}
-      <div className="grid grid-cols-[48px_minmax(120px,1fr)_minmax(180px,2fr)_minmax(120px,1fr)_minmax(100px,1fr)_minmax(120px,1fr)] items-center px-6 py-4 border-b border-[#ECECEC] bg-[#F7F7F7] text-[13px] font-semibold text-[#AAAAAA] uppercase tracking-wider">
+      <div className={`grid ${GRID} items-center px-6 py-4 border-b border-[#ECECEC] bg-[#F7F7F7] text-[13px] font-semibold text-[#AAAAAA] uppercase tracking-wider`}>
         <div className="flex items-center justify-center">
           <TrackingCheckbox
             checked={isAllSelected}
@@ -41,6 +45,7 @@ export function TrackingListView({
         </div>
         <div>Order</div>
         <div>Customer</div>
+        <div>Product</div>
         <div>Status</div>
         <div>Total</div>
         <div>Date</div>
@@ -50,16 +55,21 @@ export function TrackingListView({
       <div className="flex-1 overflow-y-auto" role="list" aria-label={isBlacklist ? "Blacklist orders" : "Active orders"}>
         {orders.map(order => {
           const isSelected = selectedIds.has(order._id);
-          // Use _normalizedStatus injected by TrackingWorkspace; fall back to raw status
           const displayStatus: OrderStatus =
             (order._normalizedStatus ?? order.status ?? "new") as OrderStatus;
+
+          // Build a short product label, e.g. "Summer Dress · M / Red"
+          const variantParts: string[] = [];
+          if (order.selectedVariant?.size)  variantParts.push(order.selectedVariant.size);
+          if (order.selectedVariant?.color) variantParts.push(order.selectedVariant.color);
+          const variantLabel = variantParts.join(" / ");
 
           return (
             <div
               key={order._id}
               role="listitem"
               tabIndex={0}
-              aria-label={`Order ${order.orderNumber} by ${order.customerName}, total ${order.totalAmount ?? 0} DZD, status ${displayStatus}`}
+              aria-label={`Order ${order.orderNumber} by ${order.customerName}, ${order.productName ?? "product"}, total ${order.totalAmount ?? 0} DZD, status ${displayStatus}`}
               onClick={() => onOrderClick(order._id)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -67,16 +77,14 @@ export function TrackingListView({
                   onOrderClick(order._id);
                 }
               }}
-              className={`grid grid-cols-[48px_minmax(120px,1fr)_minmax(180px,2fr)_minmax(120px,1fr)_minmax(100px,1fr)_minmax(120px,1fr)] items-center px-6 py-4 border-b border-[#ECECEC] cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#AAAAAA] ${
+              className={`grid ${GRID} items-center px-6 py-4 border-b border-[#ECECEC] cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#AAAAAA] ${
                 isSelected ? "bg-[#F5F5F5]" : "bg-white hover:bg-[#F7F7F7]"
               }`}
             >
+              {/* Checkbox */}
               <div
                 className="flex items-center justify-center"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleSelect(order._id);
-                }}
+                onClick={(e) => { e.stopPropagation(); onToggleSelect(order._id); }}
               >
                 <TrackingCheckbox
                   checked={isSelected}
@@ -85,15 +93,39 @@ export function TrackingListView({
                   aria-label={`Select order ${order.orderNumber}`}
                 />
               </div>
-              <div className="text-[15px] font-medium text-[#3A3A3A]">{order.orderNumber}</div>
-              <div className="flex flex-col">
-                <span className="text-[15px] font-medium text-[#3A3A3A]">{order.customerName}</span>
+
+              {/* Order # */}
+              <div className="text-[15px] font-medium text-[#3A3A3A] font-mono">
+                {order.orderNumber}
+              </div>
+
+              {/* Customer */}
+              <div className="flex flex-col min-w-0">
+                <span className="text-[15px] font-medium text-[#3A3A3A] truncate">{order.customerName}</span>
                 <span className="text-[13px] text-[#AAAAAA]">{order.customerPhone}</span>
               </div>
+
+              {/* Product */}
+              <div className="flex flex-col min-w-0">
+                <span className="text-[14px] font-medium text-[#3A3A3A] truncate">
+                  {order.productName || <span className="text-[#CCCCCC] italic">—</span>}
+                </span>
+                {variantLabel && (
+                  <span className="text-[12px] text-[#AAAAAA] truncate">{variantLabel}</span>
+                )}
+              </div>
+
+              {/* Status */}
               <div>
                 <StatusPill status={displayStatus} />
               </div>
-              <div className="text-[14px] font-medium text-[#3A3A3A]">{order.totalAmount ?? 0} DZD</div>
+
+              {/* Total */}
+              <div className="text-[14px] font-medium text-[#3A3A3A]">
+                {order.totalAmount ?? 0} DZD
+              </div>
+
+              {/* Date */}
               <div className="text-[13px] text-[#AAAAAA]">
                 {formatDistanceToNow(order._creationTime, { addSuffix: true })}
               </div>
@@ -103,7 +135,10 @@ export function TrackingListView({
 
         {orders.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 rounded-full bg-[#F5F5F5] flex items-center justify-center mb-4 text-[#AAAAAA]" aria-hidden="true">
+            <div
+              className="w-16 h-16 rounded-full bg-[#F5F5F5] flex items-center justify-center mb-4 text-[#AAAAAA]"
+              aria-hidden="true"
+            >
               {isBlacklist ? (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" /><path d="m4.9 4.9 14.2 14.2" />
