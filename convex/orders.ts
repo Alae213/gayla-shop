@@ -26,24 +26,24 @@ type CallOutcome = "answered" | "no answer" | "wrong number" | "refused";
 export function normalizeLegacyStatus(status: string | undefined): MVPStatus {
   switch (status) {
     // ── already MVP ──
-    case "new":       return "new";
+    case "new": return "new";
     case "confirmed": return "confirmed";
-    case "packaged":  return "packaged";
-    case "shipped":   return "shipped";
-    case "canceled":  return "canceled";
-    case "blocked":   return "blocked";
+    case "packaged": return "packaged";
+    case "shipped": return "shipped";
+    case "canceled": return "canceled";
+    case "blocked": return "blocked";
     // ── legacy map ──
-    case "Pending":           return "new";
-    case "Confirmed":          return "confirmed";
-    case "Called no respond":  return "new";
-    case "Called 01":          return "new";
-    case "Called 02":          return "new";
-    case "Packaged":           return "packaged";
-    case "Shipped":            return "shipped";
-    case "Delivered":          return "shipped"; // closest active equivalent
-    case "Retour":             return "canceled";
-    case "Cancelled":          return "canceled";
-    default:                   return "new";     // safe fallback
+    case "Pending": return "new";
+    case "Confirmed": return "confirmed";
+    case "Called no respond": return "new";
+    case "Called 01": return "new";
+    case "Called 02": return "new";
+    case "Packaged": return "packaged";
+    case "Shipped": return "shipped";
+    case "Delivered": return "shipped"; // closest active equivalent
+    case "Retour": return "canceled";
+    case "Cancelled": return "canceled";
+    default: return "new";     // safe fallback
   }
 }
 
@@ -122,14 +122,14 @@ export const getStats = query({
 
 export const create = mutation({
   args: {
-    customerName:    v.string(),
-    customerPhone:   v.string(),
-    customerWilaya:  v.string(),
+    customerName: v.string(),
+    customerPhone: v.string(),
+    customerWilaya: v.string(),
     customerCommune: v.optional(v.string()),
     customerAddress: v.optional(v.string()),
-    deliveryType:    v.union(v.literal("Domicile"), v.literal("Stopdesk")),
-    deliveryCost:    v.number(),
-    productId:       v.id("products"),
+    deliveryType: v.union(v.literal("Domicile"), v.literal("Stopdesk")),
+    deliveryCost: v.number(),
+    productId: v.id("products"),
     selectedVariant: v.optional(
       v.object({ size: v.optional(v.string()), color: v.optional(v.string()) })
     ),
@@ -154,35 +154,35 @@ export const create = mutation({
       orderNumber = generateOrderNumber();
     }
 
-    const totalAmount   = product.price + args.deliveryCost;
-    const now           = Date.now();
+    const totalAmount = product.price + args.deliveryCost;
+    const now = Date.now();
     const initialStatus: MVPStatus = isBanned ? "blocked" : "new";
 
     const orderId = await ctx.db.insert("orders", {
       orderNumber,
-      status:          initialStatus,
-      customerName:    args.customerName,
-      customerPhone:   args.customerPhone,
-      customerWilaya:  args.customerWilaya,
+      status: initialStatus,
+      customerName: args.customerName,
+      customerPhone: args.customerPhone,
+      customerWilaya: args.customerWilaya,
       customerCommune: args.customerCommune ?? "",
       customerAddress: args.customerAddress ?? "",
-      deliveryType:    args.deliveryType,
-      deliveryCost:    args.deliveryCost,
-      productId:       args.productId,
-      productName:     product.title,
-      productPrice:    product.price,
-      productSlug:     product.slug,
+      deliveryType: args.deliveryType,
+      deliveryCost: args.deliveryCost,
+      productId: args.productId,
+      productName: product.title,
+      productPrice: product.price,
+      productSlug: product.slug,
       selectedVariant: args.selectedVariant,
       totalAmount,
-      lastUpdated:     now,
-      callAttempts:    0,
-      callLog:         [],
-      adminNotes:      [],
-      fraudScore:      0,
+      lastUpdated: now,
+      callAttempts: 0,
+      callLog: [],
+      adminNotes: [],
+      fraudScore: 0,
       isBanned,
-      createdAt:       now,
+      createdAt: now,
       statusHistory: [{
-        status:    initialStatus,
+        status: initialStatus,
         timestamp: now,
         ...(isBanned ? { reason: "Auto-blocked — banned customer" } : {}),
       }],
@@ -207,13 +207,13 @@ export const updateStatus = mutation({
 
 export const updateCustomerInfo = mutation({
   args: {
-    id:              v.id("orders"),
-    customerName:    v.optional(v.string()),
-    customerPhone:   v.optional(v.string()),
-    customerWilaya:  v.optional(v.string()),
+    id: v.id("orders"),
+    customerName: v.optional(v.string()),
+    customerPhone: v.optional(v.string()),
+    customerWilaya: v.optional(v.string()),
     customerCommune: v.optional(v.string()),
     customerAddress: v.optional(v.string()),
-    notes:           v.optional(v.string()),
+    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
@@ -263,13 +263,13 @@ export const logCallOutcome = mutation({
   args: {
     orderId: v.id("orders"),
     outcome: callOutcomeValidator,
-    note:    v.optional(v.string()),
+    note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("Order not found");
 
-    const callLog     = pushCallLog(order, args.outcome, args.note);
+    const callLog = pushCallLog(order, args.outcome, args.note);
     const callAttempts = (order.callAttempts ?? 0) + 1;
     const noAnswerCount = callLog.filter(l => l.outcome === "no answer").length;
 
@@ -304,6 +304,34 @@ export const logCallOutcome = mutation({
   },
 });
 
+// ─── AUTO-PURGE OLD ARCHIVED ORDERS ──────────────────────────────────────────
+// Called daily by the cron job "purge-old-archive" (crons.ts).
+// Deletes terminal orders (canceled / shipped) older than 60 days.
+// Mirrors the logic of the admin "Force Clean" button — server-side only.
+
+export const purgeOldArchive = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000;
+    const cutoff = Date.now() - SIXTY_DAYS_MS;
+    const TERMINAL_STATUSES: MVPStatus[] = ["canceled", "shipped"];
+
+    const orders = await ctx.db.query("orders").collect();
+    let purged = 0;
+
+    for (const order of orders) {
+      const normalized = normalizeLegacyStatus(order.status);
+      const orderTime = order.lastUpdated ?? order._creationTime;
+      if (TERMINAL_STATUSES.includes(normalized) && orderTime < cutoff) {
+        await ctx.db.delete(order._id);
+        purged++;
+      }
+    }
+
+    return { purged };
+  },
+});
+
 // ─── ONE-TIME MIGRATION ───────────────────────────────────────────────────────
 // Run once from the Admin panel to convert all legacy-status orders to MVP statuses.
 
@@ -313,7 +341,7 @@ export const migrateOrderStatuses = mutation({
     const orders = await ctx.db.query("orders").collect();
     const MVP_STATUSES = ["new", "confirmed", "packaged", "shipped", "canceled", "blocked"];
     let migrated = 0;
-    let skipped  = 0;
+    let skipped = 0;
 
     for (const order of orders) {
       if (MVP_STATUSES.includes(order.status ?? "")) {
