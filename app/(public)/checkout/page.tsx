@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/hooks/use-cart";
 import { CheckoutCartItems } from "@/components/checkout/checkout-cart-items";
+import { CheckoutForm } from "@/components/checkout/checkout-form";
 import { Loader2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -71,14 +72,10 @@ export default function CheckoutPage() {
           <CheckoutCartItems />
         </div>
 
-        {/* Right: Checkout Form (placeholder for Task 3.2) */}
+        {/* Right: Checkout Form */}
         <div className="order-1 lg:order-2">
           <div className="sticky top-4">
-            <div className="p-8 border rounded-lg bg-muted/30 text-center">
-              <p className="text-muted-foreground">
-                Checkout form will be added in Task 3.2
-              </p>
-            </div>
+            <CheckoutForm />
           </div>
         </div>
       </div>
