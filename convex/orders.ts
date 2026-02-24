@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
-// ─── MVP Status Union ─────────────────────────────────────────────────────────
+// ─── MVP Status Union ────────────────────────────────────────────────────────────────────────────────
 const orderStatusMVPValidator = v.union(
   v.literal("new"),
   v.literal("confirmed"),
@@ -23,8 +23,8 @@ const callOutcomeValidator = v.union(
 
 type CallOutcome = "answered" | "no answer" | "wrong number" | "refused";
 
-// ─── Legacy → MVP status map ──────────────────────────────────────────────────
-export function normalizeLegacyStatus(status: string | undefined): MVPStatus {
+// ─── Legacy → MVP status map ──────────────────────────────────────────────────────────────────────────────
+ex port function normalizeLegacyStatus(status: string | undefined): MVPStatus {
   switch (status) {
     case "new":       return "new";
     case "confirmed": return "confirmed";
@@ -47,7 +47,7 @@ export function normalizeLegacyStatus(status: string | undefined): MVPStatus {
   }
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────────────────────────
 
 function pushStatusHistory(
   order: any,
@@ -75,7 +75,7 @@ function generateOrderNumber(): string {
   return `GAY-${timestamp}-${random}`;
 }
 
-// ─── QUERIES ──────────────────────────────────────────────────────────────────
+// ─── QUERIES ──────────────────────────────────────────────────────────────────────────────────────
 
 export const list = query({
   args: {},
@@ -118,7 +118,7 @@ export const getStats = query({
   },
 });
 
-// ─── CREATE ───────────────────────────────────────────────────────────────────
+// ─── CREATE ───────────────────────────────────────────────────────────────────────────────────────
 
 export const create = mutation({
   args: {
@@ -154,8 +154,8 @@ export const create = mutation({
       orderNumber = generateOrderNumber();
     }
 
-    const totalAmount   = product.price + args.deliveryCost;
-    const now           = Date.now();
+    const totalAmount    = product.price + args.deliveryCost;
+    const now            = Date.now();
     const initialStatus: MVPStatus = isBanned ? "blocked" : "new";
 
     const orderId = await ctx.db.insert("orders", {
@@ -192,7 +192,7 @@ export const create = mutation({
   },
 });
 
-// ─── UPDATE STATUS ────────────────────────────────────────────────────────────
+// ─── UPDATE STATUS ───────────────────────────────────────────────────────────────────────────────────
 
 export const updateStatus = mutation({
   args: { id: v.id("orders"), status: orderStatusMVPValidator, reason: v.optional(v.string()) },
@@ -232,7 +232,7 @@ export const remove = mutation({
   },
 });
 
-// ─── BULK ACTIONS ─────────────────────────────────────────────────────────────
+// ─── BULK ACTIONS ──────────────────────────────────────────────────────────────────────────────────────
 
 export const bulkConfirm = mutation({
   args: { ids: v.array(v.id("orders")) },
@@ -242,7 +242,9 @@ export const bulkConfirm = mutation({
       const order = await ctx.db.get(id);
       if (order) {
         const normalized = normalizeLegacyStatus(order.status);
-        if (normalized === "new") {
+        // Allow confirming from "new" OR "hold" (wrong-number orders whose
+        // phone has been corrected and operator wants to fast-track confirm)
+        if (normalized === "new" || normalized === "hold") {
           const statusHistory = pushStatusHistory(order, "confirmed", "Bulk confirmed");
           await ctx.db.patch(id, { status: "confirmed", statusHistory, lastUpdated: Date.now() });
           results.success++;
@@ -300,7 +302,7 @@ export const bulkCancel = mutation({
   },
 });
 
-// ─── UNBLOCK ─────────────────────────────────────────────────────────────────
+// ─── UNBLOCK ───────────────────────────────────────────────────────────────────────────────────────
 
 export const unblockCustomer = mutation({
   args: { id: v.id("orders") },
@@ -344,7 +346,7 @@ export const bulkUnblock = mutation({
   },
 });
 
-// ─── CALL LOGGING ─────────────────────────────────────────────────────────────
+// ─── CALL LOGGING ───────────────────────────────────────────────────────────────────────────────────────
 
 export const logCallOutcome = mutation({
   args: {
@@ -356,29 +358,33 @@ export const logCallOutcome = mutation({
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("Order not found");
 
-    const callLog     = pushCallLog(order, args.outcome, args.note);
-    const callAttempts = (order.callAttempts ?? 0) + 1;
-    const noAnswerCount = callLog.filter(l => l.outcome === "no answer").length;
+    const callLog = pushCallLog(order, args.outcome, args.note);
 
-    let newStatus: MVPStatus = normalizeLegacyStatus(order.status);
+    // callAttempts only tracks "no answer" calls — these are the ones
+    // that drive the auto-cancel threshold. answered/refused/wrong-number
+    // should NOT increment this counter.
+    const noAnswerCount = callLog.filter(l => l.outcome === "no answer").length;
+    const callAttempts  = noAnswerCount;
+
+    let newStatus: MVPStatus    = normalizeLegacyStatus(order.status);
     let cancelReason: string | undefined;
-    let statusHistory = order.statusHistory ?? [];
+    let statusHistory           = order.statusHistory ?? [];
 
     if (args.outcome === "refused") {
-      newStatus = "canceled";
+      newStatus    = "canceled";
       cancelReason = "Canceled: refused";
       statusHistory = pushStatusHistory(order, newStatus, cancelReason);
     } else if (args.outcome === "wrong number") {
-      newStatus = "hold";
+      newStatus     = "hold";
       statusHistory = pushStatusHistory(order, newStatus, "Wrong number reported — awaiting phone correction");
     } else if (noAnswerCount >= 2 && newStatus !== "canceled") {
-      newStatus = "canceled";
+      newStatus    = "canceled";
       cancelReason = "Auto-canceled: No answer after 2 attempts";
       statusHistory = pushStatusHistory(order, newStatus, cancelReason);
     }
 
     const prevNormalized = normalizeLegacyStatus(order.status);
-    const statusChanged = newStatus !== prevNormalized;
+    const statusChanged  = newStatus !== prevNormalized;
 
     await ctx.db.patch(order._id, {
       callLog,
@@ -390,25 +396,27 @@ export const logCallOutcome = mutation({
     });
 
     return {
-      success: true,
+      success:      true,
       autoCanceled: newStatus === "canceled" && prevNormalized !== "canceled",
-      wrongNumber: newStatus === "hold" && args.outcome === "wrong number",
+      wrongNumber:  newStatus === "hold" && args.outcome === "wrong number",
       cancelReason,
     };
   },
 });
 
-// ─── RESET CALL ATTEMPTS (for Undo auto-cancel) ───────────────────────────────
+// ─── RESET CALL ATTEMPTS (for Undo auto-cancel) ───────────────────────────────────────────────────────────
 
 export const resetCallAttempts = mutation({
   args: { id: v.id("orders") },
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.id);
     if (!order) throw new Error("Order not found");
-    const callLog = (order.callLog ?? []).filter((l: any) => l.outcome !== "no answer");
+    // Strip only "no answer" entries from the log; keep answered/wrong-number/refused
+    const callLog     = (order.callLog ?? []).filter((l: any) => l.outcome !== "no answer");
+    const callAttempts = 0; // no-answer count is now 0
     const statusHistory = pushStatusHistory(order, "new", "Auto-cancel undone by admin");
     await ctx.db.patch(args.id, {
-      callAttempts: 0,
+      callAttempts,
       callLog,
       status: "new",
       statusHistory,
@@ -418,7 +426,7 @@ export const resetCallAttempts = mutation({
   },
 });
 
-// ─── ONE-TIME MIGRATION ───────────────────────────────────────────────────────
+// ─── ONE-TIME MIGRATION ──────────────────────────────────────────────────────────────────────────────────────
 
 export const migrateOrderStatuses = mutation({
   args: {},
