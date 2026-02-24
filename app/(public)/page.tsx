@@ -52,15 +52,15 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Products Catalog */}
+      {/* Products Catalog - Changed from lg:grid-cols-4 to lg:grid-cols-3 for better visual balance */}
       <section id="products" className="py-16">
         <div className="page-container">
           <h2 className="headline-h2 mb-2 text-system-400">Our Products</h2>
           <p className="caption-text text-system-300 mb-8">Handpicked streetwear for every style</p>
 
           {products === undefined ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {Array.from({ length: 8 }).map((_, i) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
                 <ProductCardSkeleton key={i} />
               ))}
             </div>
@@ -70,7 +70,7 @@ export default function HomePage() {
               <p className="caption-text">Check back soon — new arrivals dropping weekly.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map((product, i) => (
                 <div
                   key={product._id}

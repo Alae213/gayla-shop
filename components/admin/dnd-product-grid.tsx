@@ -323,18 +323,18 @@ export function DndProductGrid({
           </span>
         </div>
         <p className="text-xs text-gray-400 italic hidden sm:block">
-          Drag to reorder · hover for actions
+          Drag to reorder · hover for actions
         </p>
       </div>
 
-      {/* Grid */}
+      {/* Grid - Changed from xl:grid-cols-5 to xl:grid-cols-3 for better visual balance */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={displayed.map((p) => p._id)} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
             {displayed.map((product) => (
               <SortableCard
                 key={product._id}
@@ -345,7 +345,7 @@ export function DndProductGrid({
               />
             ))}
 
-            {/* “+” card — always last; clicking it calls onAdd which runs createEmpty */}
+            {/* "+" card — always last; clicking it calls onAdd which runs createEmpty */}
             <AddCard onClick={onAdd} isLoading={isAddingProduct} />
           </div>
         </SortableContext>
