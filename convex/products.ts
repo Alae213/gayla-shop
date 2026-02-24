@@ -15,10 +15,7 @@ async function resolveImages(
   );
 }
 
-// ─── list ─────────────────────────────────────────────────────────────────────
-// Primary sort: sortOrder ASC (admin-defined display order).
-// Secondary sort: createdAt DESC for products without sortOrder (newest first).
-// Products with a sortOrder always appear before those without.
+// ─── list ──────────────────────────────────────────────────────────────────────────────────────
 export const list = query({
   args: {
     category: v.optional(v.string()),
@@ -29,7 +26,6 @@ export const list = query({
   handler: async (ctx, args) => {
     let products = await ctx.db.query("products").collect();
 
-    // Exclude soft-deleted products
     products = products.filter((p) => !p.isArchived);
 
     if (args.category) {
@@ -45,7 +41,6 @@ export const list = query({
       if (aHasOrder && bHasOrder) return (a.sortOrder as number) - (b.sortOrder as number);
       if (aHasOrder && !bHasOrder) return -1;
       if (!aHasOrder && bHasOrder) return 1;
-      // Both unsorted — newest first
       const aTime = a.createdAt || a._creationTime;
       const bTime = b.createdAt || b._creationTime;
       return bTime - aTime;
@@ -60,7 +55,7 @@ export const list = query({
   },
 });
 
-// ─── getBySlug ────────────────────────────────────────────────────────────────
+// ─── getBySlug ───────────────────────────────────────────────────────────────────────────────
 export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, args) => {
@@ -76,7 +71,7 @@ export const getBySlug = query({
   },
 });
 
-// ─── getById ──────────────────────────────────────────────────────────────────
+// ─── getById ──────────────────────────────────────────────────────────────────────────────────
 export const getById = query({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
@@ -89,13 +84,19 @@ export const getById = query({
   },
 });
 
-// ─── incrementViewCount ───────────────────────────────────────────────────────
+// ─── incrementViewCount ───────────────────────────────────────────────────────────────────────────
 export const incrementViewCount = mutation({
   args: {
     slug: v.optional(v.string()),
     id: v.optional(v.id("products")),
   },
   handler: async (ctx, args) => {
+    // FIX 21A: Require at least one identifier — silently succeeding with
+    // neither would leave viewCount unchanged with no feedback to the caller.
+    if (!args.id && !args.slug) {
+      throw new Error("incrementViewCount requires either id or slug");
+    }
+
     let product = null as any;
     if (args.id) {
       product = await ctx.db.get(args.id);
@@ -111,7 +112,7 @@ export const incrementViewCount = mutation({
   },
 });
 
-// ─── create ───────────────────────────────────────────────────────────────────
+// ─── create ──────────────────────────────────────────────────────────────────────────────────────
 export const create = mutation({
   args: {
     title: v.string(),
@@ -131,7 +132,11 @@ export const create = mutation({
       .query("products")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .first();
-    if (existing && !existing.isArchived) throw new Error("A product with this slug already exists");
+    // FIX 21B: Block slug reuse even for archived products. If we allowed
+    // creating a new product with an archived product's slug, restoring the
+    // archived product later would create two live products sharing the same
+    // slug — breaking getBySlug (which returns only .first()).
+    if (existing) throw new Error("A product with this slug already exists");
     const now = Date.now();
     return ctx.db.insert("products", {
       ...args,
@@ -143,10 +148,7 @@ export const create = mutation({
   },
 });
 
-// ─── createEmpty ──────────────────────────────────────────────────────────────
-// Called when admin clicks the "+" card in the Build Mode product grid.
-// Instantly inserts a Draft record so the new card is immediately real/editable.
-// sortOrder is max existing + 1 so it appears at the end of the grid.
+// ─── createEmpty ─────────────────────────────────────────────────────────────────────────────
 export const createEmpty = mutation({
   args: {},
   handler: async (ctx) => {
@@ -177,10 +179,7 @@ export const createEmpty = mutation({
   },
 });
 
-// ─── reorder ──────────────────────────────────────────────────────────────────
-// Called after every DnD drag-end in the admin product grid.
-// Receives full new ordering as [{ id, sortOrder }] and batch-patches all records.
-// The public list query re-sorts automatically on next read.
+// ─── reorder ────────────────────────────────────────────────────────────────────────────────────
 export const reorder = mutation({
   args: {
     items: v.array(
@@ -198,8 +197,7 @@ export const reorder = mutation({
   },
 });
 
-// ─── toggleStatus ─────────────────────────────────────────────────────────────
-// Fast inline Active <-> Draft flip used by the eye icon on product cards.
+// ─── toggleStatus ─────────────────────────────────────────────────────────────────────────────
 export const toggleStatus = mutation({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
@@ -211,7 +209,7 @@ export const toggleStatus = mutation({
   },
 });
 
-// ─── update ───────────────────────────────────────────────────────────────────
+// ─── update ──────────────────────────────────────────────────────────────────────────────────────
 export const update = mutation({
   args: {
     id: v.id("products"),
@@ -241,7 +239,9 @@ export const update = mutation({
         .query("products")
         .withIndex("by_slug", (q) => q.eq("slug", updates.slug as string))
         .first();
-      if (existing && !existing.isArchived) throw new Error("A product with this slug already exists");
+      // FIX 21B (also applied here): block renaming to a slug that already
+      // exists, even if the conflicting product is archived.
+      if (existing) throw new Error("A product with this slug already exists");
     }
 
     await ctx.db.patch(id, { ...updates, updatedAt: Date.now() });
@@ -249,7 +249,7 @@ export const update = mutation({
   },
 });
 
-// ─── remove (soft-delete) ─────────────────────────────────────────────────────
+// ─── remove (soft-delete) ───────────────────────────────────────────────────────────────────────────
 export const remove = mutation({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
@@ -260,7 +260,7 @@ export const remove = mutation({
   },
 });
 
-// ─── restore (undo soft-delete) ───────────────────────────────────────────────
+// ─── restore (undo soft-delete) ─────────────────────────────────────────────────────────────────────────
 export const restore = mutation({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
