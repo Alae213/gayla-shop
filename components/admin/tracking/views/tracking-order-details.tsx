@@ -47,23 +47,22 @@ type MVPStatus = "new" | "confirmed" | "packaged" | "shipped" | "canceled" | "bl
 interface TrackingOrderDetailsProps {
   order: Order;
   onClose: () => void;
-  /** Called once on mount (and whenever hasUnsavedChanges toggles) with
-   *  the current intercepted-close function, so the parent panel can
-   *  route its dismiss triggers through it. */
   onRegisterRequestClose?: (fn: () => void) => void;
 }
 
 // --- Call outcome meta
+// wrong number uses orange (matches hold status color) to distinguish from rose refused/canceled
 const OUTCOME_META: Record<CallOutcome, {
   label: string;
   icon: React.ElementType;
   color: string;
   bg: string;
+  border: string;
 }> = {
-  answered:     { label: "Answered",     icon: PhoneCall,      color: "text-emerald-600", bg: "bg-emerald-50" },
-  "no answer":  { label: "No Answer",    icon: PhoneMissed,    color: "text-amber-600",   bg: "bg-amber-50" },
-  "wrong number":{ label: "Wrong Number", icon: PhoneForwarded, color: "text-rose-500",    bg: "bg-rose-50" },
-  refused:      { label: "Refused",      icon: PhoneOff,       color: "text-rose-600",    bg: "bg-rose-50" },
+  answered:       { label: "Answered",     icon: PhoneCall,      color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" },
+  "no answer":    { label: "No Answer",    icon: PhoneMissed,    color: "text-amber-600",   bg: "bg-amber-50",   border: "border-amber-200" },
+  "wrong number": { label: "Wrong Number", icon: PhoneForwarded, color: "text-orange-600",  bg: "bg-orange-50",  border: "border-orange-200" },
+  refused:        { label: "Refused",      icon: PhoneOff,       color: "text-rose-600",    bg: "bg-rose-50",    border: "border-rose-200" },
 };
 
 // --- DZ Phone formatter
@@ -83,13 +82,13 @@ function formatDZPhone(raw: string): string {
 // --- Order Timeline
 function OrderTimeline({ entries }: { entries: Array<{ status: string; timestamp: number; reason?: string }> }) {
   const statusIcon: Record<string, React.ElementType> = {
-    new: PhoneCall,
+    new:       PhoneCall,
     confirmed: CheckCircle2,
-    packaged: Package,
-    shipped: Truck,
-    canceled: X,
-    blocked: ShieldOff,
-    hold: PhoneForwarded,
+    packaged:  Package,
+    shipped:   Truck,
+    canceled:  X,
+    blocked:   ShieldOff,
+    hold:      PhoneForwarded,
   };
 
   return (
@@ -199,11 +198,11 @@ function CallAttemptsBar({ attempts, max = 2 }: { attempts: number; max?: number
 
 // --- Main Component
 export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }: TrackingOrderDetailsProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [callNote, setCallNote] = useState("");
-  const [showNoteInput, setShowNoteInput] = useState(false);
-  const [pendingOutcome, setPendingOutcome] = useState<CallOutcome | null>(null);
-  const [isLoggingCall, setIsLoggingCall] = useState(false);
+  const [isEditing, setIsEditing]             = useState(false);
+  const [callNote, setCallNote]               = useState("");
+  const [showNoteInput, setShowNoteInput]     = useState(false);
+  const [pendingOutcome, setPendingOutcome]   = useState<CallOutcome | null>(null);
+  const [isLoggingCall, setIsLoggingCall]     = useState(false);
   const [showNoCallWarning, setShowNoCallWarning] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
@@ -211,11 +210,11 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
   const addressInputRef = useRef<HTMLInputElement>(null);
 
   const [editForm, setEditForm] = useState({
-    customerPhone: order.customerPhone,
+    customerPhone:   order.customerPhone,
     customerAddress: order.customerAddress || "",
-    customerWilaya: order.customerWilaya,
+    customerWilaya:  order.customerWilaya,
     customerCommune: order.customerCommune || "",
-    notes: order.notes || "",
+    notes:           order.notes || "",
   });
 
   const updateCustomerInfo = useMutation(api.orders.updateCustomerInfo);
@@ -230,14 +229,14 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
 
   // ── Detect unsaved changes
   const hasUnsavedChanges = isEditing && (
-    editForm.customerPhone    !== (order.customerPhone    ?? "") ||
-    editForm.customerAddress  !== (order.customerAddress  ?? "") ||
-    editForm.customerWilaya   !== (order.customerWilaya   ?? "") ||
-    editForm.customerCommune  !== (order.customerCommune  ?? "") ||
-    editForm.notes            !== (order.notes            ?? "")
+    editForm.customerPhone   !== (order.customerPhone   ?? "") ||
+    editForm.customerAddress !== (order.customerAddress ?? "") ||
+    editForm.customerWilaya  !== (order.customerWilaya  ?? "") ||
+    editForm.customerCommune !== (order.customerCommune ?? "") ||
+    editForm.notes           !== (order.notes           ?? "")
   );
 
-  // ── Intercepted close: show dialog when dirty, otherwise close immediately
+  // ── Intercepted close
   const handleRequestClose = React.useCallback(() => {
     if (hasUnsavedChanges) {
       setShowUnsavedDialog(true);
@@ -246,8 +245,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     }
   }, [hasUnsavedChanges, onClose]);
 
-  // ── Register handleRequestClose with parent so TrackingPanel can call it
-  // Re-registers whenever hasUnsavedChanges changes so the ref stays current
   useEffect(() => {
     onRegisterRequestClose?.(handleRequestClose);
   }, [handleRequestClose, onRegisterRequestClose]);
@@ -301,7 +298,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
         onClose();
       } else if ((result as any).wrongNumber) {
         toast.warning("Wrong number — order placed on hold. Please correct the phone number.");
-        // Panel stays open so operator can edit inline
       } else {
         toast.success(`\u2713 ${meta.label} logged`);
       }
@@ -332,7 +328,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     }
   };
 
-  // ── Confirm click: warn if no call has been logged
   const handleConfirmClick = () => {
     if (callLog.length === 0) {
       setShowNoCallWarning(true);
@@ -341,7 +336,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     }
   };
 
-  // ── Dispatch: guard if address is missing
   const handleDispatchClick = async () => {
     if (!order.customerAddress || order.customerAddress.trim() === "") {
       setIsEditing(true);
@@ -383,6 +377,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
 
       <div className="flex flex-col h-full bg-white">
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+
           {/* ── Header */}
           <header className="mb-10">
             <div className="flex items-center gap-2 text-[12px] font-medium text-[#AAAAAA] uppercase tracking-[0.1em] mb-2">
@@ -567,7 +562,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <CallAttemptsBar attempts={callAttempts} />
 
-              {/* No-call warning */}
               {showNoCallWarning && (
                 <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-800 text-[13px] mb-3 animate-in fade-in">
                   <TriangleAlert className="w-4 h-4 shrink-0" />
@@ -588,7 +582,8 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
                 <TrackingButton variant="secondary" onClick={() => handleOutcomeClick("no answer")} className="gap-1.5 text-amber-600 border-amber-200 hover:bg-amber-50">
                   <PhoneMissed className="w-4 h-4" /> No Answer
                 </TrackingButton>
-                <TrackingButton variant="secondary" onClick={() => handleOutcomeClick("wrong number")} className="gap-1.5 text-rose-500 border-rose-200 hover:bg-rose-50">
+                {/* Wrong Number uses orange to match the hold status it triggers */}
+                <TrackingButton variant="secondary" onClick={() => handleOutcomeClick("wrong number")} className="gap-1.5 text-orange-600 border-orange-200 hover:bg-orange-50">
                   <PhoneForwarded className="w-4 h-4" /> Wrong Number
                 </TrackingButton>
                 <TrackingButton variant="secondary" onClick={() => handleOutcomeClick("refused")} className="gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50">
@@ -636,17 +631,25 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             </div>
           )}
 
-          {/* HOLD: Wrong number state */}
+          {/* HOLD: Wrong number state — orange palette, not rose */}
           {effectiveStatus === "hold" && (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="flex items-center gap-2 p-3 bg-rose-50 rounded-xl border border-rose-200 text-rose-700 text-[13px]">
+              <div className="flex items-center gap-2 p-3 bg-orange-50 rounded-xl border border-orange-200 text-orange-700 text-[13px]">
                 <PhoneForwarded className="w-4 h-4 shrink-0" />
                 Wrong number — please correct the phone number below, then resume.
               </div>
-              <TrackingButton variant="secondary" onClick={() => setIsEditing(true)} className="w-full gap-2 h-11 border-rose-200 text-rose-600 hover:bg-rose-50">
+              <TrackingButton
+                variant="secondary"
+                onClick={() => setIsEditing(true)}
+                className="w-full gap-2 h-11 border-orange-200 text-orange-600 hover:bg-orange-50"
+              >
                 <Edit2 className="w-4 h-4" /> Edit Phone Number
               </TrackingButton>
-              <TrackingButton variant="primary" onClick={() => handleStatusChange("new", "Resumed from wrong number hold")} className="w-full gap-2 h-11">
+              <TrackingButton
+                variant="primary"
+                onClick={() => handleStatusChange("new", "Resumed from wrong number hold")}
+                className="w-full gap-2 h-11"
+              >
                 <ArrowRight className="w-4 h-4" /> Resume as New
               </TrackingButton>
             </div>
