@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -65,6 +65,41 @@ export function TrackingWorkspace() {
   const [listStatusFilter, setListStatusFilter] = useState<MVPStatus | "all">("all");
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showBulkCancelDialog, setShowBulkCancelDialog] = useState(false);
+
+  // ── Refs for click-outside detection
+  const sortDropdownRef   = useRef<HTMLDivElement>(null);
+  const filterDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close both dropdowns when clicking outside of them
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        showSortDropdown &&
+        sortDropdownRef.current &&
+        !sortDropdownRef.current.contains(e.target as Node)
+      ) {
+        setShowSortDropdown(false);
+      }
+      if (
+        showFilterDropdown &&
+        filterDropdownRef.current &&
+        !filterDropdownRef.current.contains(e.target as Node)
+      ) {
+        setShowFilterDropdown(false);
+      }
+    };
+
+    if (showSortDropdown || showFilterDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showSortDropdown, showFilterDropdown]);
+
+  // Close both dropdowns whenever the view changes
+  useEffect(() => {
+    setShowSortDropdown(false);
+    setShowFilterDropdown(false);
+  }, [view]);
 
   // ── Unsaved-changes panel close ref
   const panelRequestCloseRef = useRef<(() => void) | null>(null);
@@ -186,13 +221,11 @@ export function TrackingWorkspace() {
     setIsProcessing(false);
   };
 
-  // Opens the confirmation dialog — actual mutation fires from the dialog's confirm button
   const handleBulkCancel = () => {
     if (!selectedOrderIds.size) return;
     setShowBulkCancelDialog(true);
   };
 
-  // Fires after user confirms in the dialog
   const executeBulkCancel = async () => {
     setShowBulkCancelDialog(false);
     setIsProcessing(true);
@@ -206,9 +239,9 @@ export function TrackingWorkspace() {
       if (results.skipped  > 0) parts.push(`${results.skipped} already terminal`);
       if (results.failed   > 0) parts.push(`${results.failed} failed`);
       if (results.failed > 0) {
-        toast.warning(parts.join(" · "));
+        toast.warning(parts.join(" \u00b7 "));
       } else {
-        toast.success(`\u2713 ${parts.join(" · ")}`);
+        toast.success(`\u2713 ${parts.join(" \u00b7 ")}`);
       }
       handleClearSelection();
     } catch {
@@ -266,6 +299,7 @@ export function TrackingWorkspace() {
     { value: "confirmed", label: "Confirmed" },
     { value: "packaged",  label: "Packaged" },
     { value: "shipped",   label: "Shipped" },
+    { value: "hold",      label: "Hold" },
   ];
 
   return (
@@ -319,7 +353,9 @@ export function TrackingWorkspace() {
           {(["kanban", "list"] as const).map(v => (
             <button key={v}
               onClick={() => setView(v)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-tracking-input text-[14px] font-medium transition-colors ${view === v ? "bg-white text-[#3A3A3A] shadow-sm" : "text-[#AAAAAA] hover:text-[#3A3A3A]"}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-tracking-input text-[14px] font-medium transition-colors ${
+                view === v ? "bg-white text-[#3A3A3A] shadow-sm" : "text-[#AAAAAA] hover:text-[#3A3A3A]"
+              }`}
             >
               {v === "kanban" ? <LayoutGrid className="w-4 h-4" /> : <LayoutList className="w-4 h-4" />}
               {v.charAt(0).toUpperCase() + v.slice(1)}
@@ -328,11 +364,15 @@ export function TrackingWorkspace() {
           <div className="w-[1px] h-4 bg-[#ECECEC] mx-2" />
           <button
             onClick={() => setView("blacklist")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-tracking-input text-[14px] font-medium transition-colors ${view === "blacklist" ? "bg-white text-rose-600 shadow-sm" : "text-[#AAAAAA] hover:text-rose-600"}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-tracking-input text-[14px] font-medium transition-colors ${
+              view === "blacklist" ? "bg-white text-rose-600 shadow-sm" : "text-[#AAAAAA] hover:text-rose-600"
+            }`}
           >
             <Ban className="w-4 h-4" /> Blacklist
             {blacklistOrders && blacklistOrders.length > 0 && (
-              <span className="ml-1 bg-rose-100 text-rose-600 text-[11px] font-bold px-1.5 py-0.5 rounded-full">{blacklistOrders.length}</span>
+              <span className="ml-1 bg-rose-100 text-rose-600 text-[11px] font-bold px-1.5 py-0.5 rounded-full">
+                {blacklistOrders.length}
+              </span>
             )}
           </button>
         </div>
@@ -350,24 +390,38 @@ export function TrackingWorkspace() {
             />
           </div>
 
-          {/* Sort */}
-          <div className="relative">
+          {/* Sort dropdown */}
+          <div ref={sortDropdownRef} className="relative">
             <button
               aria-label="Sort orders"
+              aria-expanded={showSortDropdown}
+              aria-haspopup="listbox"
               title="Sort"
               onClick={() => { setShowSortDropdown(p => !p); setShowFilterDropdown(false); }}
-              className="p-2 text-[#AAAAAA] hover:text-[#3A3A3A] hover:bg-[#F7F7F7] rounded-full transition-colors"
+              className={`p-2 rounded-full transition-colors ${
+                showSortDropdown
+                  ? "text-[#3A3A3A] bg-[#F0F0F0]"
+                  : "text-[#AAAAAA] hover:text-[#3A3A3A] hover:bg-[#F7F7F7]"
+              }`}
             >
               <ArrowDownUp className="w-5 h-5" />
             </button>
             {showSortDropdown && (
-              <div className="absolute right-0 top-11 bg-white border border-[#ECECEC] rounded-xl shadow-tracking-elevated p-2 z-50 flex flex-col gap-1 min-w-[180px] animate-in fade-in zoom-in-95 duration-150">
+              <div
+                role="listbox"
+                aria-label="Sort options"
+                className="absolute right-0 top-11 bg-white border border-[#ECECEC] rounded-xl shadow-tracking-elevated p-2 z-50 flex flex-col gap-1 min-w-[180px] animate-in fade-in zoom-in-95 duration-150"
+              >
                 {SORT_OPTIONS.map(opt => (
                   <button
                     key={opt.value}
+                    role="option"
+                    aria-selected={sortOrder === opt.value}
                     onClick={() => { setSortOrder(opt.value); setShowSortDropdown(false); }}
-                    className={`text-left px-3 py-2 text-[14px] rounded-lg transition-colors capitalize ${
-                      sortOrder === opt.value ? "bg-[#F0F0F0] font-semibold text-[#3A3A3A]" : "hover:bg-[#F7F7F7] text-[#3A3A3A]"
+                    className={`text-left px-3 py-2 text-[14px] rounded-lg transition-colors ${
+                      sortOrder === opt.value
+                        ? "bg-[#F0F0F0] font-semibold text-[#3A3A3A]"
+                        : "hover:bg-[#F7F7F7] text-[#3A3A3A]"
                     }`}
                   >
                     {opt.label}
@@ -377,25 +431,39 @@ export function TrackingWorkspace() {
             )}
           </div>
 
-          {/* Filter — list view only */}
+          {/* Filter dropdown — list view only */}
           {view === "list" && (
-            <div className="relative">
+            <div ref={filterDropdownRef} className="relative">
               <button
                 aria-label="Filter orders"
+                aria-expanded={showFilterDropdown}
+                aria-haspopup="listbox"
                 title="Filter"
                 onClick={() => { setShowFilterDropdown(p => !p); setShowSortDropdown(false); }}
-                className="p-2 text-[#AAAAAA] hover:text-[#3A3A3A] hover:bg-[#F7F7F7] rounded-full transition-colors"
+                className={`p-2 rounded-full transition-colors ${
+                  showFilterDropdown
+                    ? "text-[#3A3A3A] bg-[#F0F0F0]"
+                    : "text-[#AAAAAA] hover:text-[#3A3A3A] hover:bg-[#F7F7F7]"
+                }`}
               >
                 <Filter className="w-5 h-5" />
               </button>
               {showFilterDropdown && (
-                <div className="absolute right-0 top-11 bg-white border border-[#ECECEC] rounded-xl shadow-tracking-elevated p-2 z-50 flex flex-col gap-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-150">
+                <div
+                  role="listbox"
+                  aria-label="Filter options"
+                  className="absolute right-0 top-11 bg-white border border-[#ECECEC] rounded-xl shadow-tracking-elevated p-2 z-50 flex flex-col gap-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-150"
+                >
                   {FILTER_OPTIONS.map(opt => (
                     <button
                       key={opt.value}
+                      role="option"
+                      aria-selected={listStatusFilter === opt.value}
                       onClick={() => { setListStatusFilter(opt.value); setShowFilterDropdown(false); }}
                       className={`text-left px-3 py-2 text-[14px] rounded-lg transition-colors capitalize ${
-                        listStatusFilter === opt.value ? "bg-[#F0F0F0] font-semibold text-[#3A3A3A]" : "hover:bg-[#F7F7F7] text-[#3A3A3A]"
+                        listStatusFilter === opt.value
+                          ? "bg-[#F0F0F0] font-semibold text-[#3A3A3A]"
+                          : "hover:bg-[#F7F7F7] text-[#3A3A3A]"
                       }`}
                     >
                       {opt.label}
