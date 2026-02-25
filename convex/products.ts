@@ -15,6 +15,18 @@ async function resolveImages(
   );
 }
 
+// ─── Variant Types ────────────────────────────────────────────────────────────────────────────
+const variantValueValidator = v.object({
+  label: v.string(),
+  enabled: v.boolean(),
+  order: v.number(),
+});
+
+const variantGroupValidator = v.object({
+  name: v.string(),
+  values: v.array(variantValueValidator),
+});
+
 // ─── list ──────────────────────────────────────────────────────────────────────────────────────
 export const list = query({
   args: {
@@ -121,9 +133,7 @@ export const create = mutation({
     price: v.number(),
     category: v.optional(v.string()),
     images: v.array(v.object({ url: v.string(), storageId: v.string() })),
-    variants: v.optional(
-      v.array(v.object({ size: v.optional(v.string()), color: v.optional(v.string()) }))
-    ),
+    variantGroups: v.optional(v.array(variantGroupValidator)),
     status: v.union(v.literal("Active"), v.literal("Draft"), v.literal("Out of stock")),
     sortOrder: v.optional(v.number()),
   },
@@ -221,9 +231,7 @@ export const update = mutation({
     images: v.optional(
       v.array(v.object({ url: v.string(), storageId: v.string() }))
     ),
-    variants: v.optional(
-      v.array(v.object({ size: v.optional(v.string()), color: v.optional(v.string()) }))
-    ),
+    variantGroups: v.optional(v.array(variantGroupValidator)),
     status: v.optional(
       v.union(v.literal("Active"), v.literal("Draft"), v.literal("Out of stock"))
     ),
