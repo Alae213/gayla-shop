@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { Component, ReactNode } from "react";
-import { captureError } from "@/sentry.client.config";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -49,8 +48,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     const { onError, context } = this.props;
 
-    // Log to Sentry with context
-    captureError(error, {
+    // Log error to console (Sentry integration removed)
+    console.error("Error caught by ErrorBoundary:", {
+      error,
       componentStack: errorInfo.componentStack,
       context: context || "ErrorBoundary",
       errorBoundary: true,

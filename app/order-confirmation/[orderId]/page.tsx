@@ -190,7 +190,7 @@ export default function OrderConfirmationPage() {
             <Separator />
             <div className="flex justify-between text-lg font-bold">
               <span>Total</span>
-              <span>{order.totalAmount.toLocaleString("fr-DZ")} DA</span>
+              <span>{order.totalAmount?.toLocaleString("fr-DZ") || "0"} DA</span>
             </div>
           </div>
         </CardContent>

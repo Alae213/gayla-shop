@@ -7,10 +7,10 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, RefObject } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
-import { generateAriaLabel } from '@/lib/utils/aria-utils';
+import { generateEditLabel } from '@/lib/utils/aria-utils';
 
 export interface ConfirmationDialogProps {
   /** Is dialog open */
@@ -52,7 +52,7 @@ export function ConfirmationDialog({
 
   // Focus trap
   useFocusTrap({
-    containerRef: dialogRef,
+    containerRef: dialogRef as RefObject<HTMLElement>,
     enabled: isOpen,
     autoFocus: true,
     restoreFocus: true,
@@ -202,7 +202,7 @@ export function ConfirmationDialog({
             <button
               onClick={handleConfirm}
               disabled={isConfirming || isLoading}
-              aria-label={generateAriaLabel(confirmText, 'confirm action')}
+              aria-label={generateEditLabel('confirm action', confirmText)}
               className={`
                 flex-1 px-4 py-2.5 rounded-lg
                 text-white font-medium
@@ -245,7 +245,7 @@ export function ConfirmationDialog({
             <button
               onClick={onClose}
               disabled={isConfirming || isLoading}
-              aria-label={generateAriaLabel(cancelText, 'cancel action')}
+              aria-label={generateEditLabel('cancel action', cancelText)}
               className="
                 flex-1 px-4 py-2.5 rounded-lg
                 bg-white border-2 border-system-200 text-system-400

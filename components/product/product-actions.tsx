@@ -21,9 +21,10 @@ export function ProductActions({ product }: ProductActionsProps) {
   const [selectedVariants, setSelectedVariants] = useState<VariantSelection>({});
 
   // Determine if product has variants
-  const hasVariants =
+  const hasVariants = Boolean(
     (product.variantGroups && product.variantGroups.length > 0) ||
-    (product.variants && product.variants.length > 0);
+    (product.variants && product.variants.length > 0)
+  );
 
   // Get thumbnail from first image
   const thumbnail = product.images?.[0]?.url;

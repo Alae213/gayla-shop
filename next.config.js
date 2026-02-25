@@ -49,11 +49,6 @@ const nextConfig = {
 
   // Modularize imports for better tree-shaking
   modularizeImports: {
-    // Auto tree-shake Lucide icons
-    'lucide-react': {
-      transform: 'lucide-react/dist/esm/icons/{{kebabCase member}}',
-      skipDefaultConversion: true,
-    },
     // Auto tree-shake Recharts
     'recharts': {
       transform: 'recharts/es6/{{member}}',
@@ -72,7 +67,6 @@ const nextConfig = {
     // Optimize package imports (tree shaking)
     optimizePackageImports: [
       'date-fns',
-      'lucide-react',
       '@dnd-kit/core',
       '@dnd-kit/sortable',
       'recharts',
@@ -110,10 +104,10 @@ const nextConfig = {
               reuseExistingChunk: true,
             },
             
-            // UI libraries (Radix, Lucide, Sonner)
+            // UI libraries (Radix, Sonner, Cmdk)
             ui: {
               name: 'ui',
-              test: /[\\/]node_modules[\\/](@radix-ui|lucide-react|sonner|cmdk)[\\/]/,
+              test: /[\\/]node_modules[\\/](@radix-ui|sonner|cmdk)[\\/]/,
               priority: 40,
               enforce: true,
               reuseExistingChunk: true,
