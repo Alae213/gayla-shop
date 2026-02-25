@@ -276,6 +276,99 @@ body {
   padding-right: 1.5rem;
 }
 
+/* ================================================
+Accessibility - Focus Management
+Updated: February 25, 2026
+================================================ */
+
+/* Hide focus outline for mouse users (prevents double outline) */
+body.using-mouse *:focus {
+  outline: none;
+}
+
+/* Show clear focus indicator for keyboard users (WCAG 2.1 AA) */
+*:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 2px;
+  border-radius: 4px;
+  transition: outline-offset 0.1s ease;
+}
+
+/* High contrast focus for dark mode */
+.dark *:focus-visible {
+  outline-color: var(--primary-100);
+}
+
+/* Special focus styles for buttons */
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline-width: 2px;
+  outline-offset: 2px;
+}
+
+/* Special focus styles for inputs */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 0px;
+  border-color: var(--primary-200);
+}
+
+/* Skip link styles */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--primary-200);
+  color: white;
+  padding: 8px 16px;
+  text-decoration: none;
+  border-radius: 0 0 4px 0;
+  z-index: 1000;
+  font-weight: 600;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+  outline: 2px solid white;
+  outline-offset: -4px;
+}
+
+/* Screen reader only class */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focusable when navigated to (for skip links) */
+.sr-only:focus,
+.sr-only:active {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* Live region for screen reader announcements */
+.sr-announcer {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
 @keyframes scale-in {
   0% { transform: scale(0); }
   100% { transform: scale(1); }
