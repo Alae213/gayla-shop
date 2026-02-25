@@ -6,6 +6,7 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { TrackingButton } from "../ui/tracking-button";
 import { StatusPill } from "../ui/status-pill";
+import { OrderLineItemsEditor } from "../ui/order-line-items-editor";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import {
@@ -86,6 +87,34 @@ function orderToForm(order: Order) {
     customerCommune: order.customerCommune ?? "",
     notes:           order.notes           ?? "",
   };
+}
+
+// Extract line items from order (with legacy migration)
+function extractLineItems(order: Order) {
+  // If order has lineItems array, use it
+  if (order.lineItems && order.lineItems.length > 0) {
+    return order.lineItems;
+  }
+  
+  // Legacy migration: convert single product to lineItems format
+  if (order.productId && order.productName) {
+    const variants: Record<string, string> = {};
+    if (order.selectedVariant?.size) variants.size = order.selectedVariant.size;
+    if (order.selectedVariant?.color) variants.color = order.selectedVariant.color;
+    
+    return [{
+      productId: order.productId,
+      productName: order.productName,
+      productSlug: order.productSlug,
+      quantity: order.quantity ?? 1,
+      unitPrice: order.productPrice ?? 0,
+      variants: Object.keys(variants).length > 0 ? variants : undefined,
+      lineTotal: (order.quantity ?? 1) * (order.productPrice ?? 0),
+      thumbnail: undefined, // Legacy orders don't have thumbnails
+    }];
+  }
+  
+  return [];
 }
 
 // Order Timeline
@@ -252,6 +281,9 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
   const statusHistory: Array<{ status: string; timestamp: number; reason?: string }> =
     (order as any).statusHistory ?? [];
 
+  // Extract line items for editor
+  const lineItems = extractLineItems(order);
+
   // Detect unsaved changes
   const hasUnsavedChanges = isEditing && (
     editForm.customerPhone   !== (order.customerPhone   ?? "") ||
@@ -387,6 +419,11 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     }
     await handleStatusChange("packaged", "Sent to courier");
     toast.success("Order sent to Yalidin");
+  };
+
+  const handleLineItemsSaveSuccess = (newTotal: number) => {
+    // Order will be updated automatically via Convex reactivity
+    toast.success(`Order total updated: ${newTotal.toLocaleString()} DZD`);
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -556,47 +593,64 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             </div>
           </section>
 
-          {/* Order Summary */}
-          <section
-            className="mb-10 bg-[#F7F7F7] rounded-2xl p-6 border border-[#ECECEC]"
-            aria-labelledby="summary-heading"
-          >
-            <h3
-              id="summary-heading"
-              className="text-[12px] font-bold text-[#AAAAAA] uppercase tracking-wider mb-4"
+          {/* Line Items Editor (NEW) */}
+          {lineItems.length > 0 && (
+            <section className="mb-10" aria-labelledby="line-items-heading">
+              <OrderLineItemsEditor
+                orderId={order._id}
+                initialLineItems={lineItems}
+                initialDeliveryCost={order.deliveryCost ?? 0}
+                wilaya={order.customerWilaya ?? ""}
+                deliveryType={(order.deliveryType as "Stopdesk" | "Domicile") ?? "Stopdesk"}
+                adminName="Admin" // TODO: Pass actual admin name from context
+                onSaveSuccess={handleLineItemsSaveSuccess}
+              />
+            </section>
+          )}
+
+          {/* Order Summary (Legacy fallback if no lineItems) */}
+          {lineItems.length === 0 && (
+            <section
+              className="mb-10 bg-[#F7F7F7] rounded-2xl p-6 border border-[#ECECEC]"
+              aria-labelledby="summary-heading"
             >
-              Order Summary
-            </h3>
-            <div className="space-y-2 text-[14px] text-[#3A3A3A]">
-              <div className="flex justify-between items-start gap-4">
-                <div>
-                  <h4 className="text-[16px] font-bold text-[#3A3A3A] leading-tight mb-1">
-                    {order.productName || "Product Name Missing"}
-                  </h4>
-                  {order.selectedVariant && (
-                    <div className="text-[13px] text-[#AAAAAA]">
-                      {order.selectedVariant.size && `Size: ${order.selectedVariant.size}`}
-                      {order.selectedVariant.size && order.selectedVariant.color && " | "}
-                      {order.selectedVariant.color && `Color: ${order.selectedVariant.color}`}
-                    </div>
-                  )}
+              <h3
+                id="summary-heading"
+                className="text-[12px] font-bold text-[#AAAAAA] uppercase tracking-wider mb-4"
+              >
+                Order Summary
+              </h3>
+              <div className="space-y-2 text-[14px] text-[#3A3A3A]">
+                <div className="flex justify-between items-start gap-4">
+                  <div>
+                    <h4 className="text-[16px] font-bold text-[#3A3A3A] leading-tight mb-1">
+                      {order.productName || "Product Name Missing"}
+                    </h4>
+                    {order.selectedVariant && (
+                      <div className="text-[13px] text-[#AAAAAA]">
+                        {order.selectedVariant.size && `Size: ${order.selectedVariant.size}`}
+                        {order.selectedVariant.size && order.selectedVariant.color && " | "}
+                        {order.selectedVariant.color && `Color: ${order.selectedVariant.color}`}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[15px] font-semibold shrink-0">
+                    {order.productPrice ?? 0} DZD
+                  </span>
                 </div>
-                <span className="text-[15px] font-semibold shrink-0">
-                  {order.productPrice ?? 0} DZD
-                </span>
+                <div className="flex justify-between text-[#AAAAAA] border-t border-[#ECECEC] pt-2">
+                  <span>Delivery ({order.deliveryType ?? "—"})</span>
+                  <span>+{order.deliveryCost ?? 0} DZD</span>
+                </div>
+                <div className="flex justify-between font-bold pt-2 border-t border-[#ECECEC]">
+                  <span>Total (COD)</span>
+                  <span className="text-[18px] font-black text-[#3A3A3A] tracking-tighter">
+                    {order.totalAmount ?? 0} DZD
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between text-[#AAAAAA] border-t border-[#ECECEC] pt-2">
-                <span>Delivery ({order.deliveryType ?? "—"})</span>
-                <span>+{order.deliveryCost ?? 0} DZD</span>
-              </div>
-              <div className="flex justify-between font-bold pt-2 border-t border-[#ECECEC]">
-                <span>Total (COD)</span>
-                <span className="text-[18px] font-black text-[#3A3A3A] tracking-tighter">
-                  {order.totalAmount ?? 0} DZD
-                </span>
-              </div>
-            </div>
-          </section>
+            </section>
+          )}
 
           {/* Call Log History */}
           {(effectiveStatus === "new" || effectiveStatus === "hold" || callLog.length > 0) && (
