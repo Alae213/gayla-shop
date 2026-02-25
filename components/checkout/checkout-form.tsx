@@ -27,6 +27,7 @@ import { WILAYAS, COMMUNES_BY_WILAYA } from "@/lib/constants";
 import { isValidAlgerianPhone } from "@/lib/utils/yalidin-api";
 import { Loader2, Home, Building2 } from "lucide-react";
 import { toast } from "sonner";
+import type { Id } from "@/convex/_generated/dataModel";
 
 type DeliveryType = "Stopdesk" | "Domicile";
 
@@ -103,17 +104,30 @@ export function CheckoutForm() {
       return;
     }
 
+    if (items.length === 0) {
+      toast.error("Your cart is empty");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const wilayaObj = WILAYAS.find((w) => w.id.toString() === wilayaId);
 
-      // For now, create a single order with first item
-      // TODO: Update to support multiple line items in Task 3.4
-      const firstItem = items[0];
+      // Convert cart items to lineItems format
+      const lineItems = items.map((item) => ({
+        productId: item.productId as Id<"products">,
+        productName: item.name,
+        productSlug: item.slug,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        variants: Object.keys(item.variants).length > 0 ? item.variants : undefined,
+        lineTotal: item.price * item.quantity,
+        thumbnail: item.thumbnail,
+      }));
 
+      // Create order with multiple line items
       const result = await createOrder({
-        productId: firstItem.productId,
         customerName: customerName.trim(),
         customerPhone: customerPhone.replace(/\s/g, ""),
         customerWilaya: wilayaObj?.name || "",
@@ -121,9 +135,7 @@ export function CheckoutForm() {
         customerAddress: deliveryType === "Domicile" ? address.trim() : undefined,
         deliveryType,
         deliveryCost,
-        selectedVariant: Object.keys(firstItem.variants).length > 0
-          ? { ...firstItem.variants }
-          : undefined,
+        lineItems, // Send all cart items
       });
 
       toast.success("Order placed successfully!", {
@@ -133,10 +145,8 @@ export function CheckoutForm() {
       // Clear cart
       clearCart();
 
-      // Redirect to order confirmation (placeholder)
-      setTimeout(() => {
-        router.push("/");
-      }, 1500);
+      // Redirect to order confirmation
+      router.push(`/order-confirmation/${result.orderId}`);
     } catch (error) {
       console.error("Order submission error:", error);
       toast.error("Failed to place order", {
@@ -308,7 +318,9 @@ export function CheckoutForm() {
             <h3 className="font-semibold">Order Summary</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal</span>
+                <span className="text-muted-foreground">
+                  {items.length} {items.length === 1 ? "item" : "items"}
+                </span>
                 <span className="font-medium">
                   {subtotal.toLocaleString("fr-DZ")} DA
                 </span>
@@ -336,7 +348,7 @@ export function CheckoutForm() {
             type="submit"
             className="w-full"
             size="lg"
-            disabled={isSubmitting || !wilayaId}
+            disabled={isSubmitting || !wilayaId || items.length === 0}
           >
             {isSubmitting ? (
               <>
@@ -344,7 +356,7 @@ export function CheckoutForm() {
                 Placing Order...
               </>
             ) : (
-              "Place Order"
+              `Place Order (${items.length} ${items.length === 1 ? "item" : "items"})`
             )}
           </Button>
 
