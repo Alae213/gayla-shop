@@ -6,7 +6,9 @@
     "dev": "npx --no-install next dev --turbopack",
     "build": "npx --no-install next build",
     "start": "npx --no-install next start",
-    "lint": "npx --no-install next lint"
+    "lint": "npx --no-install next lint",
+    "migrate:orders": "tsx scripts/migrate-orders.ts",
+    "migrate:orders:dry-run": "tsx scripts/migrate-orders.ts --dry-run"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
