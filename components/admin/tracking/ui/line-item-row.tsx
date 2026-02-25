@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Trash2, AlertTriangle } from "lucide-react";
+import { Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { Id } from "@/convex/_generated/dataModel";
 import { QuantityStepper } from "./quantity-stepper";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { generateShimmerDataURL } from "@/lib/utils/image-placeholder";
+import { useLoadingState } from "@/hooks/use-mutation-state";
 
 export interface LineItem {
   productId: Id<"products">;
@@ -50,9 +51,17 @@ export function LineItemRow({
 }: LineItemRowProps) {
   const [showRemoveDialog, setShowRemoveDialog] = React.useState(false);
   const [imageError, setImageError] = React.useState(false);
+  const { isLoading: isRemoving, wrap } = useLoadingState();
 
   const handleQuantityChange = (newQuantity: number) => {
     onQuantityChange(newQuantity);
+  };
+
+  const handleRemove = async () => {
+    await wrap(async () => {
+      onRemove();
+      setShowRemoveDialog(false);
+    });
   };
 
   // Calculate line total when quantity changes
@@ -64,7 +73,7 @@ export function LineItemRow({
         className={cn(
           "flex items-center gap-4 p-4 border border-[#ECECEC] rounded-xl bg-white transition-colors",
           isProductDeleted && "bg-gray-50 border-gray-300",
-          disabled && "opacity-60"
+          (disabled || isRemoving) && "opacity-60"
         )}
       >
         {/* Thumbnail */}
@@ -126,7 +135,7 @@ export function LineItemRow({
               productId={item.productId}
               currentVariant={item.variants ?? {}}
               onChange={onVariantChange}
-              disabled={disabled}
+              disabled={disabled || isRemoving}
             />
           )}
           {isProductDeleted && item.variants && (
@@ -142,7 +151,7 @@ export function LineItemRow({
         <QuantityStepper
           value={item.quantity}
           onChange={handleQuantityChange}
-          disabled={disabled}
+          disabled={disabled || isRemoving}
           min={1}
           max={99}
         />
@@ -163,11 +172,15 @@ export function LineItemRow({
           variant="ghost"
           size="icon"
           onClick={() => setShowRemoveDialog(true)}
-          disabled={disabled}
+          disabled={disabled || isRemoving}
           className="shrink-0 hover:bg-rose-50 hover:text-rose-600"
           aria-label={`Remove ${item.productName}`}
         >
-          <Trash2 className="w-4 h-4" />
+          {isRemoving ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Trash2 className="w-4 h-4" />
+          )}
         </Button>
       </div>
 
@@ -183,15 +196,20 @@ export function LineItemRow({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isRemoving}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                onRemove();
-                setShowRemoveDialog(false);
-              }}
+              onClick={handleRemove}
+              disabled={isRemoving}
               className="bg-rose-600 hover:bg-rose-700 text-white"
             >
-              Remove
+              {isRemoving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Removing...
+                </>
+              ) : (
+                "Remove"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
