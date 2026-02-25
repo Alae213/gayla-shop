@@ -103,7 +103,9 @@ export const migrateToLineItems = internalMutation({
         // Get thumbnail from product (first image)
         let thumbnail: string | undefined;
         if (product?.images && product.images.length > 0) {
-          thumbnail = product.images[0];
+          // Extract URL from image object (images are { storageId, url })
+          const firstImage = product.images[0];
+          thumbnail = typeof firstImage === 'string' ? firstImage : firstImage.url;
         }
         
         // Calculate quantity (default to 1 if not set)
