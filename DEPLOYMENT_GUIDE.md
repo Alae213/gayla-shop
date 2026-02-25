@@ -1,435 +1,548 @@
 # 🚀 Production Deployment Guide
 
-## Overview
+**Project:** Gayla Shop  
+**Date:** February 25, 2026  
+**Status:** Ready for Production  
 
-This guide covers deploying Sprint 1 optimizations to production on Vercel.
+---
+
+## 🎯 Overview
+
+This guide covers deploying Gayla Shop to production:
+- Pre-deployment checklist
+- Environment configuration
+- Build process
+- Deployment steps
+- Post-deployment verification
+- Monitoring and rollback
 
 ---
 
 ## ✅ Pre-Deployment Checklist
 
-### Code Readiness
-- [ ] All Sprint 1 phases complete (1-5)
-- [ ] QA testing passed (Phase 6)
+### Code Quality
+- [ ] All tests passing
 - [ ] No console errors in production build
-- [ ] Lighthouse score ≥ 90
-- [ ] Bundle size < 500 KB
-- [ ] Memory leaks fixed
-- [ ] Safari compatibility verified
+- [ ] TypeScript compilation successful
+- [ ] ESLint warnings resolved
+- [ ] Code reviewed and approved
+- [ ] Git branch up to date with main
+
+### Performance
+- [ ] Lighthouse Performance: 90+
+- [ ] Bundle size optimized (< 450 KB)
+- [ ] Images optimized (WebP)
+- [ ] Fonts subset and preloaded
+- [ ] Code splitting configured
+- [ ] Lazy loading implemented
+
+### Accessibility
+- [ ] Lighthouse Accessibility: 94+
+- [ ] WCAG 2.1 AA compliant
+- [ ] Keyboard navigation tested
+- [ ] Screen reader compatible
+- [ ] Color contrast verified
+
+### Security
+- [ ] API keys in environment variables
+- [ ] HTTPS enforced
+- [ ] Security headers configured
+- [ ] Authentication tested
+- [ ] CORS configured correctly
+- [ ] Rate limiting enabled
 
 ### Documentation
-- [ ] CHANGELOG.md updated
 - [ ] README.md updated
 - [ ] API documentation current
+- [ ] Deployment instructions clear
 - [ ] Environment variables documented
-
-### Dependencies
-- [ ] All dependencies up to date
-- [ ] No security vulnerabilities (`npm audit`)
-- [ ] Lock files committed (`package-lock.json`)
-
-### Tests
-- [ ] Automated tests pass
-- [ ] Manual QA complete
-- [ ] Cross-browser tested
-- [ ] Performance verified
+- [ ] Changelog updated
 
 ---
 
-## 🔧 Setup Instructions
+## 🔧 Environment Setup
 
-### 1. Install Dependencies
+### Environment Variables
 
+**Create `.env.production`:**
 ```bash
-# Install all dependencies
-npm install
+# App
+NEXT_PUBLIC_APP_URL=https://gaylashop.com
+NODE_ENV=production
 
-# Install Sentry (optional but recommended)
-npm install @sentry/nextjs
+# Database
+DATABASE_URL=your_production_database_url
 
-# Install bundle analyzer (for verification)
-npm install --save-dev @next/bundle-analyzer
+# Authentication
+NEXTAUTH_URL=https://gaylashop.com
+NEXTAUTH_SECRET=your_production_secret
+
+# API Keys (if applicable)
+NEXT_PUBLIC_API_KEY=your_api_key
+
+# Error Tracking
+NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn
+SENTRY_AUTH_TOKEN=your_sentry_token
+
+# Analytics
+NEXT_PUBLIC_GA_ID=your_google_analytics_id
 ```
 
-### 2. Apply Configuration Changes
+**Security Notes:**
+- Never commit `.env.production` to git
+- Use secrets management (Vercel, AWS Secrets Manager, etc.)
+- Rotate secrets regularly
+- Use different secrets for each environment
 
-#### Update `app/layout.tsx`
-```typescript
-import { inter } from "@/lib/fonts";
+---
 
-export default function RootLayout({ children }) {
-  return (
-    <html lang="en" className={inter.variable}>
-      <body className="font-sans">{children}</body>
-    </html>
-  );
+## 📚 Build Configuration
+
+### Next.js Config
+
+**Verify `next.config.js`:**
+```javascript
+module.exports = {
+  // Production optimizations
+  swcMinify: true,
+  compress: true,
+  poweredByHeader: false,
+  
+  // Image optimization
+  images: {
+    domains: ['your-cdn.com'],
+    formats: ['image/webp', 'image/avif'],
+  },
+  
+  // Security headers
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+    ];
+  },
+};
+```
+
+### Build Scripts
+
+**Update `package.json`:**
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "analyze": "ANALYZE=true next build",
+    "type-check": "tsc --noEmit"
+  }
 }
 ```
 
-#### Update `app/globals.css`
-```css
-/* Add at the top */
-@import '../styles/safari-fixes.css';
-```
-
-#### Replace Direct Imports with Lazy Imports
-```typescript
-// Before:
-import { TrackingWorkspace } from "@/components/admin/tracking/tracking-workspace";
-
-// After:
-import { TrackingWorkspace } from "@/lib/lazy-imports";
-```
-
-### 3. Update Environment Variables
-
-#### Local `.env.local`
-```bash
-# Sentry (optional)
-NEXT_PUBLIC_SENTRY_DSN=https://[key]@[org].ingest.sentry.io/[project]
-
-# Convex
-NEXT_PUBLIC_CONVEX_URL=your-convex-url
-
-# Other variables...
-```
-
 ---
 
-## 🌐 Vercel Deployment
+## 🚀 Deployment Steps
 
-### Option 1: Deploy via Git (Recommended)
+### Option 1: Vercel (Recommended)
 
+**Step 1: Install Vercel CLI**
 ```bash
-# 1. Commit all changes
-git add .
-git commit -m "feat: Sprint 1 performance optimizations
-
-- Image optimization (WebP/AVIF)
-- Memory leak fixes
-- Safari compatibility
-- Code splitting & lazy loading
-- Bundle size: 847KB → 450KB (-47%)
-- Lighthouse: 67 → 92 (+37%)"
-
-# 2. Push to main branch
-git push origin main
-
-# Vercel will automatically deploy
+npm install -g vercel
 ```
 
-### Option 2: Deploy via Vercel CLI
-
+**Step 2: Login**
 ```bash
-# Install Vercel CLI
-npm install -g vercel
-
-# Login
 vercel login
+```
 
-# Deploy to preview
+**Step 3: Deploy**
+```bash
+# Preview deployment
 vercel
 
-# Deploy to production
+# Production deployment
 vercel --prod
 ```
 
-### Configure Environment Variables in Vercel
+**Step 4: Configure Environment Variables**
+```bash
+# In Vercel dashboard:
+# 1. Go to Project Settings
+# 2. Click "Environment Variables"
+# 3. Add all variables from .env.production
+# 4. Set environment to "Production"
+```
 
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Select your project
-3. Go to **Settings** → **Environment Variables**
-4. Add the following:
+**Step 5: Configure Custom Domain**
+```bash
+# In Vercel dashboard:
+# 1. Go to Domains
+# 2. Add custom domain
+# 3. Follow DNS configuration instructions
+# 4. Wait for SSL certificate provisioning
+```
 
-| Variable | Value | Environment |
-|----------|-------|-------------|
-| `NEXT_PUBLIC_CONVEX_URL` | Your Convex URL | Production |
-| `NEXT_PUBLIC_SENTRY_DSN` | Your Sentry DSN | Production |
-| (Add others) | ... | Production |
+### Option 2: Docker + VPS
 
-5. Click **Save**
-6. Redeploy for changes to take effect
+**Step 1: Create Dockerfile**
+```dockerfile
+FROM node:18-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+FROM node:18-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV production
+
+COPY --from=builder /app/next.config.js ./
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+
+EXPOSE 3000
+
+CMD ["npm", "start"]
+```
+
+**Step 2: Build Docker Image**
+```bash
+docker build -t gayla-shop:latest .
+```
+
+**Step 3: Run Container**
+```bash
+docker run -d \
+  --name gayla-shop \
+  -p 3000:3000 \
+  --env-file .env.production \
+  gayla-shop:latest
+```
+
+**Step 4: Setup Nginx Reverse Proxy**
+```nginx
+server {
+    listen 80;
+    server_name gaylashop.com;
+    
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+**Step 5: Setup SSL with Let's Encrypt**
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d gaylashop.com
+```
+
+### Option 3: AWS (EC2 + S3)
+
+**Step 1: Build Static Export (if applicable)**
+```bash
+npm run build
+npm run export
+```
+
+**Step 2: Upload to S3**
+```bash
+aws s3 sync out/ s3://your-bucket-name --delete
+```
+
+**Step 3: Configure CloudFront**
+- Create CloudFront distribution
+- Point to S3 bucket
+- Configure SSL certificate
+- Set up custom domain
 
 ---
 
 ## ✅ Post-Deployment Verification
 
-### 1. Lighthouse Audit (Production)
+### Immediate Checks (< 5 minutes)
 
+**Site Accessibility:**
+- [ ] Site loads at production URL
+- [ ] HTTPS working correctly
+- [ ] SSL certificate valid
+- [ ] No certificate warnings
+- [ ] Custom domain resolves
+
+**Core Functionality:**
+- [ ] Homepage loads
+- [ ] Navigation works
+- [ ] Products page loads
+- [ ] Admin dashboard accessible
+- [ ] Tracking page functional
+- [ ] Forms submit correctly
+
+**Performance:**
+- [ ] Page load time acceptable (< 3s)
+- [ ] Images loading
+- [ ] No 404 errors
+- [ ] API endpoints responding
+- [ ] Database connections working
+
+### Extended Checks (< 30 minutes)
+
+**Lighthouse Audit:**
 ```bash
-# Run Lighthouse on production URL
-npx lighthouse https://gayla-shop.vercel.app --view
+lighthouse https://gaylashop.com --output html --output-path ./production-audit.html
 ```
 
 **Expected Scores:**
-- Performance: ≥ 90
-- Accessibility: ≥ 78
-- Best Practices: ≥ 95
-- SEO: ≥ 95
+- [ ] Performance: 90+
+- [ ] Accessibility: 94+
+- [ ] Best Practices: 90+
+- [ ] SEO: 90+
 
-### 2. Bundle Size Check
+**Cross-Browser Testing:**
+- [ ] Chrome (desktop)
+- [ ] Firefox (desktop)
+- [ ] Safari (desktop)
+- [ ] Safari (iOS)
+- [ ] Chrome (Android)
 
+**User Flows:**
+- [ ] Browse products
+- [ ] Create order
+- [ ] Track order
+- [ ] Admin login
+- [ ] View analytics
+- [ ] Export data
+
+### Monitoring Setup
+
+**Error Tracking (Sentry):**
 ```bash
-# Check Vercel build logs
-# Look for "Compiled successfully" with bundle sizes
+# Verify Sentry is receiving errors
+# Check Sentry dashboard for:
+# - Zero critical errors
+# - Source maps uploaded
+# - Error alerts configured
 ```
 
-**Expected:**
-- Initial bundle: ~450 KB
-- Lazy loaded chunks: ~380 KB
-- Total JS: < 800 KB
-
-### 3. Functional Testing
-
-- [ ] Admin workspace loads
-- [ ] Lazy loading works (check Network tab)
-- [ ] Images load with blur placeholders
-- [ ] Drag & drop works
-- [ ] Loading states prevent double-clicks
-- [ ] No console errors
-- [ ] Safari compatibility
-
-### 4. Performance Testing
-
-- [ ] LCP < 2.5s
-- [ ] FID < 100ms
-- [ ] CLS < 0.1
-- [ ] Page loads in < 3s
-
-### 5. Error Monitoring
-
-- [ ] Sentry receiving errors (if configured)
-- [ ] No unexpected errors in dashboard
-- [ ] Error boundaries work
-
----
-
-## 🔄 Rollback Procedure
-
-### Immediate Rollback (Vercel)
-
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Select your project
-3. Go to **Deployments** tab
-4. Find previous working deployment
-5. Click ••• menu → **Promote to Production**
-6. Confirm rollback
-
-**Rollback time:** ~30 seconds
-
-### Git Rollback
-
+**Analytics:**
 ```bash
-# Find the last working commit
-git log --oneline
-
-# Revert to specific commit
-git revert <commit-hash>
-
-# Or reset (destructive)
-git reset --hard <commit-hash>
-git push origin main --force
+# Verify analytics tracking:
+# - Google Analytics receiving data
+# - Events firing correctly
+# - Real-time data visible
 ```
 
-### When to Rollback
-
-- [ ] **Critical:** Site is down or unusable
-- [ ] **Critical:** Data loss or corruption
-- [ ] **Critical:** Security vulnerability
-- [ ] **High:** Major feature broken
-- [ ] **High:** Performance degraded by >50%
-
----
-
-## 📊 Monitoring & Alerts
-
-### Vercel Analytics
-
-**Enable:**
-1. Go to project settings
-2. Enable **Analytics**
-3. View real-time metrics
-
-**Metrics to Monitor:**
-- Page views
-- Unique visitors
-- Core Web Vitals
-- Top pages
-- Error rate
-
-### Sentry Performance
-
-**Setup:**
-1. Configure `sentry.client.config.ts`
-2. Set `tracesSampleRate: 0.1`
-3. Monitor slow transactions
-
-**Alerts:**
-- Error rate > 1%
-- Performance degradation > 20%
-- New issue detected
-
-### Custom Monitoring Script
-
+**Uptime Monitoring:**
 ```bash
-# Create monitoring script
-cat > scripts/monitor-production.sh << 'EOF'
-#!/bin/bash
-
-# Check if site is up
-STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://gayla-shop.vercel.app)
-
-if [ $STATUS -eq 200 ]; then
-  echo "✅ Site is up (HTTP $STATUS)"
-else
-  echo "❌ Site is down (HTTP $STATUS)"
-  # Send alert (email, Slack, etc.)
-fi
-
-# Check performance
-LCP=$(curl -s https://gayla-shop.vercel.app | grep -o 'lcp":[0-9.]*' | cut -d: -f2)
-echo "LCP: ${LCP}s"
-
-if (( $(echo "$LCP > 2.5" | bc -l) )); then
-  echo "⚠️  LCP exceeds 2.5s target"
-fi
-EOF
-
-chmod +x scripts/monitor-production.sh
-
-# Run every 5 minutes (cron)
-# */5 * * * * /path/to/monitor-production.sh
+# Setup monitoring with:
+# - UptimeRobot (https://uptimerobot.com)
+# - Pingdom
+# - New Relic
+# - DataDog
 ```
 
 ---
 
-## 📝 Deployment Log Template
+## 🚨 Rollback Procedures
 
-```markdown
-## Deployment: Sprint 1 Optimizations
+### Vercel Rollback
 
-**Date:** 2026-02-25  
-**Version:** 1.1.0  
-**Deployed By:** [Your Name]  
-**Branch:** main  
-**Commit:** [commit hash]  
+**Instant Rollback:**
+```bash
+# In Vercel dashboard:
+# 1. Go to Deployments
+# 2. Find previous stable deployment
+# 3. Click "..." menu
+# 4. Select "Promote to Production"
+```
 
-### Changes Included
-- Image optimization (Phase 1)
-- Memory leak fixes (Phase 2)
-- Error tracking setup (Phase 3)
-- Safari compatibility (Phase 4)
-- Lighthouse optimization (Phase 5)
+**CLI Rollback:**
+```bash
+# List deployments
+vercel ls
 
-### Metrics Before
-- Lighthouse: 67
-- Bundle: 847 KB
-- Memory: 320 MB
-- LCP: 4.2s
+# Promote specific deployment
+vercel promote <deployment-url> --scope=<team-name>
+```
 
-### Metrics After
-- Lighthouse: 92 (+37%)
-- Bundle: 450 KB (-47%)
-- Memory: 78 MB (-76%)
-- LCP: 2.1s (-50%)
+### Docker Rollback
 
-### Verification
-- [x] Lighthouse audit passed
-- [x] Bundle size verified
-- [x] No console errors
-- [x] Safari tested
-- [x] Functional tests passed
+**Keep Previous Image:**
+```bash
+# Tag current image
+docker tag gayla-shop:latest gayla-shop:backup
 
-### Issues
-- None
+# Deploy new version
+docker tag gayla-shop:v2.0 gayla-shop:latest
 
-### Rollback Plan
-- Previous deployment: [commit hash]
-- Rollback time: ~30 seconds
-- Contact: [Your contact]
+# Rollback if needed
+docker stop gayla-shop
+docker rm gayla-shop
+docker run -d --name gayla-shop gayla-shop:backup
+```
+
+### Database Rollback
+
+**Backup Before Deployment:**
+```bash
+# PostgreSQL
+pg_dump -h localhost -U user -d database > backup-$(date +%Y%m%d).sql
+
+# MySQL
+mysqldump -u user -p database > backup-$(date +%Y%m%d).sql
+
+# Restore if needed
+psql -h localhost -U user -d database < backup-20260225.sql
 ```
 
 ---
 
-## 🐛 Troubleshooting
+## 📊 Monitoring & Maintenance
 
-### Build Fails on Vercel
+### Daily Checks
 
-**Issue:** `Module not found` error  
-**Solution:**
+- [ ] Site is accessible
+- [ ] No critical errors in Sentry
+- [ ] Server resources normal
+- [ ] Response times acceptable
+- [ ] No security alerts
+
+### Weekly Checks
+
+- [ ] Review error logs
+- [ ] Check performance metrics
+- [ ] Review user feedback
+- [ ] Update dependencies (security patches)
+- [ ] Backup database
+
+### Monthly Checks
+
+- [ ] Run full Lighthouse audit
+- [ ] Review analytics
+- [ ] Check for outdated dependencies
+- [ ] Review and rotate secrets
+- [ ] Update documentation
+
+---
+
+## 🛠️ Troubleshooting
+
+### Build Failures
+
+**Issue:** Build fails with errors
 ```bash
-# Check dependencies
-npm install
-
-# Clear cache
-rm -rf .next node_modules
-npm install
+# Check build locally
 npm run build
+
+# Check TypeScript
+npm run type-check
+
+# Check for dependency issues
+rm -rf node_modules package-lock.json
+npm install
 ```
 
-### Environment Variables Not Working
+### Slow Performance
 
-**Issue:** Variables undefined in production  
-**Solution:**
-1. Check variable names start with `NEXT_PUBLIC_`
-2. Verify added in Vercel dashboard
-3. Redeploy after adding variables
+**Issue:** Site loading slowly
+```bash
+# Check bundle size
+npm run analyze
 
-### Lighthouse Score Lower in Production
+# Profile with Chrome DevTools
+# 1. Open DevTools
+# 2. Performance tab
+# 3. Record page load
+# 4. Identify bottlenecks
+```
 
-**Issue:** Score drops from local  
-**Causes:**
-- Network latency (server location)
-- Third-party scripts
-- Uncached assets
-- Server response time
+### Database Connection Issues
 
-**Solution:**
-1. Use Vercel's CDN (automatic)
-2. Enable caching headers (already configured)
-3. Optimize server response time
+**Issue:** Can't connect to database
+```bash
+# Check connection string
+# Verify environment variables
+# Test database credentials
+# Check firewall rules
+# Verify database is running
+```
 
-### Images Not Optimizing
+### SSL Certificate Issues
 
-**Issue:** Images still large  
-**Solution:**
-1. Verify using Next.js `<Image />` component
-2. Check `next.config.js` image config
-3. Clear browser cache
-4. Check Network tab for WebP/AVIF format
+**Issue:** SSL certificate invalid/expired
+```bash
+# Renew Let's Encrypt certificate
+sudo certbot renew
 
----
-
-## ✅ Success Criteria
-
-Deployment is successful when:
-
-- [x] Site is accessible
-- [x] Lighthouse Performance ≥ 90
-- [x] Bundle size < 500 KB
-- [x] No console errors
-- [x] All features working
-- [x] Safari compatible
-- [x] Memory usage < 100 MB
-- [x] Error tracking active
-- [x] Monitoring configured
+# Or in Vercel/Cloudflare:
+# Certificates auto-renew
+# Check dashboard for issues
+```
 
 ---
 
-## 📞 Support
+## 📝 Deployment Checklist Summary
 
-**Issues During Deployment:**
-- Check Vercel deployment logs
-- Review build output
-- Test locally with production build
-- Rollback if critical
+### Before Deployment
+- [ ] All tests passing
+- [ ] Code reviewed
+- [ ] Documentation updated
+- [ ] Environment variables set
+- [ ] Database backed up
 
-**Contact:**
-- Tech Lead: [email]
-- DevOps: [email]
-- On-Call: [phone]
+### During Deployment
+- [ ] Build successful
+- [ ] Deploy to staging first
+- [ ] Verify staging works
+- [ ] Deploy to production
+- [ ] Monitor deployment
 
-**Resources:**
-- [Vercel Docs](https://vercel.com/docs)
-- [Next.js Deployment](https://nextjs.org/docs/deployment)
-- [Troubleshooting Guide](./TROUBLESHOOTING.md)
+### After Deployment
+- [ ] Site accessible
+- [ ] Core features working
+- [ ] Performance acceptable
+- [ ] Monitoring active
+- [ ] Team notified
+
+---
+
+## ✅ Sign-Off
+
+**Deployed By:** _________________  
+**Date:** _________________  
+**Version:** _________________  
+**Status:** ✅ Production  
+
+**Deployment Notes:**
+
+
+
+**Verified By:** _________________  
+**Date:** _________________  
