@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { Plus, Save, X, Loader2 } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -9,7 +9,8 @@ import { Id } from "@/convex/_generated/dataModel";
 import { LineItem, LineItemRow } from "./line-item-row";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { recalculateDeliveryCost } from "@/lib/utils/delivery-recalculator";
+import { recalculateDeliveryCost, AbortError } from "@/lib/utils/delivery-recalculator";
+import { useAbortableEffect } from "@/hooks/use-abortable-effect";
 
 interface OrderLineItemsEditorProps {
   orderId: Id<"orders">;
@@ -52,33 +53,44 @@ export function OrderLineItemsEditor({
   );
   const total = subtotal + deliveryCost;
 
-  // Auto-recalculate delivery cost when line items change
-  useEffect(() => {
+  // Auto-recalculate delivery cost when line items change (with AbortSignal)
+  useAbortableEffect((signal) => {
     const recalc = async () => {
+      // Only recalc if lineItems changed and not initial load
+      if (!hasChanges || lineItems.length === 0) return;
+
       setIsRecalculating(true);
       try {
         const newCost = await recalculateDeliveryCost(
           wilaya,
           deliveryType,
           lineItems,
-          deliveryCost // fallback
+          deliveryCost, // fallback
+          signal
         );
-        if (newCost !== deliveryCost) {
+        
+        // Check if still mounted and not aborted
+        if (!signal.aborted && newCost !== deliveryCost) {
           setDeliveryCost(newCost);
           toast.info(`Delivery cost updated: ${newCost.toLocaleString()} DZD`);
         }
       } catch (error) {
-        console.error("Delivery cost recalculation failed:", error);
+        // Silently ignore abort errors
+        if (error instanceof AbortError) {
+          console.log("Delivery recalculation cancelled");
+        } else {
+          console.error("Delivery cost recalculation failed:", error);
+        }
       } finally {
-        setIsRecalculating(false);
+        if (!signal.aborted) {
+          setIsRecalculating(false);
+        }
       }
     };
 
-    // Debounce: only recalc if lineItems changed and not initial load
-    if (hasChanges && lineItems.length > 0) {
-      const timeout = setTimeout(recalc, 1000);
-      return () => clearTimeout(timeout);
-    }
+    // Debounce: only recalc after 1 second of no changes
+    const timeout = setTimeout(recalc, 1000);
+    return () => clearTimeout(timeout);
   }, [lineItems, wilaya, deliveryType, hasChanges]);
 
   // Handlers
