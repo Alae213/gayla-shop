@@ -9,6 +9,7 @@ import { StatusPill } from "../ui/status-pill";
 import { OrderLineItemsEditor } from "../ui/order-line-items-editor";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { useIsMounted } from "@/hooks/use-abortable-effect";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -238,6 +239,7 @@ function CallAttemptsBar({ attempts, max = 2 }: { attempts: number; max?: number
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }: TrackingOrderDetailsProps) {
+  const isMounted = useIsMounted();
   const [isEditing, setIsEditing]           = useState(false);
   const [callNote, setCallNote]             = useState("");
   const [showNoteInput, setShowNoteInput]   = useState(false);
@@ -252,11 +254,9 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
   // Initialise form from order
   const [editForm, setEditForm] = useState(() => orderToForm(order));
 
-  // ── FIX 15A: Re-sync editForm whenever the live Convex order changes,
-  //    BUT only when the operator is NOT actively editing — otherwise we'd
-  //    stomp on their in-progress keystrokes.
+  // ── FIX: Re-sync editForm when order changes, but only when NOT editing
   useEffect(() => {
-    if (!isEditing) {
+    if (!isEditing && isMounted()) {
       setEditForm(orderToForm(order));
     }
   }, [
@@ -266,6 +266,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     order.customerCommune,
     order.notes,
     isEditing,
+    isMounted,
   ]);
 
   const updateCustomerInfo = useMutation(api.orders.updateCustomerInfo);
@@ -302,8 +303,17 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     }
   }, [hasUnsavedChanges, onClose]);
 
+  // Register close handler with cleanup
   useEffect(() => {
-    onRegisterRequestClose?.(handleRequestClose);
+    if (onRegisterRequestClose) {
+      onRegisterRequestClose(handleRequestClose);
+    }
+    // Cleanup function - important to prevent memory leaks
+    return () => {
+      if (onRegisterRequestClose) {
+        onRegisterRequestClose(() => {});
+      }
+    };
   }, [handleRequestClose, onRegisterRequestClose]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -311,10 +321,14 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
   const handleSave = async () => {
     try {
       await updateCustomerInfo({ id: order._id, ...editForm });
-      setIsEditing(false);
-      toast.success("Order updated");
+      if (isMounted()) {
+        setIsEditing(false);
+        toast.success("Order updated");
+      }
     } catch {
-      toast.error("Failed to update order");
+      if (isMounted()) {
+        toast.error("Failed to update order");
+      }
     }
   };
 
@@ -333,9 +347,13 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
   const handleUndoCancel = async () => {
     try {
       await resetCallAttempts({ id: order._id });
-      toast.success("Order restored to New");
+      if (isMounted()) {
+        toast.success("Order restored to New");
+      }
     } catch {
-      toast.error("Failed to restore order");
+      if (isMounted()) {
+        toast.error("Failed to restore order");
+      }
     }
   };
 
@@ -348,6 +366,8 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
         outcome: pendingOutcome,
         ...(callNote.trim() ? { note: callNote.trim() } : {}),
       });
+
+      if (!isMounted()) return;
 
       const meta = OUTCOME_META[pendingOutcome];
 
@@ -370,9 +390,13 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
       setPendingOutcome(null);
       setCallNote("");
     } catch {
-      toast.error("Failed to log call");
+      if (isMounted()) {
+        toast.error("Failed to log call");
+      }
     } finally {
-      setIsLoggingCall(false);
+      if (isMounted()) {
+        setIsLoggingCall(false);
+      }
     }
   };
 
@@ -385,15 +409,17 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
   const handleStatusChange = async (newStatus: MVPStatus, reason?: string) => {
     try {
       await updateStatus({ id: order._id, status: newStatus, reason });
-      toast.success(`Order marked as ${newStatus}`);
-      if (newStatus === "canceled") onClose();
+      if (isMounted()) {
+        toast.success(`Order marked as ${newStatus}`);
+        if (newStatus === "canceled") onClose();
+      }
     } catch {
-      toast.error("Failed to update status");
+      if (isMounted()) {
+        toast.error("Failed to update status");
+      }
     }
   };
 
-  // ── FIX 15B: Dismiss warning flag BEFORE calling handleStatusChange so
-  //    there is no frame where both warning and confirm-pending are true.
   const handleConfirmClick = () => {
     if (callLog.length === 0) {
       setShowNoCallWarning(true);
@@ -418,12 +444,15 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
       return;
     }
     await handleStatusChange("packaged", "Sent to courier");
-    toast.success("Order sent to Yalidin");
+    if (isMounted()) {
+      toast.success("Order sent to Yalidin");
+    }
   };
 
   const handleLineItemsSaveSuccess = (newTotal: number) => {
-    // Order will be updated automatically via Convex reactivity
-    toast.success(`Order total updated: ${newTotal.toLocaleString()} DZD`);
+    if (isMounted()) {
+      toast.success(`Order total updated: ${newTotal.toLocaleString()} DZD`);
+    }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
