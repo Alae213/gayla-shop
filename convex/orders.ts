@@ -182,7 +182,7 @@ export const create = mutation({
       productPrice = product.price;
       productName = product.title;
       productSlug = product.slug;
-    } else if (isMultiProduct) {
+    } else if (isMultiProduct && args.lineItems) {
       // New: multiple line items
       finalLineItems = args.lineItems;
       productPrice = finalLineItems.reduce((sum, item) => sum + item.lineTotal, 0);
@@ -246,10 +246,10 @@ export const create = mutation({
       orderData.productPrice = productPrice;
       orderData.productSlug = productSlug;
       orderData.selectedVariant = args.selectedVariant;
-    } else if (isMultiProduct) {
+    } else if (isMultiProduct && finalLineItems) {
       orderData.lineItems = finalLineItems;
       // Store first product info for backward compatibility
-      orderData.productId = finalLineItems![0].productId;
+      orderData.productId = finalLineItems[0].productId;
       orderData.productName = productName;
       orderData.productPrice = productPrice;
       orderData.productSlug = productSlug;
