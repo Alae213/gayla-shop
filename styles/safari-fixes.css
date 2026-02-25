@@ -1,0 +1,275 @@
+/**
+ * Safari-Specific CSS Fixes
+ * 
+ * Addresses known compatibility issues with Safari (desktop and iOS):
+ * - Flexbox shrink bugs
+ * - Transform/animation glitches
+ * - Z-index stacking issues
+ * - Date input styling
+ * - Scroll performance
+ */
+
+/* =============================================================================
+   Flexbox Fixes
+   Safari requires explicit flex-shrink on some elements
+   ============================================================================= */
+
+/* Fix flex children not shrinking properly */
+.flex > *,
+.flex-col > * {
+  -webkit-flex-shrink: 1;
+  flex-shrink: 1;
+  min-width: 0; /* Prevent flex items from overflowing */
+  min-height: 0;
+}
+
+/* Explicitly disable shrink for elements that need it */
+.shrink-0 {
+  -webkit-flex-shrink: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+/* Fix flex-wrap on Safari */
+.flex-wrap {
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+}
+
+/* =============================================================================
+   Transform & Animation Fixes
+   Add -webkit- prefixes and force hardware acceleration
+   ============================================================================= */
+
+/* Force GPU acceleration for smoother animations */
+.animate-in,
+.transition-all,
+.transition-transform,
+[class*="animate-"],
+[class*="transition-"] {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-perspective: 1000px;
+  perspective: 1000px;
+}
+
+/* Fix draggable elements on Safari */
+[draggable="true"],
+.draggable,
+[role="button"][aria-grabbed] {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Ensure transforms work with webkit prefix */
+.rotate-2 {
+  -webkit-transform: rotate(2deg);
+  transform: rotate(2deg);
+}
+
+.scale-105 {
+  -webkit-transform: scale(1.05);
+  transform: scale(1.05);
+}
+
+/* =============================================================================
+   Z-Index & Stacking Context Fixes
+   Safari handles z-index differently in some flexbox/grid contexts
+   ============================================================================= */
+
+/* Fix modal/overlay z-index on iOS Safari */
+[role="dialog"],
+[role="alertdialog"],
+.modal,
+.dialog {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  isolation: isolate; /* Create new stacking context */
+}
+
+/* Ensure drag overlay appears above everything */
+[class*="DragOverlay"] {
+  z-index: 9999 !important;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  isolation: isolate;
+}
+
+/* =============================================================================
+   Scroll Performance
+   Enable momentum scrolling and smooth scrolling on iOS
+   ============================================================================= */
+
+/* Enable momentum scrolling on iOS */
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar (Safari 14+) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* =============================================================================
+   Input Fixes
+   Fix date inputs and form elements on iOS Safari
+   ============================================================================= */
+
+/* Remove iOS default styling from inputs */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="number"],
+input[type="date"],
+textarea,
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Fix date input appearing as text on Safari */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Prevent zoom on focus (iOS) */
+input,
+textarea,
+select {
+  font-size: 16px; /* iOS won't zoom if font-size >= 16px */
+}
+
+/* Fix button appearance on iOS */
+button {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* =============================================================================
+   Grid Layout Fixes
+   Safari has issues with auto-fit/auto-fill in some cases
+   ============================================================================= */
+
+/* Fix grid gap not working in older Safari */
+.grid {
+  display: -ms-grid;
+  display: grid;
+}
+
+/* Ensure grid items don't overflow */
+.grid > * {
+  min-width: 0;
+  min-height: 0;
+}
+
+/* =============================================================================
+   Accessibility Fixes
+   Improve focus indicators on Safari
+   ============================================================================= */
+
+/* Make focus indicators more visible on Safari */
+*:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* =============================================================================
+   Image Rendering
+   Fix blurry images on retina displays
+   ============================================================================= */
+
+img {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* =============================================================================
+   Safe Area Insets (iOS notch/home indicator)
+   ============================================================================= */
+
+/* Respect iOS safe areas */
+@supports (padding: max(0px)) {
+  .safe-top {
+    padding-top: max(env(safe-area-inset-top), 1rem);
+  }
+  
+  .safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+  }
+  
+  .safe-left {
+    padding-left: max(env(safe-area-inset-left), 1rem);
+  }
+  
+  .safe-right {
+    padding-right: max(env(safe-area-inset-right), 1rem);
+  }
+}
+
+/* =============================================================================
+   Tap Highlight Color
+   Remove blue highlight on tap (iOS)
+   ============================================================================= */
+
+button,
+a,
+label,
+input[type="checkbox"],
+input[type="radio"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* =============================================================================
+   Prevent Text Selection During Drag
+   ============================================================================= */
+
+[draggable="true"],
+.draggable {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* =============================================================================
+   Fix for Sticky Hover States on Touch Devices
+   ============================================================================= */
+
+@media (hover: none) {
+  /* Remove hover states on touch devices */
+  .hover\:bg-\[\#F5F5F5\]:hover,
+  .hover\:bg-gray-50:hover,
+  .hover\:opacity-100:hover {
+    background-color: inherit;
+    opacity: inherit;
+  }
+}
