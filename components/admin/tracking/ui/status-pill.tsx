@@ -5,7 +5,7 @@ import {
   CheckCircle2,
   Package,
   Truck,
-  CircleX,
+  XCircle,
   Ban,
   PhoneForwarded,
 } from "lucide-react"
@@ -35,7 +35,7 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; icon: React.ReactNode;
   },
   canceled: {
     label: "Canceled",
-    icon: <CircleX className="h-3 w-3" />,
+    icon: <XCircle className="h-3 w-3" />,
     className: "bg-red-100 text-red-700 border-red-200",
   },
   blocked: {
