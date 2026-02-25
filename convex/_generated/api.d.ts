@@ -13,6 +13,7 @@ import type * as crons from "../crons.js";
 import type * as deliveryCosts from "../deliveryCosts.js";
 import type * as emails from "../emails.js";
 import type * as files from "../files.js";
+import type * as migrations_migrateToLineItems from "../migrations/migrateToLineItems.js";
 import type * as orders from "../orders.js";
 import type * as products from "../products.js";
 import type * as siteContent from "../siteContent.js";
@@ -29,6 +30,7 @@ declare const fullApi: ApiFromModules<{
   deliveryCosts: typeof deliveryCosts;
   emails: typeof emails;
   files: typeof files;
+  "migrations/migrateToLineItems": typeof migrations_migrateToLineItems;
   orders: typeof orders;
   products: typeof products;
   siteContent: typeof siteContent;
