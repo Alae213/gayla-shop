@@ -6,6 +6,7 @@ import { CallLogIndicator } from "./call-log-indicator";
 import { ColorDot } from "./color-dot";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
+import { generateShimmerDataURL } from "@/lib/utils/image-placeholder";
 
 type CallOutcome = "answered" | "no answer" | "wrong number" | "refused";
 
@@ -66,6 +67,7 @@ export const TrackingOrderCard = React.forwardRef<HTMLDivElement, TrackingOrderC
     onCardClick,
     ...props
   }, ref) => {
+    const [imageError, setImageError] = React.useState(false);
 
     const handleCheckboxChange = (checked: boolean) => {
       onSelectChange?.(checked);
@@ -152,15 +154,37 @@ export const TrackingOrderCard = React.forwardRef<HTMLDivElement, TrackingOrderC
         {/* Product Section */}
         {productName && (
           <div className="flex gap-3 items-start">
-            {thumbnail && (
+            {thumbnail && !imageError && (
               <div className="relative w-12 h-12 rounded-md overflow-hidden shrink-0 bg-[#F5F5F5] border border-[#ECECEC]">
                 <Image
                   src={thumbnail}
-                  alt={productName}
+                  alt={productName || "Product"}
                   fill
                   className="object-cover"
                   sizes="48px"
+                  placeholder="blur"
+                  blurDataURL={generateShimmerDataURL(48, 48)}
+                  loading="lazy"
+                  quality={85}
+                  onError={() => setImageError(true)}
                 />
+              </div>
+            )}
+            {(!thumbnail || imageError) && (
+              <div className="relative w-12 h-12 rounded-md overflow-hidden shrink-0 bg-[#F5F5F5] border border-[#ECECEC] flex items-center justify-center">
+                <svg
+                  className="w-6 h-6 text-[#AAAAAA]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
               </div>
             )}
             <div className="flex-1 min-w-0">
