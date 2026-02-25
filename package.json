@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "npx --no-install next dev --turbopack",
+    "dev:webpack": "npx --no-install next dev --webpack",
     "build": "npx --no-install next build",
     "start": "npx --no-install next start",
     "lint": "npx --no-install next lint",
