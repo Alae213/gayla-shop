@@ -152,21 +152,53 @@ export const create = mutation({
     customerAddress: v.optional(v.string()),
     deliveryType:    v.union(v.literal("Domicile"), v.literal("Stopdesk")),
     deliveryCost:    v.number(),
-    productId:       v.id("products"),
+    // Legacy single-product fields (optional, for backward compatibility)
+    productId:       v.optional(v.id("products")),
     selectedVariant: v.optional(
       v.object({ size: v.optional(v.string()), color: v.optional(v.string()) })
     ),
+    // New multi-product field
+    lineItems:       v.optional(v.array(lineItemValidator)),
   },
   handler: async (ctx, args) => {
-    const product = await ctx.db.get(args.productId);
-    if (!product) throw new Error("Product not found");
+    // Determine if this is a legacy single-product order or multi-product order
+    const isLegacy = args.productId && !args.lineItems;
+    const isMultiProduct = args.lineItems && args.lineItems.length > 0;
 
+    if (!isLegacy && !isMultiProduct) {
+      throw new Error("Either productId or lineItems must be provided");
+    }
+
+    // Calculate total and prepare order data
+    let productPrice = 0;
+    let productName = "";
+    let productSlug = "";
+    let finalLineItems: any[] | undefined;
+
+    if (isLegacy) {
+      // Legacy: single product
+      const product = await ctx.db.get(args.productId!);
+      if (!product) throw new Error("Product not found");
+      productPrice = product.price;
+      productName = product.title;
+      productSlug = product.slug;
+    } else if (isMultiProduct) {
+      // New: multiple line items
+      finalLineItems = args.lineItems;
+      productPrice = finalLineItems.reduce((sum, item) => sum + item.lineTotal, 0);
+      // For backward compatibility, set productName to first item
+      productName = finalLineItems[0].productName;
+      productSlug = finalLineItems[0].productSlug || "";
+    }
+
+    // Check if customer is banned
     const bannedCheck = await ctx.db
       .query("orders")
       .withIndex("by_customer_phone", (q) => q.eq("customerPhone", args.customerPhone))
       .first();
     const isBanned = bannedCheck?.isBanned === true;
 
+    // Generate unique order number
     let orderNumber = generateOrderNumber();
     for (let i = 0; i < 5; i++) {
       const existing = await ctx.db
@@ -177,11 +209,12 @@ export const create = mutation({
       orderNumber = generateOrderNumber();
     }
 
-    const totalAmount    = product.price + args.deliveryCost;
+    const totalAmount    = productPrice + args.deliveryCost;
     const now            = Date.now();
     const initialStatus: MVPStatus = isBanned ? "blocked" : "new";
 
-    const orderId = await ctx.db.insert("orders", {
+    // Create order with appropriate fields
+    const orderData: any = {
       orderNumber,
       status:          initialStatus,
       customerName:    args.customerName,
@@ -191,11 +224,6 @@ export const create = mutation({
       customerAddress: args.customerAddress ?? "",
       deliveryType:    args.deliveryType,
       deliveryCost:    args.deliveryCost,
-      productId:       args.productId,
-      productName:     product.title,
-      productPrice:    product.price,
-      productSlug:     product.slug,
-      selectedVariant: args.selectedVariant,
       totalAmount,
       lastUpdated:     now,
       callAttempts:    0,
@@ -209,7 +237,25 @@ export const create = mutation({
         timestamp: now,
         ...(isBanned ? { reason: "Auto-blocked — banned customer" } : {}),
       }],
-    });
+    };
+
+    // Add legacy fields or lineItems
+    if (isLegacy) {
+      orderData.productId = args.productId;
+      orderData.productName = productName;
+      orderData.productPrice = productPrice;
+      orderData.productSlug = productSlug;
+      orderData.selectedVariant = args.selectedVariant;
+    } else if (isMultiProduct) {
+      orderData.lineItems = finalLineItems;
+      // Store first product info for backward compatibility
+      orderData.productId = finalLineItems![0].productId;
+      orderData.productName = productName;
+      orderData.productPrice = productPrice;
+      orderData.productSlug = productSlug;
+    }
+
+    const orderId = await ctx.db.insert("orders", orderData);
 
     return { orderId, orderNumber, totalAmount };
   },
