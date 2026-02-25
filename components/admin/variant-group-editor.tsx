@@ -306,11 +306,11 @@ export function VariantGroupEditor({
       <div className="flex items-center justify-between">
         <Label className="text-base font-semibold">Product Variants</Label>
         <Select onValueChange={(value) => handleAddGroup(value)}>
-          <SelectTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2">
+          <SelectTrigger className="w-[200px]">
+            <div className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
-              Add Variant Group
-            </Button>
+              <span>Add Variant Group</span>
+            </div>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="custom">
