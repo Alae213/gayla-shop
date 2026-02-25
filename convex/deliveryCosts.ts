@@ -11,6 +11,17 @@ export const getByWilayaId = query({
   },
 });
 
+export const getByWilayaName = query({
+  args: { wilayaName: v.string() },
+  handler: async (ctx, args) => {
+    // Case-insensitive search for wilaya name
+    const allCosts = await ctx.db.query("deliveryCosts").collect();
+    return allCosts.find(
+      (cost) => cost.wilayaName.toLowerCase() === args.wilayaName.toLowerCase()
+    );
+  },
+});
+
 export const list = query({
   handler: async (ctx) => {
     return await ctx.db.query("deliveryCosts").collect();
