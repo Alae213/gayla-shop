@@ -40,9 +40,6 @@ const nextConfig = {
   // ============================================================================
   // Performance Optimizations
   // ============================================================================
-  
-  // Enable SWC minification (faster than Terser)
-  swcMinify: true,
 
   // Compress output
   compress: true,
@@ -63,6 +60,13 @@ const nextConfig = {
     },
   },
 
+  // ============================================================================
+  // Next.js 16 Turbopack Configuration
+  // ============================================================================
+  // Empty turbopack config silences the webpack warning
+  // Turbopack uses sensible defaults and doesn't need explicit config for most apps
+  turbopack: {},
+
   // Power trace for bundle analysis
   experimental: {
     // Optimize package imports (tree shaking)
@@ -82,7 +86,7 @@ const nextConfig = {
   },
 
   // ============================================================================
-  // Webpack Configuration
+  // Webpack Configuration (Used with --webpack flag)
   // ============================================================================
   webpack: (config, { dev, isServer }) => {
     // Only optimize in production
