@@ -5,55 +5,68 @@ import {
   CheckCircle2,
   Package,
   Truck,
-  XCircle,
+  CircleX,
   Ban,
   PhoneForwarded,
 } from "lucide-react"
 
 export type OrderStatus = "new" | "confirmed" | "packaged" | "shipped" | "canceled" | "blocked" | "hold"
 
-interface StatusConfig {
-  icon: React.ElementType
-  colorClass: string
-  bgClass: string
-  borderClass: string
-  label?: string
+const STATUS_CONFIG: Record<OrderStatus, { label: string; icon: React.ReactNode; className: string }> = {
+  new: {
+    label: "New",
+    icon: <CircleDashed className="h-3 w-3" />,
+    className: "bg-blue-100 text-blue-700 border-blue-200",
+  },
+  confirmed: {
+    label: "Confirmed",
+    icon: <CheckCircle2 className="h-3 w-3" />,
+    className: "bg-green-100 text-green-700 border-green-200",
+  },
+  packaged: {
+    label: "Packaged",
+    icon: <Package className="h-3 w-3" />,
+    className: "bg-purple-100 text-purple-700 border-purple-200",
+  },
+  shipped: {
+    label: "Shipped",
+    icon: <Truck className="h-3 w-3" />,
+    className: "bg-indigo-100 text-indigo-700 border-indigo-200",
+  },
+  canceled: {
+    label: "Canceled",
+    icon: <CircleX className="h-3 w-3" />,
+    className: "bg-red-100 text-red-700 border-red-200",
+  },
+  blocked: {
+    label: "Blocked",
+    icon: <Ban className="h-3 w-3" />,
+    className: "bg-gray-100 text-gray-700 border-gray-300",
+  },
+  hold: {
+    label: "Hold",
+    icon: <PhoneForwarded className="h-3 w-3" />,
+    className: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  },
 }
 
-const statusConfigMap: Record<OrderStatus, StatusConfig> = {
-  new:       { icon: CircleDashed,   colorClass: "text-blue-600",    bgClass: "bg-blue-50",    borderClass: "border-blue-200" },
-  confirmed: { icon: CheckCircle2,   colorClass: "text-emerald-600", bgClass: "bg-emerald-50", borderClass: "border-emerald-200" },
-  packaged:  { icon: Package,        colorClass: "text-amber-600",   bgClass: "bg-amber-50",   borderClass: "border-amber-200" },
-  shipped:   { icon: Truck,          colorClass: "text-purple-600",  bgClass: "bg-purple-50",  borderClass: "border-purple-200" },
-  canceled:  { icon: XCircle,        colorClass: "text-rose-600",    bgClass: "bg-rose-50",    borderClass: "border-rose-200" },
-  blocked:   { icon: Ban,            colorClass: "text-gray-600",    bgClass: "bg-gray-100",   borderClass: "border-gray-200" },
-  // hold = "wrong number" hold — visually orange/amber to distinguish from rose canceled
-  hold:      { icon: PhoneForwarded, colorClass: "text-orange-600",  bgClass: "bg-orange-50",  borderClass: "border-orange-200", label: "hold" },
-}
-
-export interface StatusPillProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface StatusPillProps extends React.HTMLAttributes<HTMLSpanElement> {
   status: OrderStatus
 }
 
 export function StatusPill({ status, className, ...props }: StatusPillProps) {
-  const config = statusConfigMap[status]
-  if (!config) return null
-
-  const Icon = config.icon
-
+  const config = STATUS_CONFIG[status]
   return (
-    <div
+    <span
       className={cn(
-        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium lowercase border",
-        config.colorClass,
-        config.bgClass,
-        config.borderClass,
+        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border",
+        config.className,
         className
       )}
       {...props}
     >
-      <Icon className="w-3.5 h-3.5" aria-hidden="true" />
-      <span>{config.label ?? status}</span>
-    </div>
+      {config.icon}
+      {config.label}
+    </span>
   )
 }
