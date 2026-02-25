@@ -69,6 +69,7 @@ const ALLOWED_TRANSITIONS: Record<MVPStatus, MVPStatus[]> = {
 
 const VALID_COLUMNS = new Set<string>(KANBAN_COLUMNS.map(c => c.id));
 
+// Legacy variant label formatter (backward compatibility)
 function variantLabel(order: Order): string {
   const parts: string[] = [];
   if (order.selectedVariant?.size)  parts.push(order.selectedVariant.size);
@@ -76,21 +77,63 @@ function variantLabel(order: Order): string {
   return parts.join(" / ");
 }
 
+/**
+ * Extract card display data from order, supporting both new lineItems format
+ * and legacy single-product fields.
+ */
+function extractCardData(order: Order, columnId: MVPStatus) {
+  // Multi-product orders: use first line item
+  if (order.lineItems && order.lineItems.length > 0) {
+    const firstItem = order.lineItems[0];
+    const variants = firstItem.variants ?? {};
+    
+    // Extract first variant value for badge (e.g., "XL" from { size: "XL", color: "Red" })
+    const variantValues = Object.values(variants) as string[];
+    const variantLabel = variantValues[0] ?? undefined;
+    
+    // Extract color hex if available (assuming color field contains hex)
+    const variantColor = variants.color ?? undefined;
+    
+    return {
+      productName: firstItem.productName,
+      thumbnail: firstItem.thumbnail,
+      quantity: firstItem.quantity,
+      variantLabel,
+      variantColor,
+      moreItemsCount: order.lineItems.length - 1,
+      productVariant: undefined, // Don't use legacy format
+    };
+  }
+  
+  // Legacy single-product orders: fall back to old fields
+  return {
+    productName: order.productName,
+    thumbnail: undefined, // Legacy orders don't have thumbnails stored
+    quantity: order.quantity > 1 ? order.quantity : undefined,
+    variantLabel: undefined,
+    variantColor: undefined,
+    moreItemsCount: 0,
+    productVariant: variantLabel(order) || undefined,
+  };
+}
+
 // Draggable card wrapper
 function SortableOrderCard({
   order,
+  columnId,
   selected,
   onSelectChange,
   onCardClick,
 }: {
   order: Order;
+  columnId: MVPStatus;
   selected: boolean;
   onSelectChange: () => void;
   onCardClick: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: order._id,
-    data: { type: "card", order, columnId: order._normalizedStatus ?? order.status ?? "new" },
+    data: { type: "card", order, columnId },
   });
 
   const style = {
@@ -100,15 +143,27 @@ function SortableOrderCard({
     zIndex: isDragging ? 999 : undefined,
   };
 
+  const cardData = extractCardData(order, columnId);
+  const status = order._normalizedStatus ?? order.status ?? "new";
+
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <TrackingOrderCard
         orderNumber={order.orderNumber}
         customerName={order.customerName}
-        productName={order.productName}
-        productVariant={variantLabel(order)}
+        productName={cardData.productName}
+        productVariant={cardData.productVariant}
+        thumbnail={cardData.thumbnail}
+        wilaya={order.customerWilaya}
+        deliveryType={order.deliveryType}
+        quantity={cardData.quantity}
+        variantLabel={cardData.variantLabel}
+        variantColor={cardData.variantColor}
+        moreItemsCount={cardData.moreItemsCount}
+        callLog={order.callLog}
+        showCallLog={columnId === "new"}
         totalPrice={order.totalAmount ?? 0}
-        status={order._normalizedStatus ?? order.status ?? "new"}
+        status={status}
         date={formatDistanceToNow(order._creationTime, { addSuffix: true })}
         selected={selected}
         onSelectChange={onSelectChange}
@@ -189,12 +244,12 @@ export function TrackingKanbanBoard({
       return;
     }
 
-    // FIX 17A: Enforce the allowed transition map so operators can’t skip
+    // FIX 17A: Enforce the allowed transition map so operators can't skip
     // stages or make accidental backward jumps (e.g. new → shipped).
     const allowed = ALLOWED_TRANSITIONS[currentStatus] ?? [];
     if (!allowed.includes(targetColumnId)) {
       toast.warning(
-        `Cannot move from “${currentStatus}” to “${targetColumnId}” by dragging`,
+        `Cannot move from "${currentStatus}" to "${targetColumnId}" by dragging`,
         { description: "Use the order panel to change this status." }
       );
       return;
@@ -300,6 +355,7 @@ export function TrackingKanbanBoard({
                       <SortableOrderCard
                         key={order._id}
                         order={order}
+                        columnId={column.id}
                         selected={selectedIds.has(order._id)}
                         onSelectChange={() => onToggleSelect(order._id)}
                         onCardClick={() => onOrderClick(order._id)}
@@ -337,7 +393,7 @@ export function TrackingKanbanBoard({
             <TrackingOrderCard
               orderNumber={activeOrder.orderNumber}
               customerName={activeOrder.customerName}
-              productName={activeOrder.productName}
+              productName={activeOrder.productName ?? activeOrder.lineItems?.[0]?.productName}
               productVariant={variantLabel(activeOrder)}
               totalPrice={activeOrder.totalAmount ?? 0}
               status={activeOrder._normalizedStatus ?? activeOrder.status ?? "new"}
