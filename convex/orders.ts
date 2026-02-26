@@ -565,11 +565,10 @@ export const logCallOutcome = mutation({
     let cancelReason: string | undefined;
     let statusHistory           = order.statusHistory ?? [];
 
-    if (args.outcome === "refused") {
-      newStatus    = "canceled";
-      cancelReason = "Canceled: refused";
-      statusHistory = pushStatusHistory(order, newStatus, cancelReason);
-    } else if (args.outcome === "wrong number") {
+    // REMOVED: Auto-cancel for "refused" outcome
+    // Admin can manually cancel if needed via existing controls
+    
+    if (args.outcome === "wrong number") {
       newStatus     = "hold";
       statusHistory = pushStatusHistory(order, newStatus, "Wrong number reported — awaiting phone correction");
     } else if (noAnswerCount >= 2 && newStatus !== "canceled") {
