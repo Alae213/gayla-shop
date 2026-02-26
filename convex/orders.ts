@@ -1,6 +1,9 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
+// ─── DUPLICATE PREVENTION CONFIG ───────────────────────────────────────────
+const DUPLICATE_WINDOW_MS = 30000; // 30 seconds
+
 // ─── MVP Status Union ──────────────────────────────────────────────────────────────────────────────────────────────
 const orderStatusMVPValidator = v.union(
   v.literal("new"),
@@ -98,6 +101,57 @@ function generateOrderNumber(): string {
   return `GAY-${timestamp}-${random}`;
 }
 
+/**
+ * Check if an order is a duplicate based on:
+ * - Same customer phone
+ * - Same line items (product IDs, quantities, variants)
+ * - Created within DUPLICATE_WINDOW_MS
+ */
+function isDuplicateOrder(
+  existingOrder: any,
+  newLineItems: any[],
+  cutoffTime: number
+): boolean {
+  // Check if order is recent enough
+  const orderTime = existingOrder.createdAt ?? existingOrder._creationTime;
+  if (orderTime < cutoffTime) return false;
+
+  // Get existing line items (handle legacy single-product orders)
+  const existingLineItems = existingOrder.lineItems ?? [
+    {
+      productId: existingOrder.productId,
+      quantity: 1,
+      variants: existingOrder.selectedVariant,
+    },
+  ];
+
+  // Quick check: different number of items
+  if (existingLineItems.length !== newLineItems.length) return false;
+
+  // Deep compare: same products, quantities, and variants
+  const newItemsSorted = [...newLineItems].sort((a, b) =>
+    a.productId.localeCompare(b.productId)
+  );
+  const existingItemsSorted = [...existingLineItems].sort((a, b) =>
+    a.productId.localeCompare(b.productId)
+  );
+
+  for (let i = 0; i < newItemsSorted.length; i++) {
+    const newItem = newItemsSorted[i];
+    const existingItem = existingItemsSorted[i];
+
+    if (
+      newItem.productId !== existingItem.productId ||
+      newItem.quantity !== existingItem.quantity ||
+      JSON.stringify(newItem.variants ?? {}) !== JSON.stringify(existingItem.variants ?? {})
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 // ─── QUERIES ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export const list = query({
@@ -182,6 +236,18 @@ export const create = mutation({
       productPrice = product.price;
       productName = product.title;
       productSlug = product.slug;
+      // Create line items array for duplicate check
+      finalLineItems = [
+        {
+          productId: args.productId!,
+          productName,
+          productSlug,
+          quantity: 1,
+          unitPrice: productPrice,
+          variants: args.selectedVariant,
+          lineTotal: productPrice,
+        },
+      ];
     } else if (isMultiProduct && args.lineItems) {
       // New: multiple line items
       finalLineItems = args.lineItems;
@@ -190,6 +256,31 @@ export const create = mutation({
       productName = finalLineItems[0].productName;
       productSlug = finalLineItems[0].productSlug || "";
     }
+
+    // ─── DUPLICATE DETECTION ───────────────────────────────────────────────
+    // Check for recent orders from same phone with same items
+    const cutoffTime = Date.now() - DUPLICATE_WINDOW_MS;
+    const recentOrders = await ctx.db
+      .query("orders")
+      .withIndex("by_customer_phone", (q) => q.eq("customerPhone", args.customerPhone))
+      .collect();
+
+    // Find duplicate order
+    const duplicate = recentOrders.find((order) =>
+      isDuplicateOrder(order, finalLineItems!, cutoffTime)
+    );
+
+    if (duplicate) {
+      // Return existing order instead of creating duplicate
+      console.log(`Duplicate order detected for phone ${args.customerPhone}, returning existing order ${duplicate.orderNumber}`);
+      return {
+        orderId: duplicate._id,
+        orderNumber: duplicate.orderNumber,
+        totalAmount: duplicate.totalAmount,
+        isDuplicate: true,
+      };
+    }
+    // ───────────────────────────────────────────────────────────────────────
 
     // Check if customer is banned
     const bannedCheck = await ctx.db
