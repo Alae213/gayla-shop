@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 
 interface VariantSelectorDropdownProps {
   productId: Id<"products">;
@@ -53,37 +54,52 @@ function VariantSelectorDropdownInner({
     [currentVariant],
   );
 
-  if (!product) {
+  // Loading state
+  if (product === undefined) {
     return (
-      <div className="text-[12px] text-[#AAAAAA] italic">Loading variants...</div>
+      <div className="flex items-center gap-2 text-[12px] text-[#AAAAAA] italic">
+        <Loader2 className="w-3 h-3 animate-spin" />
+        <span>Loading variants...</span>
+      </div>
     );
   }
 
+  // Product not found or error
+  if (product === null) {
+    return (
+      <div className="text-[12px] text-rose-600 italic">
+        Product not found
+      </div>
+    );
+  }
+
+  // No variant groups - hide completely
   if (!product.variantGroups || product.variantGroups.length === 0) {
     return null;
   }
 
   return (
-    <div className={cn("flex flex-wrap gap-2", className)}>
+    <div className={cn("flex flex-wrap gap-2 md:gap-3", className)}>
       {product.variantGroups.map((group) => {
         const currentValue = currentVariant[group.name] ?? "";
         const enabledValues = group.values
           .filter((v) => v.enabled)
           .sort((a, b) => a.order - b.order);
 
+        // If no enabled values, show warning message
         if (enabledValues.length === 0) {
           return (
-            <div key={group.name} className="text-[12px] text-[#AAAAAA] italic">
+            <div key={group.name} className="text-[12px] text-amber-600 italic bg-amber-50 px-2 py-1 rounded-md">
               No {group.name.toLowerCase()} available
             </div>
           );
         }
 
         return (
-          <div key={group.name} className="flex flex-col gap-1">
+          <div key={group.name} className="flex flex-col gap-1 flex-1 md:flex-initial">
             <label
               htmlFor={`variant-${group.name}-${productId}`}
-              className="text-[11px] font-semibold text-[#555555] uppercase tracking-wider"
+              className="text-[10px] md:text-[11px] font-semibold text-[#555555] uppercase tracking-wider"
             >
               {group.name}
             </label>
@@ -94,7 +110,7 @@ function VariantSelectorDropdownInner({
             >
               <SelectTrigger
                 id={`variant-${group.name}-${productId}`}
-                className="h-8 text-[13px] w-[120px] bg-white border-[#ECECEC] focus:ring-[#AAAAAA]"
+                className="h-8 md:h-9 text-[13px] w-full md:w-[120px] bg-white border-[#ECECEC] focus:ring-[#AAAAAA]"
               >
                 <SelectValue placeholder={`Select ${group.name.toLowerCase()}`} />
               </SelectTrigger>
