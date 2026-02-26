@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,17 +27,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AddToCartButton } from "@/components/product/add-to-cart-button";
+import { CartSidePanel } from "@/components/cart/cart-side-panel";
+import { VariantSelection } from "@/lib/types/cart";
 
 interface OrderFormProps {
-  product: {
-    _id: Id<"products">;
-    title: string;
-    price: number;
-    variants?: Array<{
-      size?: string;
-      color?: string;
-    }>;
-  };
+  product: Doc<"products">;
 }
 
 type DeliveryType = "Stopdesk" | "Domicile";
@@ -46,6 +42,19 @@ function phoneValid(v: string) {
 }
 
 export function OrderForm({ product }: OrderFormProps) {
+  // Cart and variant state
+  const [cartPanelOpen, setCartPanelOpen] = useState(false);
+  const [selectedVariants, setSelectedVariants] = useState<VariantSelection>({});
+  
+  // Determine if product has variants
+  const hasVariants = Boolean(
+    (product.variantGroups && product.variantGroups.length > 0) ||
+    (product.variants && product.variants.length > 0)
+  );
+  
+  // Get thumbnail from first image
+  const thumbnail = product.images?.[0]?.url;
+  
   // ── Form state ────────────────────────────────────────────────
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -166,6 +175,45 @@ export function OrderForm({ product }: OrderFormProps) {
           <CardTitle>Order this Product</CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Variant Selection (if any) */}
+          {hasVariants && product.variantGroups && (
+            <div className="space-y-4 mb-6">
+              {product.variantGroups.map((group) => (
+                <div key={group.name} className="space-y-2">
+                  <Label className="text-sm font-medium text-system-400">
+                    {group.name}
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {group.values
+                      .filter((v) => v.enabled)
+                      .sort((a, b) => a.order - b.order)
+                      .map((value) => {
+                        const isSelected = selectedVariants[group.name] === value.label;
+                        return (
+                          <button
+                            key={value.label}
+                            onClick={() =>
+                              setSelectedVariants((prev) => ({
+                                ...prev,
+                                [group.name]: value.label,
+                              }))
+                            }
+                            className={`px-4 py-2 rounded-md border-2 transition-all ${
+                              isSelected
+                                ? "border-brand-200 bg-brand-50 text-brand-200 font-medium"
+                                : "border-system-200 hover:border-system-300 text-system-400"
+                            }`}
+                          >
+                            {value.label}
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
           <form onSubmit={handleSubmit} className="space-y-5">
 
             {/* 1. Full Name */}
@@ -338,17 +386,45 @@ export function OrderForm({ product }: OrderFormProps) {
               <p className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">{errors.submit}</p>
             )}
 
-            {/* Submit */}
-            <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Placing Order...</>
-              ) : (
-                "Confirm Order"
-              )}
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isSubmitting}
+            >
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? "Placing Order..." : "Place Order"}
             </Button>
           </form>
+          
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-system-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-system-300">Or</span>
+            </div>
+          </div>
+          
+          {/* Add to Cart Button */}
+          <AddToCartButton
+            productId={product._id}
+            slug={product.slug}
+            name={product.title}
+            price={product.price}
+            status={product.status}
+            thumbnail={thumbnail}
+            variants={selectedVariants}
+            hasVariants={hasVariants}
+            onSuccess={() => setCartPanelOpen(true)}
+            className="w-full"
+          />
         </CardContent>
       </Card>
+
+      {/* Cart Side Panel */}
+      <CartSidePanel open={cartPanelOpen} onOpenChange={setCartPanelOpen} />
 
       {/* Success Dialog */}
       <Dialog open={showSuccess} onOpenChange={setShowSuccess}>
