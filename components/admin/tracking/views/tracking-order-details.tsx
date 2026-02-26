@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useRef, useEffect, useCallback, useMemo, Profiler, ProfilerOnRenderCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { useIsMounted } from "@/hooks/use-abortable-effect";
 import { NetworkStatusBanner } from "../ui/network-status-banner";
@@ -37,49 +37,6 @@ interface TrackingOrderDetailsProps {
   onClose: () => void;
   onRegisterRequestClose?: (fn: () => void) => void;
 }
-
-// ──────────────────────────────────────────────────────────────────────────────
-// TEMPORARY: React Profiler for Phase 4 Task 4.1
-// Will be removed after profiling complete
-// ──────────────────────────────────────────────────────────────────────────────
-
-const PROFILING_ENABLED = true; // Set to false to disable profiling
-
-const onRenderCallback: ProfilerOnRenderCallback = (
-  id,
-  phase,
-  actualDuration,
-  baseDuration,
-  startTime,
-  commitTime
-) => {
-  if (!PROFILING_ENABLED) return;
-  
-  const color = phase === "mount" ? "#00C853" : "#2979FF";
-  const emoji = phase === "mount" ? "🏁" : "🔄";
-  
-  console.log(
-    `%c${emoji} [Profiler] ${id}`,
-    `color: ${color}; font-weight: bold`,
-    {
-      phase,
-      actualDuration: `${actualDuration.toFixed(2)}ms`,
-      baseDuration: `${baseDuration.toFixed(2)}ms`,
-      improvement: baseDuration > 0 ? `${((1 - actualDuration / baseDuration) * 100).toFixed(1)}%` : "N/A",
-      startTime: `${startTime.toFixed(2)}ms`,
-      commitTime: `${commitTime.toFixed(2)}ms`,
-    }
-  );
-  
-  // Warn if render is slow (> 16ms = 1 frame at 60fps)
-  if (actualDuration > 16) {
-    console.warn(
-      `⚠️ [Profiler] Slow render detected: ${id} took ${actualDuration.toFixed(2)}ms (> 16ms)`
-    );
-  }
-};
-
-// ──────────────────────────────────────────────────────────────────────────────
 
 // Extract line items from order (with legacy migration)
 function extractLineItems(order: Order) {
@@ -118,8 +75,6 @@ function extractLineItems(order: Order) {
  * - Customer editing logic → useOrderEditing hook
  * - Status actions logic → useOrderStatusActions hook
  * - UI sections → 6 modular components
- * 
- * NOTE: Temporarily wrapped with React.Profiler for Phase 4 Task 4.1
  */
 export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }: TrackingOrderDetailsProps) {
   const isMounted = useIsMounted();
@@ -246,7 +201,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const dialogContent = (
+  return (
     <>
       {/* Unsaved Changes Dialog */}
       <AlertDialog
@@ -286,12 +241,12 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           
           {/* Network Status Banner */}
-          <Profiler id="NetworkStatusBanner" onRender={onRenderCallback}>
-            <NetworkStatusBanner className="mb-6" />
-          </Profiler>
+          <div className="mb-6">
+            <NetworkStatusBanner />
+          </div>
 
           {/* Header */}
-          <Profiler id="OrderDetailsHeader" onRender={onRenderCallback}>
+          <div className="mb-6">
             <OrderDetailsHeader
               orderNumber={order.orderNumber}
               customerName={order.customerName}
@@ -301,10 +256,10 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
               editForm={editForm}
               onEditFormChange={handleEditFormChange}
             />
-          </Profiler>
+          </div>
 
           {/* Customer Details */}
-          <Profiler id="CustomerDetailsSection" onRender={onRenderCallback}>
+          <div className="mb-6">
             <CustomerDetailsSection
               isEditing={isEditing}
               onStartEdit={() => setIsEditing(true)}
@@ -320,10 +275,10 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
               onPhoneBlur={handlePhoneBlur}
               addressInputRef={addressInputRef}
             />
-          </Profiler>
+          </div>
 
           {/* Order Items */}
-          <Profiler id="OrderItemsSection" onRender={onRenderCallback}>
+          <div className="mb-6">
             <OrderItemsSection
               orderId={order._id}
               lineItems={lineItems}
@@ -337,58 +292,43 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
               quantity={order.quantity}
               totalAmount={order.totalAmount}
             />
-          </Profiler>
+          </div>
 
-          {/* Call History & Status Timeline */}
-          <Profiler id="OrderTimelinesSection" onRender={onRenderCallback}>
-            <OrderTimelinesSection
-              callLog={callLog}
-              statusHistory={statusHistory}
-              courierTrackingId={(order as any).courierTrackingId}
-              showCallLog={effectiveStatus === "new" || effectiveStatus === "hold" || callLog.length > 0}
-              showStatusHistory={statusHistory.length > 0}
-            />
-          </Profiler>
+          {/* Call History & Status Timeline - Last section, no margin */}
+          <OrderTimelinesSection
+            callLog={callLog}
+            statusHistory={statusHistory}
+            courierTrackingId={(order as any).courierTrackingId}
+            showCallLog={effectiveStatus === "new" || effectiveStatus === "hold" || callLog.length > 0}
+            showStatusHistory={statusHistory.length > 0}
+          />
         </div>
 
         {/* Fixed Bottom Action Bar */}
-        <Profiler id="StatusActionBar" onRender={onRenderCallback}>
-          <StatusActionBar
-            effectiveStatus={effectiveStatus}
-            callAttempts={callAttempts}
-            showNoCallWarning={showNoCallWarning}
-            showCancelConfirm={showCancelConfirm}
-            showNoteInput={showNoteInput}
-            pendingOutcome={pendingOutcome}
-            callNote={callNote}
-            isLoggingCall={isLoggingCall}
-            onConfirmClick={handleConfirmClick}
-            onConfirmAnyway={handleConfirmAnyway}
-            onStatusChange={handleStatusChange}
-            onDispatchClick={handleDispatchClick}
-            onStartEdit={() => setIsEditing(true)}
-            onPrintLabel={handlePrintLabel}
-            onSetShowCancelConfirm={setShowCancelConfirm}
-            onOutcomeClick={handleOutcomeClick}
-            onCallNoteChange={setCallNote}
-            onCancelNote={handleCancelNote}
-            onLogCall={handleLogCall}
-            orderId={order._id}
-            cancelReason={(order as any).cancelReason}
-          />
-        </Profiler>
+        <StatusActionBar
+          effectiveStatus={effectiveStatus}
+          callAttempts={callAttempts}
+          showNoCallWarning={showNoCallWarning}
+          showCancelConfirm={showCancelConfirm}
+          showNoteInput={showNoteInput}
+          pendingOutcome={pendingOutcome}
+          callNote={callNote}
+          isLoggingCall={isLoggingCall}
+          onConfirmClick={handleConfirmClick}
+          onConfirmAnyway={handleConfirmAnyway}
+          onStatusChange={handleStatusChange}
+          onDispatchClick={handleDispatchClick}
+          onStartEdit={() => setIsEditing(true)}
+          onPrintLabel={handlePrintLabel}
+          onSetShowCancelConfirm={setShowCancelConfirm}
+          onOutcomeClick={handleOutcomeClick}
+          onCallNoteChange={setCallNote}
+          onCancelNote={handleCancelNote}
+          onLogCall={handleLogCall}
+          orderId={order._id}
+          cancelReason={(order as any).cancelReason}
+        />
       </div>
     </>
   );
-
-  // Wrap entire component with Profiler for overall metrics
-  if (PROFILING_ENABLED) {
-    return (
-      <Profiler id="TrackingOrderDetails" onRender={onRenderCallback}>
-        {dialogContent}
-      </Profiler>
-    );
-  }
-
-  return dialogContent;
 }
