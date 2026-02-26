@@ -37,6 +37,8 @@ interface CustomerDetailsSectionProps {
  * - Phone number (with DZ formatting)
  * - Address (street, commune, wilaya)
  * - Order notes
+ * 
+ * Phase 5: Standardized card padding (p-6) and button spacing (gap-3)
  */
 export function CustomerDetailsSection({
   isEditing,
@@ -55,7 +57,7 @@ export function CustomerDetailsSection({
 }: CustomerDetailsSectionProps) {
   return (
     <>
-      <section className="mb-10" aria-labelledby="customer-heading">
+      <section aria-labelledby="customer-heading">
         <div className="flex items-center justify-between mb-4">
           <h3
             id="customer-heading"
@@ -72,7 +74,7 @@ export function CustomerDetailsSection({
               <Edit2 className="w-4 h-4" />
             </button>
           ) : (
-            <div className="flex gap-1">
+            <div className="flex gap-3">
               <button
                 onClick={onSave}
                 className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
@@ -165,7 +167,7 @@ export function CustomerDetailsSection({
 
       {/* Notes Section */}
       {(isEditing || notes) && (
-        <section className="mb-10" aria-labelledby="notes-heading">
+        <section aria-labelledby="notes-heading" className="mt-6">
           <h3
             id="notes-heading"
             className="text-[14px] font-semibold text-[#3A3A3A] uppercase tracking-wider mb-4"
