@@ -39,6 +39,7 @@ import {
   Package,
   Truck,
   CheckCircle2,
+  User,
 } from "lucide-react";
 import { Order } from "./tracking-kanban-board";
 
@@ -82,6 +83,7 @@ function formatDZPhone(raw: string): string {
 // Build the form snapshot from a live order object
 function orderToForm(order: Order) {
   return {
+    customerName:    order.customerName    ?? "",
     customerPhone:   order.customerPhone   ?? "",
     customerAddress: order.customerAddress ?? "",
     customerWilaya:  order.customerWilaya  ?? "",
@@ -252,6 +254,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    order.customerName,
     order.customerPhone,
     order.customerAddress,
     order.customerWilaya,
@@ -298,6 +301,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
 
   // Detect unsaved changes
   const hasUnsavedChanges = isEditing && (
+    editForm.customerName    !== (order.customerName    ?? "") ||
     editForm.customerPhone   !== (order.customerPhone   ?? "") ||
     editForm.customerAddress !== (order.customerAddress ?? "") ||
     editForm.customerWilaya  !== (order.customerWilaya  ?? "") ||
@@ -506,9 +510,20 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
               <Clock className="w-3.5 h-3.5" />
               {format(order._creationTime, "MMM d, yyyy 'at' HH:mm")}
             </div>
-            <h2 className="text-[28px] font-bold text-[#3A3A3A] leading-tight mb-1">
-              {order.customerName}
-            </h2>
+            {isEditing ? (
+              <input
+                type="text"
+                value={editForm.customerName}
+                onChange={e => setEditForm(p => ({ ...p, customerName: e.target.value }))}
+                aria-label="Customer Name"
+                className="text-[28px] font-bold text-[#3A3A3A] leading-tight mb-1 bg-white border border-[#ECECEC] rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-[#AAAAAA] w-full"
+                placeholder="Customer Name"
+              />
+            ) : (
+              <h2 className="text-[28px] font-bold text-[#3A3A3A] leading-tight mb-1">
+                {order.customerName}
+              </h2>
+            )}
             <div className="inline-flex items-center gap-2 bg-[#F7F7F7] px-3 py-1.5 rounded-full border border-[#ECECEC]">
               <span className="text-[13px] font-mono font-bold text-[#3A3A3A] tracking-tight">
                 {order.orderNumber}
