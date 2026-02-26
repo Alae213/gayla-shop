@@ -111,7 +111,7 @@ function extractLineItems(order: Order) {
       unitPrice: order.productPrice ?? 0,
       variants: Object.keys(variants).length > 0 ? variants : undefined,
       lineTotal: (order.quantity ?? 1) * (order.productPrice ?? 0),
-      thumbnail: undefined, // Legacy orders don't have thumbnails
+      thumbnail: undefined,
     }];
   }
   
@@ -237,9 +237,15 @@ function CallAttemptsBar({ attempts, max = 2 }: { attempts: number; max?: number
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// ── Main Component ────────────────────────────────────────────────────────────────────
 export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }: TrackingOrderDetailsProps) {
   const isMounted = useIsMounted();
+  // Capture isMounted in a ref so it is never a useEffect dependency.
+  // useIsMounted() returns a new function reference on every render;
+  // putting it in deps would re-fire the effect every render → infinite loop.
+  const isMountedRef = useRef(isMounted);
+  useEffect(() => { isMountedRef.current = isMounted; });
+
   const [isEditing, setIsEditing]           = useState(false);
   const [callNote, setCallNote]             = useState("");
   const [showNoteInput, setShowNoteInput]   = useState(false);
@@ -254,11 +260,15 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
   // Initialise form from order
   const [editForm, setEditForm] = useState(() => orderToForm(order));
 
-  // ── FIX: Re-sync editForm when order changes, but only when NOT editing
+  // Re-sync editForm when the live order data changes from Convex,
+  // but only when the user is NOT actively editing.
+  // isMounted is intentionally accessed via ref — it must NOT be a dep
+  // because useIsMounted() returns a new function reference every render.
   useEffect(() => {
-    if (!isEditing && isMounted()) {
+    if (!isEditing && isMountedRef.current()) {
       setEditForm(orderToForm(order));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     order.customerPhone,
     order.customerAddress,
@@ -266,7 +276,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     order.customerCommune,
     order.notes,
     isEditing,
-    isMounted,
+    // isMounted intentionally omitted — accessed via isMountedRef
   ]);
 
   const updateCustomerInfo = useMutation(api.orders.updateCustomerInfo);
@@ -308,7 +318,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     if (onRegisterRequestClose) {
       onRegisterRequestClose(handleRequestClose);
     }
-    // Cleanup function - important to prevent memory leaks
     return () => {
       if (onRegisterRequestClose) {
         onRegisterRequestClose(() => {});
@@ -316,24 +325,24 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     };
   }, [handleRequestClose, onRegisterRequestClose]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // ── Handlers ────────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
     try {
       await updateCustomerInfo({ id: order._id, ...editForm });
-      if (isMounted()) {
+      if (isMountedRef.current()) {
         setIsEditing(false);
         toast.success("Order updated");
       }
     } catch {
-      if (isMounted()) {
+      if (isMountedRef.current()) {
         toast.error("Failed to update order");
       }
     }
   };
 
   const handleDiscard = () => {
-    setEditForm(orderToForm(order)); // restore to current server state
+    setEditForm(orderToForm(order));
     setIsEditing(false);
   };
 
@@ -341,17 +350,17 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     setPendingOutcome(outcome);
     setShowNoteInput(true);
     setCallNote("");
-    setShowNoCallWarning(false); // dismiss warning when operator picks an outcome
+    setShowNoCallWarning(false);
   };
 
   const handleUndoCancel = async () => {
     try {
       await resetCallAttempts({ id: order._id });
-      if (isMounted()) {
+      if (isMountedRef.current()) {
         toast.success("Order restored to New");
       }
     } catch {
-      if (isMounted()) {
+      if (isMountedRef.current()) {
         toast.error("Failed to restore order");
       }
     }
@@ -367,7 +376,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
         ...(callNote.trim() ? { note: callNote.trim() } : {}),
       });
 
-      if (!isMounted()) return;
+      if (!isMountedRef.current()) return;
 
       const meta = OUTCOME_META[pendingOutcome];
 
@@ -390,11 +399,11 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
       setPendingOutcome(null);
       setCallNote("");
     } catch {
-      if (isMounted()) {
+      if (isMountedRef.current()) {
         toast.error("Failed to log call");
       }
     } finally {
-      if (isMounted()) {
+      if (isMountedRef.current()) {
         setIsLoggingCall(false);
       }
     }
@@ -409,12 +418,12 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
   const handleStatusChange = async (newStatus: MVPStatus, reason?: string) => {
     try {
       await updateStatus({ id: order._id, status: newStatus, reason });
-      if (isMounted()) {
+      if (isMountedRef.current()) {
         toast.success(`Order marked as ${newStatus}`);
         if (newStatus === "canceled") onClose();
       }
     } catch {
-      if (isMounted()) {
+      if (isMountedRef.current()) {
         toast.error("Failed to update status");
       }
     }
@@ -444,18 +453,18 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
       return;
     }
     await handleStatusChange("packaged", "Sent to courier");
-    if (isMounted()) {
+    if (isMountedRef.current()) {
       toast.success("Order sent to Yalidin");
     }
   };
 
   const handleLineItemsSaveSuccess = (newTotal: number) => {
-    if (isMounted()) {
+    if (isMountedRef.current()) {
       toast.success(`Order total updated: ${newTotal.toLocaleString()} DZD`);
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <>
       {/* Unsaved Changes Dialog */}
@@ -622,7 +631,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             </div>
           </section>
 
-          {/* Line Items Editor (NEW) */}
+          {/* Line Items Editor */}
           {lineItems.length > 0 && (
             <section className="mb-10" aria-labelledby="line-items-heading">
               <OrderLineItemsEditor
@@ -631,7 +640,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
                 initialDeliveryCost={order.deliveryCost ?? 0}
                 wilaya={order.customerWilaya ?? ""}
                 deliveryType={(order.deliveryType as "Stopdesk" | "Domicile") ?? "Stopdesk"}
-                adminName="Admin" // TODO: Pass actual admin name from context
+                adminName="Admin"
                 onSaveSuccess={handleLineItemsSaveSuccess}
               />
             </section>
