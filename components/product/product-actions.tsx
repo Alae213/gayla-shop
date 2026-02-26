@@ -70,7 +70,8 @@ export function ProductActions({ product }: ProductActionsProps) {
             ))}
           </div>
         )}
-
+        {/* Order Form (existing direct checkout) */}
+        <OrderForm product={product} />
         {/* Add to Cart Button */}
         <AddToCartButton
           productId={product._id}
@@ -85,18 +86,6 @@ export function ProductActions({ product }: ProductActionsProps) {
           className="w-full"
         />
 
-        {/* Divider */}
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-system-200" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-system-300">Or</span>
-          </div>
-        </div>
-
-        {/* Order Form (existing direct checkout) */}
-        <OrderForm product={product} />
       </div>
 
       {/* Cart Side Panel */}

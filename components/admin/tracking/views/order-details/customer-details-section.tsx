@@ -27,7 +27,7 @@ interface CustomerDetailsSectionProps {
   onEditFormChange: (field: string, value: string) => void;
   onPhoneBlur: (value: string) => void;
   
-  addressInputRef?: React.RefObject<HTMLInputElement>;
+  addressInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
 /**

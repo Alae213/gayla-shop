@@ -71,13 +71,13 @@ export function LineItemRow({
     <>
       <div
         className={cn(
-          "flex items-center gap-4 p-5 border border-[#ECECEC] rounded-xl bg-white transition-colors",
+          "flex items-start gap-6 p-6 border border-[#ECECEC] rounded-xl bg-white transition-colors hover:shadow-sm",
           isProductDeleted && "bg-gray-50 border-gray-300",
           (disabled || isRemoving) && "opacity-60"
         )}
       >
         {/* Thumbnail */}
-        <div className="relative w-16 h-16 rounded-md overflow-hidden shrink-0 bg-[#F5F5F5] border border-[#ECECEC]">
+        <div className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0 bg-[#F5F5F5] border border-[#ECECEC] shadow-sm">
           {item.thumbnail && !imageError ? (
             <Image
               src={item.thumbnail}
@@ -111,19 +111,19 @@ export function LineItemRow({
         </div>
 
         {/* Product Info & Variant Selector */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start gap-2 mb-2">
+        <div className="flex-1 min-w-0 pr-4">
+          <div className="flex items-start justify-between mb-3">
             <h4
               className={cn(
-                "text-[16px] font-semibold text-[#3A3A3A] leading-[1.4]",
+                "text-[17px] font-semibold text-[#2C2C2C] leading-[1.3] flex-1 mr-3",
                 isProductDeleted && "text-gray-500 line-through"
               )}
             >
               {item.productName}
             </h4>
             {isProductDeleted && (
-              <div className="flex items-center gap-1 text-[11px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md shrink-0">
-                <AlertTriangle className="w-3 h-3" />
+              <div className="flex items-center gap-1.5 text-[11px] text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full shrink-0 font-medium">
+                <AlertTriangle className="w-3.5 h-3.5" />
                 <span>Deleted</span>
               </div>
             )}
@@ -131,19 +131,21 @@ export function LineItemRow({
 
           {/* Variant Selector */}
           {!isProductDeleted && (
-            <VariantSelectorDropdown
-              productId={item.productId}
-              currentVariant={item.variants ?? {}}
-              onChange={onVariantChange}
-              disabled={disabled || isRemoving}
-            />
+            <div className="mb-3">
+              <VariantSelectorDropdown
+                productId={item.productId}
+                currentVariant={item.variants ?? {}}
+                onChange={onVariantChange}
+                disabled={disabled || isRemoving}
+              />
+            </div>
           )}
           {isProductDeleted && item.variants && (
-            <div className="flex flex-wrap gap-1.5 mt-1">
+            <div className="flex flex-wrap gap-2">
               {Object.entries(item.variants).map(([key, value]) => (
                 <span
                   key={key}
-                  className="inline-flex items-center px-2 py-1 text-[11px] font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-md"
+                  className="inline-flex items-center px-3 py-1.5 text-[12px] font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg"
                 >
                   {key}: {value}
                 </span>
@@ -152,41 +154,49 @@ export function LineItemRow({
           )}
         </div>
 
-        {/* Quantity Stepper */}
-        <QuantityStepper
-          value={item.quantity}
-          onChange={handleQuantityChange}
-          disabled={disabled || isRemoving}
-          min={1}
-          max={99}
-        />
+        {/* Quantity & Price Container */}
+        <div className="flex items-center gap-6 shrink-0">
+          {/* Quantity Stepper */}
+          <div className="flex flex-col items-center">
+            <span className="text-[11px] font-medium text-[#666666] uppercase tracking-wider mb-2">Qty</span>
+            <QuantityStepper
+              value={item.quantity}
+              onChange={handleQuantityChange}
+              disabled={disabled || isRemoving}
+              min={1}
+              max={99}
+            />
+          </div>
 
-        {/* Line Total */}
-        <div className="flex flex-col items-end gap-1 w-32 shrink-0">
-          <span className="text-[17px] font-bold text-[#3A3A3A]">
-            {calculatedLineTotal.toLocaleString()} DZD
-          </span>
-          <span className="text-[12px] text-[#888888] font-medium">
-            {item.unitPrice.toLocaleString()} × {item.quantity}
-          </span>
+          {/* Line Total */}
+          <div className="flex flex-col items-end gap-1.5 min-w-[120px]">
+            <span className="text-[18px] font-bold text-[#2C2C2C]">
+              {calculatedLineTotal.toLocaleString()} DZD
+            </span>
+            <span className="text-[12px] text-[#888888] font-medium text-right">
+              {item.unitPrice.toLocaleString()} × {item.quantity}
+            </span>
+          </div>
         </div>
 
         {/* Remove Button */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => setShowRemoveDialog(true)}
-          disabled={disabled || isRemoving}
-          className="shrink-0 hover:bg-rose-50 hover:text-rose-600"
-          aria-label={`Remove ${item.productName}`}
-        >
-          {isRemoving ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Trash2 className="w-4 h-4" />
-          )}
-        </Button>
+        <div className="flex flex-col items-center justify-start">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowRemoveDialog(true)}
+            disabled={disabled || isRemoving}
+            className="shrink-0 hover:bg-rose-50 hover:text-rose-600 h-9 w-9 rounded-lg transition-all"
+            aria-label={`Remove ${item.productName}`}
+          >
+            {isRemoving ? (
+              <Loader2 className="w-4.5 h-4.5 animate-spin" />
+            ) : (
+              <Trash2 className="w-4.5 h-4.5" />
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Remove Confirmation Dialog */}
