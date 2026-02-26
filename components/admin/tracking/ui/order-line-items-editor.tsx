@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { Plus, Save, X, Loader2 } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -37,65 +37,82 @@ export function OrderLineItemsEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
 
+  // Keep a ref of initial values so we can compare without them being deps
+  const initialLineItemsRef = useRef(initialLineItems);
+  const initialDeliveryCostRef = useRef(initialDeliveryCost);
+
   const updateLineItemsMutation = useMutation(api.orders.updateLineItems);
 
   // Detect if changes have been made
-  const hasChanges = React.useMemo(() => {
-    if (lineItems.length !== initialLineItems.length) return true;
-    return JSON.stringify(lineItems) !== JSON.stringify(initialLineItems) ||
-           deliveryCost !== initialDeliveryCost;
-  }, [lineItems, initialLineItems, deliveryCost, initialDeliveryCost]);
+  const hasChanges = useMemo(() => {
+    if (lineItems.length !== initialLineItemsRef.current.length) return true;
+    return (
+      JSON.stringify(lineItems) !== JSON.stringify(initialLineItemsRef.current) ||
+      deliveryCost !== initialDeliveryCostRef.current
+    );
+  }, [lineItems, deliveryCost]);
 
-  // Calculate subtotal and total
-  const subtotal = React.useMemo(
+  const subtotal = useMemo(
     () => lineItems.reduce((sum, item) => sum + item.lineTotal, 0),
     [lineItems]
   );
   const total = subtotal + deliveryCost;
 
-  // Auto-recalculate delivery cost when line items change (with AbortSignal)
-  useAbortableEffect((signal) => {
-    const recalc = async () => {
-      // Only recalc if lineItems changed and not initial load
-      if (!hasChanges || lineItems.length === 0) return;
+  // Auto-recalculate delivery cost when line items change.
+  // IMPORTANT: do NOT include hasChanges in deps — it is computed from lineItems
+  // and would cause a secondary re-run every time deliveryCost is set.
+  useAbortableEffect(
+    (signal) => {
+      // Skip recalc on initial mount (nothing changed yet)
+      const isInitial =
+        JSON.stringify(lineItems) ===
+        JSON.stringify(initialLineItemsRef.current);
+      if (isInitial || lineItems.length === 0) return;
 
-      setIsRecalculating(true);
-      try {
-        const newCost = await recalculateDeliveryCost(
-          wilaya,
-          deliveryType,
-          lineItems,
-          deliveryCost, // fallback
-          signal
-        );
-        
-        // Check if still mounted and not aborted
-        if (!signal.aborted && newCost !== deliveryCost) {
-          setDeliveryCost(newCost);
-          toast.info(`Delivery cost updated: ${newCost.toLocaleString()} DZD`);
+      const recalc = async () => {
+        setIsRecalculating(true);
+        try {
+          const newCost = await recalculateDeliveryCost(
+            wilaya,
+            deliveryType,
+            lineItems,
+            deliveryCost,
+            signal
+          );
+          if (!signal.aborted && newCost !== deliveryCost) {
+            setDeliveryCost(newCost);
+            toast.info(`Delivery cost updated: ${newCost.toLocaleString()} DZD`);
+          }
+        } catch (error) {
+          if (error instanceof AbortError) {
+            // silently ignore
+          } else {
+            console.error("Delivery cost recalculation failed:", error);
+          }
+        } finally {
+          if (!signal.aborted) setIsRecalculating(false);
         }
-      } catch (error) {
-        // Silently ignore abort errors
-        if (error instanceof AbortError) {
-          console.log("Delivery recalculation cancelled");
-        } else {
-          console.error("Delivery cost recalculation failed:", error);
-        }
-      } finally {
-        if (!signal.aborted) {
-          setIsRecalculating(false);
-        }
-      }
-    };
+      };
 
-    // Debounce: only recalc after 1 second of no changes
-    const timeout = setTimeout(recalc, 1000);
-    return () => clearTimeout(timeout);
-  }, [lineItems, wilaya, deliveryType, hasChanges]);
+      const timeout = setTimeout(recalc, 1000);
+      return () => clearTimeout(timeout);
+    },
+    // deliveryCost intentionally excluded — we only want to recalc when
+    // lineItems / wilaya / deliveryType change, not when deliveryCost itself
+    // changes (that would create a feedback loop).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lineItems, wilaya, deliveryType]
+  );
 
-  // Handlers
+  // ── Stable handlers ──────────────────────────────────────────────────────
+  // Using the functional updater form (prev => ...) means these callbacks
+  // do NOT need lineItems in their closure, so they never re-create on each
+  // render. This breaks the loop:
+  //   onVariantChange prop changes → VariantSelectorDropdown re-renders
+  //   → Select fires onValueChange → setLineItems → re-render → repeat
+
   const handleQuantityChange = useCallback((index: number, quantity: number) => {
-    setLineItems(prev => {
+    setLineItems((prev) => {
       const updated = [...prev];
       updated[index] = {
         ...updated[index],
@@ -106,20 +123,29 @@ export function OrderLineItemsEditor({
     });
   }, []);
 
-  const handleVariantChange = useCallback((index: number, variant: Record<string, string>) => {
-    setLineItems(prev => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], variants: variant };
-      return updated;
-    });
-  }, []);
+  const handleVariantChange = useCallback(
+    (index: number, variant: Record<string, string>) => {
+      setLineItems((prev) => {
+        const updated = [...prev];
+        // Only update if variant actually changed to avoid unnecessary renders
+        if (
+          JSON.stringify(updated[index].variants) === JSON.stringify(variant)
+        ) {
+          return prev; // Return same reference — no re-render
+        }
+        updated[index] = { ...updated[index], variants: variant };
+        return updated;
+      });
+    },
+    []
+  );
 
   const handleRemove = useCallback((index: number) => {
-    setLineItems(prev => prev.filter((_, i) => i !== index));
+    setLineItems((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   const handleAddProduct = useCallback((newItem: LineItem) => {
-    setLineItems(prev => [...prev, newItem]);
+    setLineItems((prev) => [...prev, newItem]);
     toast.success(`Added ${newItem.productName}`);
     setShowAddProductModal(false);
   }, []);
@@ -129,7 +155,6 @@ export function OrderLineItemsEditor({
       toast.error("Order must have at least one product");
       return;
     }
-
     setIsSaving(true);
     try {
       const result = await updateLineItemsMutation({
@@ -137,7 +162,6 @@ export function OrderLineItemsEditor({
         lineItems,
         adminName,
       });
-
       toast.success("Order items updated");
       onSaveSuccess?.(result.newTotalAmount);
     } catch (error) {
@@ -149,8 +173,8 @@ export function OrderLineItemsEditor({
   };
 
   const handleDiscard = () => {
-    setLineItems(initialLineItems);
-    setDeliveryCost(initialDeliveryCost);
+    setLineItems(initialLineItemsRef.current);
+    setDeliveryCost(initialDeliveryCostRef.current);
     toast.info("Changes discarded");
   };
 
@@ -177,19 +201,20 @@ export function OrderLineItemsEditor({
       {/* Line Items */}
       <div className="space-y-3">
         {lineItems.map((item, index) => (
-          <LineItemRow
+          <MemoizedLineItemRow
             key={`${item.productId}-${index}`}
             item={item}
-            onQuantityChange={(qty) => handleQuantityChange(index, qty)}
-            onVariantChange={(variant) => handleVariantChange(index, variant)}
-            onRemove={() => handleRemove(index)}
+            index={index}
+            onQuantityChange={handleQuantityChange}
+            onVariantChange={handleVariantChange}
+            onRemove={handleRemove}
             disabled={isSaving}
           />
         ))}
 
         {lineItems.length === 0 && (
           <div className="flex items-center justify-center p-8 border-2 border-dashed border-[#ECECEC] rounded-xl text-[#AAAAAA] text-[13px]">
-            No items. Click "Add Product" to start.
+            No items. Click &ldquo;Add Product&rdquo; to start.
           </div>
         )}
       </div>
@@ -248,7 +273,6 @@ export function OrderLineItemsEditor({
         </div>
       )}
 
-      {/* TODO: Add Product Modal Integration */}
       {showAddProductModal && (
         <div className="text-[13px] text-amber-600 p-4 bg-amber-50 rounded-lg border border-amber-200">
           <strong>Note:</strong> Add Product modal integration pending.
@@ -258,3 +282,55 @@ export function OrderLineItemsEditor({
     </section>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MemoizedLineItemRow
+// Wraps LineItemRow and accepts stable index-based callbacks instead of
+// inline arrow functions. React.memo ensures it only re-renders when item
+// data or the disabled flag actually changes.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface MemoizedLineItemRowProps {
+  item: LineItem;
+  index: number;
+  onQuantityChange: (index: number, quantity: number) => void;
+  onVariantChange: (index: number, variant: Record<string, string>) => void;
+  onRemove: (index: number) => void;
+  disabled: boolean;
+}
+
+const MemoizedLineItemRow = React.memo(
+  function MemoizedLineItemRowInner({
+    item,
+    index,
+    onQuantityChange,
+    onVariantChange,
+    onRemove,
+    disabled,
+  }: MemoizedLineItemRowProps) {
+    // These callbacks are stable because onQuantityChange etc. never change
+    // (they are useCallback with [] deps in the parent).
+    const handleQty = useCallback(
+      (qty: number) => onQuantityChange(index, qty),
+      [onQuantityChange, index]
+    );
+    const handleVariant = useCallback(
+      (variant: Record<string, string>) => onVariantChange(index, variant),
+      [onVariantChange, index]
+    );
+    const handleRemoveCb = useCallback(
+      () => onRemove(index),
+      [onRemove, index]
+    );
+
+    return (
+      <LineItemRow
+        item={item}
+        onQuantityChange={handleQty}
+        onVariantChange={handleVariant}
+        onRemove={handleRemoveCb}
+        disabled={disabled}
+      />
+    );
+  }
+);
