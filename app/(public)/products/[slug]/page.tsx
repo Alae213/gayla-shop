@@ -73,7 +73,9 @@ export default function ProductDetailPage() {
       </nav>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
-        <div className="space-y-4">
+        {/* Left Column: Images + Description */}
+        <div className="space-y-6">
+          {/* Main Image */}
           <div className="aspect-square relative overflow-hidden rounded-2xl bg-system-100 group">
             {currentImage ? (
               <Image
@@ -92,6 +94,7 @@ export default function ProductDetailPage() {
             )}
           </div>
 
+          {/* Thumbnail Gallery */}
           {product.images && product.images.length > 1 && (
             <div className="grid grid-cols-5 gap-2">
               {product.images.map((image, index) => (
@@ -117,9 +120,21 @@ export default function ProductDetailPage() {
               ))}
             </div>
           )}
+
+          {/* Description - now below images */}
+          {product.description && (
+            <div className="pt-4 border-t border-system-200">
+              <h2 className="text-lg font-bold text-system-400 mb-3">Description</h2>
+              <div
+                className="prose prose-sm max-w-none text-system-300 leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: product.description }}
+              />
+            </div>
+          )}
         </div>
 
-        <div className="space-y-8">
+        {/* Right Column: Title, Price, Actions */}
+        <div className="space-y-8 lg:sticky lg:top-24">
           <div className="space-y-3">
             {product.category && (
               <Badge variant="secondary" className="caption-text">
@@ -135,13 +150,6 @@ export default function ProductDetailPage() {
           </div>
 
           <div className="border-t border-system-200" />
-
-          {product.description && (
-            <div
-              className="prose prose-sm max-w-none text-system-300 leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: product.description }}
-            />
-          )}
 
           <ProductActions product={product} />
         </div>
