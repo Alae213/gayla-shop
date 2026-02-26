@@ -71,94 +71,100 @@ export function LineItemRow({
     <>
       <div
         className={cn(
-          "flex items-start gap-6 p-6 border border-[#ECECEC] rounded-xl bg-white transition-colors hover:shadow-sm",
+          "flex flex-col md:flex-row gap-4 md:gap-6 p-4 md:p-6 border border-[#ECECEC] rounded-xl bg-white transition-colors hover:shadow-sm",
           isProductDeleted && "bg-gray-50 border-gray-300",
           (disabled || isRemoving) && "opacity-60"
         )}
       >
-        {/* Thumbnail */}
-        <div className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0 bg-[#F5F5F5] border border-[#ECECEC] shadow-sm">
-          {item.thumbnail && !imageError ? (
-            <Image
-              src={item.thumbnail}
-              alt={item.productName || "Product"}
-              fill
-              className="object-cover"
-              sizes="64px"
-              placeholder="blur"
-              blurDataURL={generateShimmerDataURL(64, 64)}
-              loading="lazy"
-              quality={85}
-              onError={() => setImageError(true)}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-[#AAAAAA]">
-              <svg
-                className="w-8 h-8"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-            </div>
-          )}
-        </div>
-
-        {/* Product Info & Variant Selector */}
-        <div className="flex-1 min-w-0 pr-4">
-          <div className="flex items-start justify-between mb-3">
-            <h4
-              className={cn(
-                "text-[17px] font-semibold text-[#2C2C2C] leading-[1.3] flex-1 mr-3",
-                isProductDeleted && "text-gray-500 line-through"
-              )}
-            >
-              {item.productName}
-            </h4>
-            {isProductDeleted && (
-              <div className="flex items-center gap-1.5 text-[11px] text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full shrink-0 font-medium">
-                <AlertTriangle className="w-3.5 h-3.5" />
-                <span>Deleted</span>
+        {/* Row 1 Mobile / Left Desktop: Image + Product Name */}
+        <div className="flex items-start gap-3 md:gap-6">
+          {/* Thumbnail */}
+          <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden shrink-0 bg-[#F5F5F5] border border-[#ECECEC] shadow-sm">
+            {item.thumbnail && !imageError ? (
+              <Image
+                src={item.thumbnail}
+                alt={item.productName || "Product"}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 64px, 80px"
+                placeholder="blur"
+                blurDataURL={generateShimmerDataURL(64, 64)}
+                loading="lazy"
+                quality={85}
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-[#AAAAAA]">
+                <svg
+                  className="w-6 h-6 md:w-8 md:h-8"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
               </div>
             )}
           </div>
 
-          {/* Variant Selector */}
-          {!isProductDeleted && (
-            <div className="mb-3">
-              <VariantSelectorDropdown
-                productId={item.productId}
-                currentVariant={item.variants ?? {}}
-                onChange={onVariantChange}
-                disabled={disabled || isRemoving}
-              />
+          {/* Product Name */}
+          <div className="flex-1 min-w-0 md:flex-initial md:pr-4">
+            <div className="flex items-start gap-2">
+              <h4
+                className={cn(
+                  "text-[15px] md:text-[17px] font-semibold text-[#2C2C2C] leading-[1.3]",
+                  isProductDeleted && "text-gray-500 line-through"
+                )}
+              >
+                {item.productName}
+              </h4>
+              {isProductDeleted && (
+                <div className="flex items-center gap-1 md:gap-1.5 text-[10px] md:text-[11px] text-amber-600 bg-amber-50 px-2 md:px-2.5 py-0.5 md:py-1 rounded-full shrink-0 font-medium">
+                  <AlertTriangle className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                  <span>Deleted</span>
+                </div>
+              )}
             </div>
-          )}
-          {isProductDeleted && item.variants && (
-            <div className="flex flex-wrap gap-2">
+          </div>
+        </div>
+
+        {/* Row 2 Mobile / Middle Desktop: Variant Selector */}
+        {!isProductDeleted && (
+          <div className="w-full md:flex-1 md:min-w-0">
+            <VariantSelectorDropdown
+              productId={item.productId}
+              currentVariant={item.variants ?? {}}
+              onChange={onVariantChange}
+              disabled={disabled || isRemoving}
+              className="w-full md:w-auto"
+            />
+          </div>
+        )}
+        {isProductDeleted && item.variants && (
+          <div className="w-full md:flex-1 md:min-w-0">
+            <div className="flex flex-wrap gap-1.5 md:gap-2">
               {Object.entries(item.variants).map(([key, value]) => (
                 <span
                   key={key}
-                  className="inline-flex items-center px-3 py-1.5 text-[12px] font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg"
+                  className="inline-flex items-center px-2 md:px-3 py-1 md:py-1.5 text-[11px] md:text-[12px] font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg"
                 >
                   {key}: {value}
                 </span>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Quantity & Price Container */}
-        <div className="flex items-center gap-6 shrink-0">
+        {/* Row 3 Mobile / Right Desktop: Quantity + Price + Remove */}
+        <div className="flex items-center justify-between md:justify-end gap-3 md:gap-6">
           {/* Quantity Stepper */}
-          <div className="flex flex-col items-center">
-            <span className="text-[11px] font-medium text-[#666666] uppercase tracking-wider mb-2">Qty</span>
+          <div className="flex flex-col items-center md:items-center">
+            <span className="text-[10px] md:text-[11px] font-medium text-[#666666] uppercase tracking-wider mb-1.5 md:mb-2">Qty</span>
             <QuantityStepper
               value={item.quantity}
               onChange={handleQuantityChange}
@@ -169,31 +175,29 @@ export function LineItemRow({
           </div>
 
           {/* Line Total */}
-          <div className="flex flex-col items-end gap-1.5 min-w-[120px]">
-            <span className="text-[18px] font-bold text-[#2C2C2C]">
+          <div className="flex flex-col items-end gap-1 md:gap-1.5 min-w-[100px] md:min-w-[120px]">
+            <span className="text-[16px] md:text-[18px] font-bold text-[#2C2C2C] whitespace-nowrap">
               {calculatedLineTotal.toLocaleString()} DZD
             </span>
-            <span className="text-[12px] text-[#888888] font-medium text-right">
+            <span className="text-[11px] md:text-[12px] text-[#888888] font-medium text-right whitespace-nowrap">
               {item.unitPrice.toLocaleString()} × {item.quantity}
             </span>
           </div>
-        </div>
 
-        {/* Remove Button */}
-        <div className="flex flex-col items-center justify-start">
+          {/* Remove Button */}
           <Button
             type="button"
             variant="ghost"
             size="icon"
             onClick={() => setShowRemoveDialog(true)}
             disabled={disabled || isRemoving}
-            className="shrink-0 hover:bg-rose-50 hover:text-rose-600 h-9 w-9 rounded-lg transition-all"
+            className="shrink-0 hover:bg-rose-50 hover:text-rose-600 h-9 w-9 md:h-10 md:w-10 rounded-lg transition-all"
             aria-label={`Remove ${item.productName}`}
           >
             {isRemoving ? (
-              <Loader2 className="w-4.5 h-4.5 animate-spin" />
+              <Loader2 className="w-4 h-4 md:w-4.5 md:h-4.5 animate-spin" />
             ) : (
-              <Trash2 className="w-4.5 h-4.5" />
+              <Trash2 className="w-4 h-4 md:w-4.5 md:h-4.5" />
             )}
           </Button>
         </div>
