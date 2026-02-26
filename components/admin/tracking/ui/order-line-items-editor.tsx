@@ -7,6 +7,7 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { LineItem, LineItemRow } from "./line-item-row";
+import { AddProductModal } from "./add-product-modal";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { recalculateDeliveryCost, AbortError } from "@/lib/utils/delivery-recalculator";
@@ -273,12 +274,12 @@ export function OrderLineItemsEditor({
         </div>
       )}
 
-      {showAddProductModal && (
-        <div className="text-[13px] text-amber-600 p-4 bg-amber-50 rounded-lg border border-amber-200">
-          <strong>Note:</strong> Add Product modal integration pending.
-          Use existing components/admin/add-product-modal.tsx.
-        </div>
-      )}
+      {/* Add Product Modal */}
+      <AddProductModal
+        open={showAddProductModal}
+        onClose={() => setShowAddProductModal(false)}
+        onAddProduct={handleAddProduct}
+      />
     </section>
   );
 }
