@@ -40,6 +40,7 @@ import {
   Truck,
   CheckCircle2,
   User,
+  FileText,
 } from "lucide-react";
 import { Order } from "./tracking-kanban-board";
 
@@ -642,6 +643,39 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
               </div>
             </div>
           </section>
+
+          {/* Notes Section */}
+          {(isEditing || order.notes) && (
+            <section className="mb-10" aria-labelledby="notes-heading">
+              <h3
+                id="notes-heading"
+                className="text-[14px] font-semibold text-[#3A3A3A] uppercase tracking-wider mb-4"
+              >
+                Notes
+              </h3>
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-[#F7F7F7] rounded-lg">
+                  <FileText className="w-4 h-4 text-[#AAAAAA]" />
+                </div>
+                <div className="flex-1">
+                  {isEditing ? (
+                    <textarea
+                      value={editForm.notes}
+                      onChange={e => setEditForm(p => ({ ...p, notes: e.target.value }))}
+                      placeholder="Add order notes..."
+                      rows={3}
+                      aria-label="Order Notes"
+                      className="w-full bg-white border border-[#ECECEC] rounded-md px-3 py-2 text-[15px] text-[#3A3A3A] placeholder-[#AAAAAA] resize-none focus:outline-none focus:ring-2 focus:ring-[#AAAAAA] leading-relaxed"
+                    />
+                  ) : (
+                    <p className="text-[15px] text-[#3A3A3A] leading-relaxed whitespace-pre-wrap">
+                      {order.notes}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Line Items Editor */}
           {lineItems.length > 0 && (
