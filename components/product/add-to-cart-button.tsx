@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/use-cart";
 import { VariantSelection } from "@/lib/types/cart";
 import { toast } from "sonner";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 interface AddToCartButtonProps {
   productId: Id<"products">;
@@ -40,6 +42,9 @@ export function AddToCartButton({
 }: AddToCartButtonProps) {
   const { addItem, canAdd } = useCart();
   const [isAdding, setIsAdding] = useState(false);
+  
+  // Fetch product to get variant groups for auto-selection
+  const product = useQuery(api.products.getById, { id: productId });
 
   // Hide button for non-active products
   if (status !== "Active") {
@@ -47,26 +52,37 @@ export function AddToCartButton({
   }
 
   const handleAddToCart = async () => {
-    // Validate variant selection
-    if (hasVariants && Object.keys(variants).length === 0) {
-      toast.error("Please select all product variants");
-      return;
-    }
-
-    // Check cart limit
+    // Check cart limit first
     if (!canAdd) {
       toast.error("Cart is full (maximum 10 items)");
       return;
     }
 
+    // Auto-select default variants if user hasn't selected any
+    let finalVariants = variants;
+    
+    if (hasVariants && Object.keys(variants).length === 0 && product?.variantGroups) {
+      // Auto-pick first enabled value from each variant group
+      finalVariants = {};
+      for (const group of product.variantGroups) {
+        const firstEnabled = group.values
+          .filter((v) => v.enabled)
+          .sort((a, b) => a.order - b.order)[0];
+        
+        if (firstEnabled) {
+          finalVariants[group.name] = firstEnabled.label;
+        }
+      }
+    }
+
     setIsAdding(true);
 
     try {
-      addItem(productId, slug, name, price, variants, thumbnail, 1);
+      addItem(productId, slug, name, price, finalVariants, thumbnail, 1);
       
       toast.success("Added to cart", {
-        description: hasVariants
-          ? `${name} (${Object.entries(variants)
+        description: hasVariants && Object.keys(finalVariants).length > 0
+          ? `${name} (${Object.entries(finalVariants)
               .map(([k, v]) => `${k}: ${v}`)
               .join(", ")})`
           : name,
@@ -87,7 +103,7 @@ export function AddToCartButton({
   return (
     <Button
       onClick={handleAddToCart}
-      disabled={isAdding}
+      disabled={isAdding || !product}
       size="lg"
       className={className}
     >
