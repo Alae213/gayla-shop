@@ -71,7 +71,7 @@ export function LineItemRow({
     <>
       <div
         className={cn(
-          "flex items-center gap-4 p-4 border border-[#ECECEC] rounded-xl bg-white transition-colors",
+          "flex items-center gap-4 p-5 border border-[#ECECEC] rounded-xl bg-white transition-colors",
           isProductDeleted && "bg-gray-50 border-gray-300",
           (disabled || isRemoving) && "opacity-60"
         )}
@@ -115,7 +115,7 @@ export function LineItemRow({
           <div className="flex items-start gap-2 mb-2">
             <h4
               className={cn(
-                "text-[14px] font-medium text-[#3A3A3A] leading-snug",
+                "text-[16px] font-semibold text-[#3A3A3A] leading-[1.4]",
                 isProductDeleted && "text-gray-500 line-through"
               )}
             >
@@ -139,10 +139,15 @@ export function LineItemRow({
             />
           )}
           {isProductDeleted && item.variants && (
-            <div className="text-[12px] text-gray-500 italic">
-              {Object.entries(item.variants)
-                .map(([key, value]) => `${key}: ${value}`)
-                .join(", ")}
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {Object.entries(item.variants).map(([key, value]) => (
+                <span
+                  key={key}
+                  className="inline-flex items-center px-2 py-1 text-[11px] font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-md"
+                >
+                  {key}: {value}
+                </span>
+              ))}
             </div>
           )}
         </div>
@@ -157,11 +162,11 @@ export function LineItemRow({
         />
 
         {/* Line Total */}
-        <div className="flex flex-col items-end gap-1 w-28 shrink-0">
-          <span className="text-[15px] font-bold text-[#3A3A3A]">
+        <div className="flex flex-col items-end gap-1 w-32 shrink-0">
+          <span className="text-[17px] font-bold text-[#3A3A3A]">
             {calculatedLineTotal.toLocaleString()} DZD
           </span>
-          <span className="text-[11px] text-[#AAAAAA]">
+          <span className="text-[12px] text-[#888888] font-medium">
             {item.unitPrice.toLocaleString()} × {item.quantity}
           </span>
         </div>
