@@ -521,9 +521,12 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
                 placeholder="Customer Name"
               />
             ) : (
-              <h2 className="text-[28px] font-bold text-[#3A3A3A] leading-tight mb-1">
-                {order.customerName}
-              </h2>
+              <div className="flex items-center gap-2 mb-1">
+                <User className="w-6 h-6 text-[#AAAAAA]" />
+                <h2 className="text-[28px] font-bold text-[#3A3A3A] leading-tight">
+                  {order.customerName}
+                </h2>
+              </div>
             )}
             <div className="inline-flex items-center gap-2 bg-[#F7F7F7] px-3 py-1.5 rounded-full border border-[#ECECEC]">
               <span className="text-[13px] font-mono font-bold text-[#3A3A3A] tracking-tight">
