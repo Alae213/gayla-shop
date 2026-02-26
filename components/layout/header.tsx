@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ShoppingBag, ShoppingCart, Menu, X } from "lucide-react";
 import { useState } from "react";
+import { useCart } from "@/hooks/use-cart";
+import { CartSidePanel } from "@/components/cart/cart-side-panel";
 
 const NAV_LINKS = [
   { href: "/products", label: "Shop" },
@@ -14,75 +16,91 @@ const NAV_LINKS = [
 export function Header() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+  const { items } = useCart();
+  
+  // Badge count = number of distinct cart lines (not total quantity)
+  const cartLineCount = items.length;
 
   return (
-    <header className="border-b sticky top-0 z-50 bg-white/80 backdrop-blur-md">
-      <div className="page-container flex h-16 items-center justify-between gap-4">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 shrink-0">
-          <ShoppingBag className="h-6 w-6 text-brand-200" />
-          <span className="font-extrabold text-lg tracking-tight text-system-400">Gayla</span>
-        </Link>
+    <>
+      <header className="border-b sticky top-0 z-50 bg-white/80 backdrop-blur-md">
+        <div className="page-container flex h-16 items-center justify-between gap-4">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 shrink-0">
+            <ShoppingBag className="h-6 w-6 text-brand-200" />
+            <span className="font-extrabold text-lg tracking-tight text-system-400">Gayla</span>
+          </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-6">
-          {NAV_LINKS.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className={`caption-text font-semibold transition-colors ${
-                pathname === href || pathname.startsWith(href + "/")
-                  ? "text-brand-200"
-                  : "text-system-300 hover:text-system-400"
-              }`}
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
-
-        {/* Right side */}
-        <div className="flex items-center gap-3">
-          {/* Cart icon */}
-          <button
-            aria-label="Cart"
-            className="relative p-2 rounded-lg hover:bg-system-100 transition-colors text-system-400"
-          >
-            <ShoppingCart className="h-5 w-5" />
-          </button>
-
-          {/* Mobile menu toggle */}
-          <button
-            aria-label={mobileOpen ? "Close menu" : "Open menu"}
-            onClick={() => setMobileOpen((o) => !o)}
-            className="md:hidden p-2 rounded-lg hover:bg-system-100 transition-colors text-system-400"
-          >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile dropdown */}
-      {mobileOpen && (
-        <div className="md:hidden border-t bg-white">
-          <nav className="page-container py-4 flex flex-col gap-1">
+          {/* Desktop nav */}
+          <nav className="hidden md:flex items-center gap-6">
             {NAV_LINKS.map(({ href, label }) => (
               <Link
                 key={href}
                 href={href}
-                onClick={() => setMobileOpen(false)}
-                className={`py-3 px-2 rounded-lg body-text font-semibold transition-colors ${
+                className={`caption-text font-semibold transition-colors ${
                   pathname === href || pathname.startsWith(href + "/")
-                    ? "text-brand-200 bg-primary-50"
-                    : "text-system-400 hover:bg-system-50"
+                    ? "text-brand-200"
+                    : "text-system-300 hover:text-system-400"
                 }`}
               >
                 {label}
               </Link>
             ))}
           </nav>
+
+          {/* Right side */}
+          <div className="flex items-center gap-3">
+            {/* Cart icon with badge */}
+            <button
+              onClick={() => setCartOpen(true)}
+              aria-label="Cart"
+              className="relative p-2 rounded-lg hover:bg-system-100 transition-colors text-system-400"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {cartLineCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-brand-200 text-white text-xs font-bold flex items-center justify-center">
+                  {cartLineCount > 9 ? "9+" : cartLineCount}
+                </span>
+              )}
+            </button>
+
+            {/* Mobile menu toggle */}
+            <button
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              onClick={() => setMobileOpen((o) => !o)}
+              className="md:hidden p-2 rounded-lg hover:bg-system-100 transition-colors text-system-400"
+            >
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
-      )}
-    </header>
+
+        {/* Mobile dropdown */}
+        {mobileOpen && (
+          <div className="md:hidden border-t bg-white">
+            <nav className="page-container py-4 flex flex-col gap-1">
+              {NAV_LINKS.map(({ href, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`py-3 px-2 rounded-lg body-text font-semibold transition-colors ${
+                    pathname === href || pathname.startsWith(href + "/")
+                      ? "text-brand-200 bg-primary-50"
+                      : "text-system-400 hover:bg-system-50"
+                  }`}
+                >
+                  {label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+        )}
+      </header>
+
+      {/* Cart Side Panel */}
+      <CartSidePanel open={cartOpen} onOpenChange={setCartOpen} />
+    </>
   );
 }
