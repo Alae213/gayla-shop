@@ -242,8 +242,8 @@ export function OrderLineItemsEditor({
         </Button>
       </div>
 
-      {/* Line Items */}
-      <div className="space-y-3">
+      {/* Line Items - Improved spacing */}
+      <div className="space-y-4">
         {lineItems.map((item, index) => (
           <MemoizedLineItemRow
             key={`${item.productId}-${index}`}
