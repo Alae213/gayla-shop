@@ -6,7 +6,7 @@
  */
 
 import { useRouter } from "next/navigation";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, Loader2 } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -27,7 +27,7 @@ interface CartSidePanelProps {
 
 export function CartSidePanel({ open, onOpenChange }: CartSidePanelProps) {
   const router = useRouter();
-  const { items, itemCount, subtotal, isEmpty } = useCart();
+  const { items, itemCount, subtotal, isEmpty, isLoaded } = useCart();
 
   const handleBuyNow = () => {
     onOpenChange(false);
@@ -41,20 +41,28 @@ export function CartSidePanel({ open, onOpenChange }: CartSidePanelProps) {
           <SheetTitle className="flex items-center gap-2">
             <ShoppingBag className="w-5 h-5" />
             Your Cart
-            {!isEmpty && (
+            {!isEmpty && isLoaded && (
               <span className="text-sm font-normal text-muted-foreground">
                 ({itemCount} {itemCount === 1 ? "item" : "items"})
               </span>
             )}
           </SheetTitle>
           <SheetDescription>
-            {isEmpty
+            {!isLoaded
+              ? "Loading..."
+              : isEmpty
               ? "Your shopping cart is empty"
               : "Review your items before checkout"}
           </SheetDescription>
         </SheetHeader>
 
-        {isEmpty ? (
+        {!isLoaded ? (
+          /* Loading State */
+          <div className="flex-1 flex flex-col items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground">Loading cart...</p>
+          </div>
+        ) : isEmpty ? (
           /* Empty State */
           <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
             <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
