@@ -7,8 +7,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { CartItem, formatVariants } from "@/lib/types/cart";
+import { Trash2 } from "lucide-react";
+import { CartItem } from "@/lib/types/cart";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useCart } from "@/hooks/use-cart";
 import { cn } from "@/lib/utils";
 
 interface CartItemCardProps {
@@ -17,12 +20,17 @@ interface CartItemCardProps {
 }
 
 export function CartItemCard({ item, className }: CartItemCardProps) {
+  const { removeItem } = useCart();
   const hasVariants = Object.keys(item.variants).length > 0;
+
+  const handleRemove = () => {
+    removeItem(item.productId, item.variants);
+  };
 
   return (
     <div
       className={cn(
-        "flex gap-3 py-3 border-b last:border-b-0",
+        "flex gap-3 py-3 border-b last:border-b-0 relative group",
         className
       )}
     >
@@ -50,7 +58,7 @@ export function CartItemCard({ item, className }: CartItemCardProps) {
       <div className="flex-1 min-w-0">
         <Link
           href={`/products/${item.slug}`}
-          className="font-medium text-sm hover:underline line-clamp-2 mb-1"
+          className="font-medium text-sm hover:underline line-clamp-2 mb-1 pr-8"
         >
           {item.name}
         </Link>
@@ -90,6 +98,17 @@ export function CartItemCard({ item, className }: CartItemCardProps) {
           </span>
         </div>
       </div>
+
+      {/* Remove Button */}
+      <Button
+        onClick={handleRemove}
+        variant="ghost"
+        size="icon"
+        className="absolute top-2 right-0 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
+        aria-label="Remove from cart"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
     </div>
   );
 }
