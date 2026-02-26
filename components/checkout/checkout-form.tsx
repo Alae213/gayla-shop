@@ -311,9 +311,9 @@ export function CheckoutForm() {
             </div>
           )}
 
-          <Separator />
+          <Separator className="my-6" />
 
-          {/* Order Summary */}
+          {/* Order Summary - Now before button */}
           <div className="space-y-3">
             <h3 className="font-semibold">Order Summary</h3>
             <div className="space-y-2 text-sm">
@@ -343,7 +343,7 @@ export function CheckoutForm() {
             </div>
           </div>
 
-          {/* Submit Button */}
+          {/* Submit Button - Moved to bottom */}
           <Button
             type="submit"
             className="w-full"
@@ -356,7 +356,7 @@ export function CheckoutForm() {
                 Placing Order...
               </>
             ) : (
-              `Place Order (${items.length} ${items.length === 1 ? "item" : "items"})`
+              `Confirm Order (${totalAmount.toLocaleString("fr-DZ")} DA)`
             )}
           </Button>
 
