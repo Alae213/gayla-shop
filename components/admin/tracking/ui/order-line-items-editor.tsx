@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useState, useCallback, useMemo, useRef } from "react";
-import { Plus, Save, X, Loader2 } from "lucide-react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { Plus, Save, X, Loader2, Check } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -36,7 +36,9 @@ export function OrderLineItemsEditor({
   const [deliveryCost, setDeliveryCost] = useState(initialDeliveryCost);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [lastSavedState, setLastSavedState] = useState({ lineItems: initialLineItems, deliveryCost: initialDeliveryCost });
 
   // Keep a ref of initial values so we can compare without them being deps
   const initialLineItemsRef = useRef(initialLineItems);
@@ -46,12 +48,12 @@ export function OrderLineItemsEditor({
 
   // Detect if changes have been made
   const hasChanges = useMemo(() => {
-    if (lineItems.length !== initialLineItemsRef.current.length) return true;
+    if (lineItems.length !== lastSavedState.lineItems.length) return true;
     return (
-      JSON.stringify(lineItems) !== JSON.stringify(initialLineItemsRef.current) ||
-      deliveryCost !== initialDeliveryCostRef.current
+      JSON.stringify(lineItems) !== JSON.stringify(lastSavedState.lineItems) ||
+      deliveryCost !== lastSavedState.deliveryCost
     );
-  }, [lineItems, deliveryCost]);
+  }, [lineItems, deliveryCost, lastSavedState]);
 
   const subtotal = useMemo(
     () => lineItems.reduce((sum, item) => sum + item.lineTotal, 0),
@@ -82,7 +84,6 @@ export function OrderLineItemsEditor({
           );
           if (!signal.aborted && newCost !== deliveryCost) {
             setDeliveryCost(newCost);
-            toast.info(`Delivery cost updated: ${newCost.toLocaleString()} DZD`);
           }
         } catch (error) {
           if (error instanceof AbortError) {
@@ -104,6 +105,33 @@ export function OrderLineItemsEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [lineItems, wilaya, deliveryType]
   );
+
+  // Auto-save with 800ms debounce
+  useEffect(() => {
+    if (!hasChanges || lineItems.length === 0) return;
+
+    const autoSave = async () => {
+      setIsAutoSaving(true);
+      try {
+        const result = await updateLineItemsMutation({
+          id: orderId,
+          lineItems,
+          adminName,
+        });
+        setLastSavedState({ lineItems, deliveryCost });
+        onSaveSuccess?.(result.newTotalAmount);
+      } catch (error) {
+        console.error("Auto-save failed:", error);
+        toast.error("Auto-save failed");
+      } finally {
+        setIsAutoSaving(false);
+      }
+    };
+
+    const timeout = setTimeout(autoSave, 800);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lineItems, deliveryCost]);
 
   // ── Stable handlers ──────────────────────────────────────────────────────
   // Using the functional updater form (prev => ...) means these callbacks
@@ -163,6 +191,7 @@ export function OrderLineItemsEditor({
         lineItems,
         adminName,
       });
+      setLastSavedState({ lineItems, deliveryCost });
       toast.success("Order items updated");
       onSaveSuccess?.(result.newTotalAmount);
     } catch (error) {
@@ -174,8 +203,8 @@ export function OrderLineItemsEditor({
   };
 
   const handleDiscard = () => {
-    setLineItems(initialLineItemsRef.current);
-    setDeliveryCost(initialDeliveryCostRef.current);
+    setLineItems(lastSavedState.lineItems);
+    setDeliveryCost(lastSavedState.deliveryCost);
     toast.info("Changes discarded");
   };
 
@@ -183,15 +212,29 @@ export function OrderLineItemsEditor({
     <section className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-[14px] font-semibold text-[#3A3A3A] uppercase tracking-wider">
-          Order Items
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-[14px] font-semibold text-[#3A3A3A] uppercase tracking-wider">
+            Order Items
+          </h3>
+          {isAutoSaving && (
+            <div className="flex items-center gap-1.5 text-[11px] text-[#AAAAAA] animate-in fade-in">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>Saving...</span>
+            </div>
+          )}
+          {!hasChanges && !isAutoSaving && lastSavedState.lineItems.length > 0 && (
+            <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 animate-in fade-in">
+              <Check className="w-3 h-3" />
+              <span>Saved</span>
+            </div>
+          )}
+        </div>
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={() => setShowAddProductModal(true)}
-          disabled={isSaving}
+          disabled={isSaving || isAutoSaving}
           className="gap-2 h-8 text-[13px]"
         >
           <Plus className="w-4 h-4" />
@@ -209,7 +252,7 @@ export function OrderLineItemsEditor({
             onQuantityChange={handleQuantityChange}
             onVariantChange={handleVariantChange}
             onRemove={handleRemove}
-            disabled={isSaving}
+            disabled={isSaving || isAutoSaving}
           />
         ))}
 
@@ -245,14 +288,14 @@ export function OrderLineItemsEditor({
         </div>
       </div>
 
-      {/* Save/Discard Buttons */}
+      {/* Save/Discard Buttons (shown only when there are pending changes) */}
       {hasChanges && (
         <div className="flex gap-3 pt-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <Button
             type="button"
             variant="outline"
             onClick={handleDiscard}
-            disabled={isSaving}
+            disabled={isSaving || isAutoSaving}
             className="flex-1 h-10"
           >
             <X className="w-4 h-4 mr-2" />
@@ -261,7 +304,7 @@ export function OrderLineItemsEditor({
           <Button
             type="button"
             onClick={handleSave}
-            disabled={isSaving || lineItems.length === 0}
+            disabled={isSaving || isAutoSaving || lineItems.length === 0}
             className="flex-[2] h-10 gap-2 bg-[#3A3A3A] hover:bg-[#2A2A2A]"
           >
             {isSaving ? (
@@ -269,7 +312,7 @@ export function OrderLineItemsEditor({
             ) : (
               <Save className="w-4 h-4" />
             )}
-            Save Changes
+            Save Now
           </Button>
         </div>
       )}
