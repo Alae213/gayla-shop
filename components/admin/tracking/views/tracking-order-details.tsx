@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { TrackingButton } from "../ui/tracking-button";
@@ -92,17 +92,13 @@ function orderToForm(order: Order) {
 
 // Extract line items from order (with legacy migration)
 function extractLineItems(order: Order) {
-  // If order has lineItems array, use it
   if (order.lineItems && order.lineItems.length > 0) {
     return order.lineItems;
   }
-  
-  // Legacy migration: convert single product to lineItems format
   if (order.productId && order.productName) {
     const variants: Record<string, string> = {};
     if (order.selectedVariant?.size) variants.size = order.selectedVariant.size;
     if (order.selectedVariant?.color) variants.color = order.selectedVariant.color;
-    
     return [{
       productId: order.productId,
       productName: order.productName,
@@ -114,7 +110,6 @@ function extractLineItems(order: Order) {
       thumbnail: undefined,
     }];
   }
-  
   return [];
 }
 
@@ -129,7 +124,6 @@ function OrderTimeline({ entries }: { entries: Array<{ status: string; timestamp
     blocked:   ShieldOff,
     hold:      PhoneForwarded,
   };
-
   return (
     <div className="relative space-y-4 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-[#ECECEC]">
       {[...entries].reverse().map((e, i) => {
@@ -141,9 +135,7 @@ function OrderTimeline({ entries }: { entries: Array<{ status: string; timestamp
             </div>
             <div className="flex flex-col">
               <span className="text-[13px] font-medium capitalize text-[#3A3A3A]">{e.status}</span>
-              {e.reason && (
-                <p className="text-[12px] text-[#AAAAAA] italic">{e.reason}</p>
-              )}
+              {e.reason && <p className="text-[12px] text-[#AAAAAA] italic">{e.reason}</p>}
               <span className="text-[11px] text-[#AAAAAA] mt-0.5">{format(e.timestamp, "MMM d, HH:mm")}</span>
             </div>
           </div>
@@ -156,9 +148,7 @@ function OrderTimeline({ entries }: { entries: Array<{ status: string; timestamp
 // Call History Timeline
 function CallLogHistory({ callLog }: { callLog: Array<{ timestamp: number; outcome: CallOutcome; note?: string }> }) {
   const [expanded, setExpanded] = useState(true);
-
   if (!callLog || callLog.length === 0) return null;
-
   return (
     <section className="mt-8 pt-6 border-t border-[#ECECEC]" aria-labelledby="call-log-heading">
       <button
@@ -177,7 +167,6 @@ function CallLogHistory({ callLog }: { callLog: Array<{ timestamp: number; outco
           ? <ChevronUp className="w-4 h-4 text-[#AAAAAA]" />
           : <ChevronDown className="w-4 h-4 text-[#AAAAAA]" />}
       </button>
-
       {expanded && (
         <div className="mt-4 space-y-4 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-[#ECECEC]">
           {[...callLog].reverse().map((entry, i) => {
@@ -191,9 +180,7 @@ function CallLogHistory({ callLog }: { callLog: Array<{ timestamp: number; outco
                 <div className="flex flex-col">
                   <div className="flex items-center justify-between">
                     <span className={`text-[13px] font-medium ${meta.color}`}>{meta.label}</span>
-                    <span className="text-[11px] text-[#AAAAAA]">
-                      {formatDistanceToNow(entry.timestamp, { addSuffix: true })}
-                    </span>
+                    <span className="text-[11px] text-[#AAAAAA]">{formatDistanceToNow(entry.timestamp, { addSuffix: true })}</span>
                   </div>
                   {entry.note && (
                     <p className="mt-1 text-[13px] text-[#555555] bg-white border border-[#ECECEC] rounded-lg p-2 italic leading-relaxed">
@@ -228,21 +215,19 @@ function CallAttemptsBar({ attempts, max = 2 }: { attempts: number; max?: number
           />
         ))}
       </div>
-      <span className={`text-[12px] font-bold font-mono ${
-        attempts >= max ? "text-rose-500" : "text-[#3A3A3A]"
-      }`}>
+      <span className={`text-[12px] font-bold font-mono ${attempts >= max ? "text-rose-500" : "text-[#3A3A3A]"}`}>
         {attempts}/{max}
       </span>
     </div>
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────────────
+// ── Main Component ────────────────────────────────────────────────────────────
 export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }: TrackingOrderDetailsProps) {
   const isMounted = useIsMounted();
-  // Capture isMounted in a ref so it is never a useEffect dependency.
-  // useIsMounted() returns a new function reference on every render;
-  // putting it in deps would re-fire the effect every render → infinite loop.
+  // isMounted() returns a new function reference on every render.
+  // Storing it in a ref prevents it from becoming a useEffect dependency
+  // and causing infinite re-render loops.
   const isMountedRef = useRef(isMounted);
   useEffect(() => { isMountedRef.current = isMounted; });
 
@@ -260,10 +245,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
   // Initialise form from order
   const [editForm, setEditForm] = useState(() => orderToForm(order));
 
-  // Re-sync editForm when the live order data changes from Convex,
-  // but only when the user is NOT actively editing.
-  // isMounted is intentionally accessed via ref — it must NOT be a dep
-  // because useIsMounted() returns a new function reference every render.
+  // Re-sync form when Convex pushes updated order data, but not while editing.
   useEffect(() => {
     if (!isEditing && isMountedRef.current()) {
       setEditForm(orderToForm(order));
@@ -276,7 +258,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     order.customerCommune,
     order.notes,
     isEditing,
-    // isMounted intentionally omitted — accessed via isMountedRef
+    // isMounted intentionally omitted — accessed via isMountedRef to avoid loop
   ]);
 
   const updateCustomerInfo = useMutation(api.orders.updateCustomerInfo);
@@ -292,8 +274,27 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
   const statusHistory: Array<{ status: string; timestamp: number; reason?: string }> =
     (order as any).statusHistory ?? [];
 
-  // Extract line items for editor
-  const lineItems = extractLineItems(order);
+  // CRITICAL: memoize the extracted line items so that OrderLineItemsEditor
+  // receives a stable array reference between renders. Without useMemo,
+  // extractLineItems() produces a new array object on every render — even if
+  // the underlying data didn't change — which causes OrderLineItemsEditor's
+  // useAbortableEffect to treat every render as "changed", triggering a
+  // delivery-cost recalculation that calls setDeliveryCost, which re-renders
+  // the parent, which calls extractLineItems again → infinite loop.
+  const lineItems = useMemo(
+    () => extractLineItems(order),
+    // Depend on the actual data fields that matter, not the order object reference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      order.lineItems,
+      order.productId,
+      order.productName,
+      order.productSlug,
+      order.quantity,
+      order.productPrice,
+      order.selectedVariant,
+    ]
+  );
 
   // Detect unsaved changes
   const hasUnsavedChanges = isEditing && (
@@ -325,7 +326,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     };
   }, [handleRequestClose, onRegisterRequestClose]);
 
-  // ── Handlers ────────────────────────────────────────────────────────────────────
+  // ── Handlers ─────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
     try {
@@ -375,11 +376,8 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
         outcome: pendingOutcome,
         ...(callNote.trim() ? { note: callNote.trim() } : {}),
       });
-
       if (!isMountedRef.current()) return;
-
       const meta = OUTCOME_META[pendingOutcome];
-
       if (result.autoCanceled) {
         toast.error(`Order canceled — ${meta.label.toLowerCase()}`, {
           description: result.cancelReason,
@@ -394,7 +392,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
       } else {
         toast.success(`✓ ${meta.label} logged`);
       }
-
       setShowNoteInput(false);
       setPendingOutcome(null);
       setCallNote("");
@@ -464,7 +461,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
       {/* Unsaved Changes Dialog */}
@@ -712,7 +709,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             </section>
           )}
 
-          {/* Courier tracking link (shipped) */}
+          {/* Courier tracking link */}
           {effectiveStatus === "shipped" && (order as any).courierTrackingId && (
             <a
               href={`https://yalidin.com/track/${(order as any).courierTrackingId}`}
@@ -728,66 +725,38 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
         {/* Fixed Bottom Action Bar */}
         <div className="p-6 bg-white border-t border-[#ECECEC] shadow-[0_-8px_32px_rgba(0,0,0,0.04)] z-20">
 
-          {/* NEW — Call logging panel */}
           {effectiveStatus === "new" && !showNoteInput && (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <CallAttemptsBar attempts={callAttempts} />
-
               {showNoCallWarning && (
                 <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-800 text-[13px] mb-3 animate-in fade-in">
                   <TriangleAlert className="w-4 h-4 shrink-0" />
                   <span>No call logged yet. Confirm anyway?</span>
-                  <button
-                    onClick={handleConfirmAnyway}
-                    className="ml-auto font-bold underline whitespace-nowrap"
-                  >
+                  <button onClick={handleConfirmAnyway} className="ml-auto font-bold underline whitespace-nowrap">
                     Confirm
                   </button>
                 </div>
               )}
-
               <div className="grid grid-cols-2 gap-2">
-                <TrackingButton
-                  variant="secondary"
-                  onClick={() => handleOutcomeClick("answered")}
-                  className="gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-                >
+                <TrackingButton variant="secondary" onClick={() => handleOutcomeClick("answered")} className="gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
                   <PhoneCall className="w-4 h-4" /> Answered
                 </TrackingButton>
-                <TrackingButton
-                  variant="secondary"
-                  onClick={() => handleOutcomeClick("no answer")}
-                  className="gap-1.5 text-amber-600 border-amber-200 hover:bg-amber-50"
-                >
+                <TrackingButton variant="secondary" onClick={() => handleOutcomeClick("no answer")} className="gap-1.5 text-amber-600 border-amber-200 hover:bg-amber-50">
                   <PhoneMissed className="w-4 h-4" /> No Answer
                 </TrackingButton>
-                <TrackingButton
-                  variant="secondary"
-                  onClick={() => handleOutcomeClick("wrong number")}
-                  className="gap-1.5 text-orange-600 border-orange-200 hover:bg-orange-50"
-                >
+                <TrackingButton variant="secondary" onClick={() => handleOutcomeClick("wrong number")} className="gap-1.5 text-orange-600 border-orange-200 hover:bg-orange-50">
                   <PhoneForwarded className="w-4 h-4" /> Wrong Number
                 </TrackingButton>
-                <TrackingButton
-                  variant="secondary"
-                  onClick={() => handleOutcomeClick("refused")}
-                  className="gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50"
-                >
+                <TrackingButton variant="secondary" onClick={() => handleOutcomeClick("refused")} className="gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50">
                   <PhoneOff className="w-4 h-4" /> Refused
                 </TrackingButton>
               </div>
-
-              <TrackingButton
-                variant="primary"
-                onClick={handleConfirmClick}
-                className="w-full gap-2 mt-2 h-12 text-[15px]"
-              >
+              <TrackingButton variant="primary" onClick={handleConfirmClick} className="w-full gap-2 mt-2 h-12 text-[15px]">
                 <Check className="w-5 h-5" /> Confirm Order
               </TrackingButton>
             </div>
           )}
 
-          {/* Note input overlay */}
           {effectiveStatus === "new" && showNoteInput && pendingOutcome && (
             <div className="space-y-4 animate-in zoom-in-95 duration-200">
               <div className="relative group">
@@ -810,15 +779,8 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
                 />
               </div>
               <div className="flex gap-2">
-                <TrackingButton variant="secondary" onClick={handleCancelNote} className="flex-1">
-                  Cancel
-                </TrackingButton>
-                <TrackingButton
-                  variant="primary"
-                  onClick={handleLogCall}
-                  disabled={isLoggingCall}
-                  className="flex-[2] gap-2 h-11"
-                >
+                <TrackingButton variant="secondary" onClick={handleCancelNote} className="flex-1">Cancel</TrackingButton>
+                <TrackingButton variant="primary" onClick={handleLogCall} disabled={isLoggingCall} className="flex-[2] gap-2 h-11">
                   {isLoggingCall
                     ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     : <Check className="w-4 h-4" aria-hidden="true" />}
@@ -828,66 +790,35 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             </div>
           )}
 
-          {/* HOLD — Wrong number state */}
           {effectiveStatus === "hold" && (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="flex items-center gap-2 p-3 bg-orange-50 rounded-xl border border-orange-200 text-orange-700 text-[13px]">
                 <PhoneForwarded className="w-4 h-4 shrink-0" />
                 Wrong number — please correct the phone number below, then resume.
               </div>
-              <TrackingButton
-                variant="secondary"
-                onClick={() => setIsEditing(true)}
-                className="w-full gap-2 h-11 border-orange-200 text-orange-600 hover:bg-orange-50"
-              >
+              <TrackingButton variant="secondary" onClick={() => setIsEditing(true)} className="w-full gap-2 h-11 border-orange-200 text-orange-600 hover:bg-orange-50">
                 <Edit2 className="w-4 h-4" /> Edit Phone Number
               </TrackingButton>
-              <TrackingButton
-                variant="primary"
-                onClick={() => handleStatusChange("new", "Resumed from wrong number hold")}
-                className="w-full gap-2 h-11"
-              >
+              <TrackingButton variant="primary" onClick={() => handleStatusChange("new", "Resumed from wrong number hold")} className="w-full gap-2 h-11">
                 <ArrowRight className="w-4 h-4" /> Resume as New
               </TrackingButton>
             </div>
           )}
 
-          {/* CONFIRMED — Dispatch */}
           {effectiveStatus === "confirmed" && (
             <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
               {showCancelConfirm ? (
                 <div className="space-y-3 p-4 bg-rose-50 rounded-xl border border-rose-200 animate-in zoom-in-95">
                   <p className="text-[13px] text-rose-700 font-medium">Cancel this order?</p>
                   <div className="flex gap-2">
-                    <TrackingButton
-                      variant="secondary"
-                      onClick={() => setShowCancelConfirm(false)}
-                      className="flex-1"
-                    >
-                      Keep it
-                    </TrackingButton>
-                    <TrackingButton
-                      onClick={() => { setShowCancelConfirm(false); handleStatusChange("canceled"); }}
-                      className="flex-1 bg-rose-600 hover:bg-rose-700 text-white"
-                    >
-                      Yes, cancel
-                    </TrackingButton>
+                    <TrackingButton variant="secondary" onClick={() => setShowCancelConfirm(false)} className="flex-1">Keep it</TrackingButton>
+                    <TrackingButton onClick={() => { setShowCancelConfirm(false); handleStatusChange("canceled"); }} className="flex-1 bg-rose-600 hover:bg-rose-700 text-white">Yes, cancel</TrackingButton>
                   </div>
                 </div>
               ) : (
                 <div className="flex gap-3">
-                  <TrackingButton
-                    variant="secondary"
-                    onClick={() => setShowCancelConfirm(true)}
-                    className="flex-1 text-rose-600 hover:bg-rose-50 h-12"
-                  >
-                    Cancel
-                  </TrackingButton>
-                  <TrackingButton
-                    variant="primary"
-                    onClick={handleDispatchClick}
-                    className="flex-[2] gap-2 h-12"
-                  >
+                  <TrackingButton variant="secondary" onClick={() => setShowCancelConfirm(true)} className="flex-1 text-rose-600 hover:bg-rose-50 h-12">Cancel</TrackingButton>
+                  <TrackingButton variant="primary" onClick={handleDispatchClick} className="flex-[2] gap-2 h-12">
                     Send to Yalidin <ArrowRight className="w-5 h-5" aria-hidden="true" />
                   </TrackingButton>
                 </div>
@@ -895,27 +826,15 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             </div>
           )}
 
-          {/* PACKAGED — Print & Ship */}
           {effectiveStatus === "packaged" && (
             <div className="flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <TrackingButton
-                variant="secondary"
-                onClick={() => window.open(`/api/labels/${order._id}`, "_blank")}
-                className="flex-[2] h-12"
-              >
-                Print Label
-              </TrackingButton>
-              <TrackingButton
-                variant="primary"
-                onClick={() => handleStatusChange("shipped")}
-                className="flex-1 gap-2 h-12"
-              >
+              <TrackingButton variant="secondary" onClick={() => window.open(`/api/labels/${order._id}`, "_blank")} className="flex-[2] h-12">Print Label</TrackingButton>
+              <TrackingButton variant="primary" onClick={() => handleStatusChange("shipped")} className="flex-1 gap-2 h-12">
                 Ship <ArrowRight className="w-5 h-5" aria-hidden="true" />
               </TrackingButton>
             </div>
           )}
 
-          {/* SHIPPED */}
           {effectiveStatus === "shipped" && (
             <div className="flex items-center gap-3 p-4 bg-emerald-50 rounded-2xl text-emerald-700 text-[14px] border border-emerald-100 font-medium animate-in fade-in zoom-in-95 duration-300">
               <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
@@ -925,7 +844,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             </div>
           )}
 
-          {/* BLOCKED / CANCELED */}
           {(effectiveStatus === "blocked" || effectiveStatus === "canceled") && (
             <div className="space-y-3">
               <div className="flex items-center gap-3 p-4 bg-rose-50 rounded-2xl text-rose-600 text-[14px] border border-rose-100 font-medium animate-in fade-in zoom-in-95 duration-300">
@@ -943,11 +861,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
                   </span>
                 </div>
               </div>
-              <TrackingButton
-                variant="secondary"
-                onClick={() => handleStatusChange("new", "Unblocked by admin")}
-                className="w-full gap-2 h-11 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
-              >
+              <TrackingButton variant="secondary" onClick={() => handleStatusChange("new", "Unblocked by admin")} className="w-full gap-2 h-11 text-emerald-600 border-emerald-200 hover:bg-emerald-50">
                 <ShieldOff className="w-4 h-4" /> Restore to New
               </TrackingButton>
             </div>
