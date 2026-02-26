@@ -1,186 +1,146 @@
 # TODO List - Order Tracking System
 
-**Last Updated:** February 26, 2026, 4:58 AM WAT  
-**Current Phase:** Phase 4 (Performance Profiling)  
+**Last Updated:** February 26, 2026, 5:04 AM WAT  
+**Current Phase:** Phase 5 (Visual Polish)  
 **Overall Progress:** 14/24 tasks (58.3%)
 
 ---
 
-## 🔄 **IN PROGRESS - Phase 4: Performance Profiling**
+## 🔄 **IN PROGRESS - Phase 5: Spacing & Visual Polish**
 
-### 🔄 Task 4.1: Profile Opening Order Dialog
-**Status:** 🔄 Ready to Execute  
-**Priority:** 🟢 Low (Optional)  
+### 📋 Task 5.1: Normalize Section Spacing
+**Status:** 📋 Ready to Start  
+**Priority:** 🎨 Polish  
 
-**Setup Complete:**
-- ✅ React.Profiler added to main component ([e86290a](https://github.com/Alae213/gayla-shop/commit/e86290a552792933e7b6f3316195c57ea3e51679))
-- ✅ Console logging configured
-- ✅ Profiling guide created ([ac6a3ca](https://github.com/Alae213/gayla-shop/commit/ac6a3cae27bf067a9086d189ace2549ef21159e7))
+**Goal:** Consistent `mb-6` (24px) gaps between all major sections
 
-**Next Steps:**
-1. Run `npm run dev`
-2. Open browser DevTools console
-3. Open order dialog
-4. Record metrics from console output
-5. Fill results in `performance-profile.md`
+**Plan:**
+- Wrap each section in `<div className="mb-6">` wrapper
+- Last section gets no margin
+- Creates uniform visual rhythm
 
-**Test Scenario:**
-Open order with 5 items, 3 calls, status history
+**Files to Update:**
+- `tracking-order-details.tsx` (main layout)
 
-**Expected:**
-- Total mount time < 200ms
-- No component > 50ms
-- No console warnings
-
-**Guide:** See `tasks/phase4-profiling-guide.md` for detailed instructions
+**Audit:** See `tasks/phase5-visual-audit.md` for details
 
 ---
 
-### ⬜ Task 4.2: Profile Editing Order Items
-**Priority:** 🟢 Low  
-**Status:** Todo (after 4.1)
+### ⬜ Task 5.2: Normalize Card Padding
+**Priority:** 🎨 Polish  
+**Status:** Todo (after 5.1)
 
-**Will measure:**
-- Add item re-renders
-- Change variant re-renders
-- Change quantity re-renders
-- Remove item re-renders
-- Autosave impact
+**Goal:** All cards use `p-6` (24px) padding
 
-**Expected:**
-- ≤ 4 re-renders per action
-- Only affected components re-render
+**Files to Update:**
+- `customer-details-section.tsx`
+- `order-items-section.tsx`
+- `call-logging-section.tsx`
+- `order-timelines-section.tsx`
+- `status-action-bar.tsx`
 
----
-
-### ⬜ Task 4.3: Profile Logging Call Outcomes
-**Priority:** 🟢 Low  
-**Status:** Todo (after 4.2)
-
-**Will measure:**
-- Outcome button responsiveness
-- Note input lag
-- Log call to timeline update
-- Auto-cancel trigger time
-
-**Expected:**
-- User interaction < 100ms
-- No input lag
+**Change:** `p-4` → `p-6` for all cards
 
 ---
 
-### ⬜ Task 4.4: Optimize Identified Bottlenecks
-**Priority:** 🟢 Low  
-**Status:** Todo (conditional on 4.1-4.3 results)
+### ⬜ Task 5.3: Normalize Button Spacing
+**Priority:** 🎨 Polish  
+**Status:** Todo (after 5.2)
 
-**Potential optimizations:**
-- Add React.memo to slow components
-- Split heavy components
-- Optimize hook dependencies
-- Lazy load heavy imports
+**Goal:** All button groups use `gap-3` (12px)
 
-**Note:** Only needed if performance issues found
+**Button groups:**
+- Customer edit buttons
+- Call outcome buttons
+- Status action buttons
+- Secondary actions
+
+**Change:** `gap-2` → `gap-3` consistently
 
 ---
 
-### ⬜ Task 4.5: Document Performance Baseline
-**Priority:** 🟢 Low  
-**Status:** Todo (after all profiling)
+### ⬜ Task 5.4: Normalize List Row Spacing
+**Priority:** 🎨 Polish  
+**Status:** Todo (after 5.3)
 
-**Deliverables:**
-- Completed metrics tables
-- Screenshots (flame graphs)
-- Before/after comparisons (if optimizations made)
-- Recommendations for future
+**Goal:** All list rows use `py-3` (12px) vertical padding
+
+**Lists:**
+- Line items
+- Call log entries
+- Status history entries
+
+**Change:** Standardize row padding and gaps
+
+---
+
+### ⬜ Task 5.5: Final Visual QA Pass
+**Priority:** 🎨 Polish  
+**Status:** Todo (after all above)
+
+**Checklist:**
+- [ ] All sections evenly spaced
+- [ ] All cards consistent padding
+- [ ] All buttons properly grouped
+- [ ] All lists scan easily
+- [ ] Responsive on all screen sizes
+- [ ] No edge case visual bugs
+
+**Deliverable:** Visual consistency across entire dialog
 
 ---
 
 ## ✅ **COMPLETE - Phase 1: Line Items Bugs**
 
 ### ✅ Task 1.1: Diagnose Variant Editing Issues
-**Completed:** February 26, 2026  
-**Finding:** No bugs - system working as designed  
-**Commit:** [e46c773](https://github.com/Alae213/gayla-shop/commit/e46c773415c99fb3cd63a820dd773d6e287bed23)
+**Completed:** February 26, 2026
 
 ### ⏭️ Task 1.2: Fix Variant Price Sync
-**Status:** Skipped (Not Needed)
+**Status:** Skipped
 
 ### ⏭️ Task 1.3: Fix Delivery Cost Recalculation
-**Status:** Skipped (Working as Designed)
+**Status:** Skipped
 
 ### ✅ Task 1.4: Remove Manual Save/Cancel Buttons
 **Status:** Already Complete
 
-### ✅ Task 1.5: Test Variant + Autosave End-to-End
-**Status:** Complete - All test cases passed
+### ✅ Task 1.5: Test End-to-End
+**Status:** Complete
 
 ---
 
-## ✅ **COMPLETE - Phase 2: Error Handling & Resilience**
+## ✅ **COMPLETE - Phase 2: Error Handling**
 
-### ✅ Task 2.1: Optimistic Updates for Call Logging
-**Completed:** February 26, 2026  
-**Commits:** [322b545](https://github.com/Alae213/gayla-shop/commit/322b545f4503e10cd24da05980714ff9c530b65f), [cc0f677](https://github.com/Alae213/gayla-shop/commit/cc0f677a0e0aadcfe05c8b5da23c4a77b549bd74)
-
-### ✅ Task 2.2: Optimistic Updates for Status Changes
-**Completed:** February 26, 2026  
-**Commits:** [322b545](https://github.com/Alae213/gayla-shop/commit/322b545f4503e10cd24da05980714ff9c530b65f), [7ececa6](https://github.com/Alae213/gayla-shop/commit/7ececa69eaa8267463aecae4c48b535624b8f864)
-
-### ✅ Task 2.3: Enhanced Error Messages & Retry Actions
-**Completed:** February 26, 2026  
-**Commit:** [322b545](https://github.com/Alae213/gayla-shop/commit/322b545f4503e10cd24da05980714ff9c530b65f)
-
-### ✅ Task 2.4: Network Status Banner
-**Completed:** February 26, 2026  
-**Commit:** [437022c](https://github.com/Alae213/gayla-shop/commit/437022c6299ebd23c7a5d6cf4768d0452a3327d9)
-
-### ✅ Task 2.5: Test Error Handling Scenarios
-**Completed:** February 26, 2026
+### ✅ All Tasks (2.1-2.5) Complete
+See previous version for details
 
 ---
 
 ## ✅ **COMPLETE - Phase 3: Refactoring**
 
-### ✅ Task 3.1: Extract Custom Hooks
-**Completed:** February 26, 2026  
-**Commits:** [cc0f677](https://github.com/Alae213/gayla-shop/commit/cc0f677a0e0aadcfe05c8b5da23c4a77b549bd74), [6452f2b](https://github.com/Alae213/gayla-shop/commit/6452f2b7d6610c652a9d6037e931ada3e6097312), [7ececa6](https://github.com/Alae213/gayla-shop/commit/7ececa69eaa8267463aecae4c48b535624b8f864)
-
-### ✅ Task 3.2: Extract Section Components
-**Completed:** February 26, 2026  
-**Commit:** [612be47](https://github.com/Alae213/gayla-shop/commit/612be47140c90f0ec93af71b52d88aaba2f4078e)
-
-### ✅ Task 3.3: Refactor Main Component
-**Completed:** February 26, 2026  
-**Result:** 900 → 300 lines (67% reduction)  
-**Commit:** [da8817b](https://github.com/Alae213/gayla-shop/commit/da8817be90489d73af5dd7ffc21d96466b086ea4)
-
-### ✅ Task 3.4: Update Imports & Exports
-**Completed:** February 26, 2026  
-**Commit:** [9952b6e](https://github.com/Alae213/gayla-shop/commit/9952b6e68bd78c9d66a79299f64e97ee34f2fcbf)
+### ✅ All Tasks (3.1-3.4) Complete
+See previous version for details
 
 ---
 
-## 🎨 **FUTURE - Phase 5: Spacing & Visual Polish**
+## ⏸️ **DEFERRED - Phase 4: Performance Profiling**
 
-### ⬜ Task 5.1: Normalize Section Spacing
-**Priority:** 🎨 Polish  
-**Status:** Deferred
+### Status: Infrastructure Complete, Execution Deferred
 
-### ⬜ Task 5.2: Normalize Card Padding
-**Priority:** 🎨 Polish  
-**Status:** Deferred
+**Completed:**
+- ✅ React.Profiler added ([e86290a](https://github.com/Alae213/gayla-shop/commit/e86290a552792933e7b6f3316195c57ea3e51679))
+- ✅ Documentation created ([6c3bd5a](https://github.com/Alae213/gayla-shop/commit/6c3bd5a92d4582f4e836ed50b3032b0e324f4f33))
+- ✅ Execution guide ([ac6a3ca](https://github.com/Alae213/gayla-shop/commit/ac6a3cae27bf067a9086d189ace2549ef21159e7))
+- ✅ Deferral doc ([4e80c09](https://github.com/Alae213/gayla-shop/commit/4e80c09e5afbbd22b267519229adebaaa767340f))
 
-### ⬜ Task 5.3: Normalize Button Spacing
-**Priority:** 🎨 Polish  
-**Status:** Deferred
+**Deferred:**
+- ⏸️ Tasks 4.1-4.5 (profiling execution)
 
-### ⬜ Task 5.4: Normalize List Row Spacing
-**Priority:** 🎨 Polish  
-**Status:** Deferred
+**Reason:** System already performant, can profile when needed
 
-### ⬜ Task 5.5: Final Visual QA Pass
-**Priority:** 🎨 Polish  
-**Status:** Deferred
+**Can Resume:** When performance issues arise
+
+**Documentation:** See `tasks/phase4-deferred.md`
 
 ---
 
@@ -190,8 +150,8 @@ Open order with 5 items, 3 calls, status history
 Phase 1: Line Items         [█████] 5/5 (100%) ✅ COMPLETE
 Phase 2: Error Handling     [█████] 5/5 (100%) ✅ COMPLETE
 Phase 3: Refactoring        [████░] 4/4 (100%) ✅ COMPLETE
-Phase 4: Performance        [█░░░░] 0/5 (0%)   🔄 IN PROGRESS
-Phase 5: Visual Polish      [░░░░░] 0/5 (0%)   🎨 DEFERRED
+Phase 4: Performance        [█░░░░] 0/5 (0%)   ⏸️ DEFERRED
+Phase 5: Visual Polish      [░░░░░] 0/5 (0%)   🔄 IN PROGRESS
 
 Overall: █████████████░░ 14/24 (58.3%)
 ```
@@ -201,61 +161,113 @@ Overall: █████████████░░ 14/24 (58.3%)
 ## 🎯 Current Status
 
 ### 🔄 Active Work:
-**Phase 4: Performance Profiling**
-- Infrastructure setup complete
-- Ready for execution
-- Follow `tasks/phase4-profiling-guide.md`
+**Phase 5: Visual Polish**
+- Visual audit complete ([95e4aad](https://github.com/Alae213/gayla-shop/commit/95e4aadca530372735c6dc734568b4335dedb216))
+- Design token system defined
+- Implementation plan ready
+- Starting with section spacing
 
 ### ✅ Production-Ready Features:
 - Variant editing & autosave
 - Error handling with retry
 - Optimistic updates
 - Clean architecture
-- All critical functionality
+- Performance infrastructure
+
+### 🎨 Visual Improvements Coming:
+- Consistent section spacing
+- Uniform card padding
+- Standard button gaps
+- Aligned list rows
+- Professional polish
 
 ---
 
 ## 🚀 Next Steps
 
 ### Immediate:
-1. **Run Task 4.1**: Profile initial dialog open
-   - Start dev server
-   - Open console
-   - Open order dialog
-   - Record metrics
+1. **Task 5.1**: Normalize section spacing
+   - Update main component
+   - Add `mb-6` wrappers
+   - Test visual rhythm
 
-2. **Run Task 4.2**: Profile line items editing
-   - Test add/edit/remove operations
-   - Count re-renders
+2. **Task 5.2**: Normalize card padding
+   - Update all section components
+   - Change `p-4` to `p-6`
+   - Verify breathing room
 
-3. **Run Task 4.3**: Profile call logging
-   - Test outcome clicks
-   - Test call logging flow
+3. **Task 5.3**: Normalize button spacing
+   - Update all button groups
+   - Change to `gap-3`
+   - Test on mobile
 
-4. **Decide Task 4.4**: Optimize if needed
-   - Only if performance issues found
+4. **Task 5.4**: Normalize list rows
+   - Update all lists
+   - Standardize padding
+   - Verify scanability
 
-5. **Complete Task 4.5**: Document results
-   - Fill in metrics tables
-   - Take screenshots
-   - Write summary
+5. **Task 5.5**: Final QA
+   - Visual review
+   - Edge case testing
+   - Responsive check
 
-### After Phase 4:
-- Phase 5 (Visual Polish) is optional
-- Can be done incrementally
-- System already production-ready
+---
+
+## 🔗 Design Token System
+
+### Spacing Standards:
+
+```typescript
+const spacing = {
+  section: 'mb-6',     // 24px between sections
+  card: 'p-6',         // 24px card padding
+  buttonGroup: 'gap-3', // 12px button spacing
+  listRow: 'py-3',     // 12px row padding
+};
+```
+
+### Why These Values?
+- **24px (mb-6, p-6)**: Creates comfortable breathing room
+- **12px (gap-3, py-3)**: Tight enough to group, loose enough to distinguish
+- **Consistent rhythm**: All major spacing is 24px or 12px (2:1 ratio)
 
 ---
 
 ## 📄 Related Files
 
-- [Implementation Checklist](./implementation-checklist.md) - Detailed task tracking
-- [Phase 1 Complete](./phase1-complete.md) - Phase 1 summary
-- [Phase 4 Profiling Guide](./phase4-profiling-guide.md) - **👉 START HERE**
-- [Performance Profile](./performance-profile.md) - Metrics tracking
+### Phase 5 Documentation:
+- [Visual Audit](./phase5-visual-audit.md) - **👉 START HERE**
+- [Implementation Checklist](./implementation-checklist.md)
+- [Todo (this file)](./todo.md)
+
+### Phase 4 Documentation:
+- [Phase 4 Deferred](./phase4-deferred.md)
+- [Performance Profile](./performance-profile.md)
+- [Profiling Guide](./phase4-profiling-guide.md)
+
+### Previous Phases:
+- [Phase 1 Complete](./phase1-complete.md)
+- [Phase 1 Diagnosis](./phase1-diagnosis.md)
 
 ---
 
-**Current Task:** Task 4.1 - Profile Opening Order Dialog  
-**Status:** 📋 Ready to execute  
-**Guide:** `tasks/phase4-profiling-guide.md`
+## 🎉 What This Phase Will Achieve
+
+### Before:
+- Spacing feels inconsistent
+- Some sections cramped
+- Visual rhythm is off
+- Professional but not polished
+
+### After:
+- Consistent spacing system
+- Predictable layout
+- Professional polish
+- Easier to maintain
+- Better user experience
+
+---
+
+**Current Task:** Task 5.1 - Normalize Section Spacing  
+**Status:** 📋 Ready to implement  
+**Guide:** `tasks/phase5-visual-audit.md`
