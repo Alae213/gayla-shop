@@ -7,6 +7,7 @@ import { api } from "@/convex/_generated/api";
 import { TrackingButton } from "../ui/tracking-button";
 import { StatusPill } from "../ui/status-pill";
 import { OrderLineItemsEditor } from "../ui/order-line-items-editor";
+import { NetworkStatusBanner } from "../ui/network-status-banner";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { useIsMounted } from "@/hooks/use-abortable-effect";
@@ -41,6 +42,7 @@ import {
   CheckCircle2,
   User,
   FileText,
+  RotateCcw,
 } from "lucide-react";
 import { Order } from "./tracking-kanban-board";
 
@@ -66,6 +68,8 @@ const OUTCOME_META: Record<CallOutcome, {
   "wrong number": { label: "Wrong Number", icon: PhoneForwarded, color: "text-orange-600",  bg: "bg-orange-50",  border: "border-orange-200" },
   refused:        { label: "Refused",      icon: PhoneOff,       color: "text-rose-600",    bg: "bg-rose-50",    border: "border-rose-200" },
 };
+
+const MAX_RETRY_ATTEMPTS = 3;
 
 // DZ Phone formatter
 function formatDZPhone(raw: string): string {
@@ -228,9 +232,6 @@ function CallAttemptsBar({ attempts, max = 2 }: { attempts: number; max?: number
 // ── Main Component ────────────────────────────────────────────────────────────
 export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }: TrackingOrderDetailsProps) {
   const isMounted = useIsMounted();
-  // isMounted() returns a new function reference on every render.
-  // Storing it in a ref prevents it from becoming a useEffect dependency
-  // and causing infinite re-render loops.
   const isMountedRef = useRef(isMounted);
   useEffect(() => { isMountedRef.current = isMounted; });
 
@@ -243,17 +244,22 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
 
+  // Phase 2: Optimistic UI state
+  const [optimisticCallLog, setOptimisticCallLog] = useState<Array<{ timestamp: number; outcome: CallOutcome; note?: string }> | null>(null);
+  const [optimisticStatus, setOptimisticStatus] = useState<MVPStatus | null>(null);
+  const [optimisticCallAttempts, setOptimisticCallAttempts] = useState<number | null>(null);
+
+  // Phase 2: Retry tracking
+  const [retryCount, setRetryCount] = useState<Record<string, number>>({});
+
   const addressInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialise form from order
   const [editForm, setEditForm] = useState(() => orderToForm(order));
 
-  // Re-sync form when Convex pushes updated order data, but not while editing.
   useEffect(() => {
     if (!isEditing && isMountedRef.current()) {
       setEditForm(orderToForm(order));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     order.customerName,
     order.customerPhone,
@@ -262,7 +268,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     order.customerCommune,
     order.notes,
     isEditing,
-    // isMounted intentionally omitted — accessed via isMountedRef to avoid loop
   ]);
 
   const updateCustomerInfo = useMutation(api.orders.updateCustomerInfo);
@@ -270,25 +275,15 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
   const updateStatus       = useMutation(api.orders.updateStatus);
   const resetCallAttempts  = useMutation(api.orders.resetCallAttempts);
 
-  const effectiveStatus: MVPStatus =
-    (order as any)._normalizedStatus ?? order.status ?? "new";
+  const effectiveStatus: MVPStatus = optimisticStatus ?? ((order as any)._normalizedStatus ?? order.status ?? "new");
   const callLog: Array<{ timestamp: number; outcome: CallOutcome; note?: string }> =
-    (order as any).callLog ?? [];
-  const callAttempts = (order as any).callAttempts ?? 0;
+    optimisticCallLog ?? (order as any).callLog ?? [];
+  const callAttempts = optimisticCallAttempts ?? (order as any).callAttempts ?? 0;
   const statusHistory: Array<{ status: string; timestamp: number; reason?: string }> =
     (order as any).statusHistory ?? [];
 
-  // CRITICAL: memoize the extracted line items so that OrderLineItemsEditor
-  // receives a stable array reference between renders. Without useMemo,
-  // extractLineItems() produces a new array object on every render — even if
-  // the underlying data didn't change — which causes OrderLineItemsEditor's
-  // useAbortableEffect to treat every render as "changed", triggering a
-  // delivery-cost recalculation that calls setDeliveryCost, which re-renders
-  // the parent, which calls extractLineItems again → infinite loop.
   const lineItems = useMemo(
     () => extractLineItems(order),
-    // Depend on the actual data fields that matter, not the order object reference.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       order.lineItems,
       order.productId,
@@ -300,7 +295,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     ]
   );
 
-  // Detect unsaved changes
   const hasUnsavedChanges = isEditing && (
     editForm.customerName    !== (order.customerName    ?? "") ||
     editForm.customerPhone   !== (order.customerPhone   ?? "") ||
@@ -310,7 +304,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     editForm.notes           !== (order.notes           ?? "")
   );
 
-  // Intercepted close — guard against unsaved changes
   const handleRequestClose = useCallback(() => {
     if (hasUnsavedChanges) {
       setShowUnsavedDialog(true);
@@ -319,7 +312,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     }
   }, [hasUnsavedChanges, onClose]);
 
-  // Register close handler with cleanup
   useEffect(() => {
     if (onRegisterRequestClose) {
       onRegisterRequestClose(handleRequestClose);
@@ -331,18 +323,42 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     };
   }, [handleRequestClose, onRegisterRequestClose]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // ── Phase 2: Enhanced Handlers with Optimistic Updates & Retry ───────────
 
   const handleSave = async () => {
+    const operationKey = "updateCustomerInfo";
+    const currentRetry = retryCount[operationKey] || 0;
+
     try {
       await updateCustomerInfo({ id: order._id, ...editForm });
       if (isMountedRef.current()) {
         setIsEditing(false);
+        setRetryCount(prev => ({ ...prev, [operationKey]: 0 }));
         toast.success("Order updated");
+        console.log("[CustomerInfo] Updated successfully");
       }
-    } catch {
-      if (isMountedRef.current()) {
-        toast.error("Failed to update order");
+    } catch (error) {
+      if (!isMountedRef.current()) return;
+      
+      console.error("[CustomerInfo] Update failed:", error);
+      
+      if (currentRetry >= MAX_RETRY_ATTEMPTS) {
+        toast.error("Failed to update order", {
+          description: "Please contact support if this issue persists.",
+          duration: 10000,
+        });
+      } else {
+        toast.error("Failed to update order", {
+          description: "Your changes weren't saved.",
+          action: {
+            label: "Retry",
+            onClick: () => {
+              setRetryCount(prev => ({ ...prev, [operationKey]: currentRetry + 1 }));
+              handleSave();
+            },
+          },
+          duration: 8000,
+        });
       }
     }
   };
@@ -360,29 +376,81 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
   };
 
   const handleUndoCancel = async () => {
+    const operationKey = "resetCallAttempts";
+    const currentRetry = retryCount[operationKey] || 0;
+
     try {
       await resetCallAttempts({ id: order._id });
       if (isMountedRef.current()) {
+        setRetryCount(prev => ({ ...prev, [operationKey]: 0 }));
         toast.success("Order restored to New");
+        console.log("[CallAttempts] Reset successfully");
       }
-    } catch {
-      if (isMountedRef.current()) {
-        toast.error("Failed to restore order");
+    } catch (error) {
+      if (!isMountedRef.current()) return;
+      
+      console.error("[CallAttempts] Reset failed:", error);
+      
+      if (currentRetry >= MAX_RETRY_ATTEMPTS) {
+        toast.error("Failed to restore order", {
+          description: "Please contact support if this issue persists.",
+          duration: 10000,
+        });
+      } else {
+        toast.error("Failed to restore order", {
+          action: {
+            label: "Retry",
+            onClick: () => {
+              setRetryCount(prev => ({ ...prev, [operationKey]: currentRetry + 1 }));
+              handleUndoCancel();
+            },
+          },
+          duration: 8000,
+        });
       }
     }
   };
 
   const handleLogCall = async () => {
     if (!pendingOutcome) return;
+    
+    const operationKey = "logCallOutcome";
+    const currentRetry = retryCount[operationKey] || 0;
+    
     setIsLoggingCall(true);
+    
+    // PHASE 2 TASK 2.1: Optimistic update
+    const newEntry = {
+      timestamp: Date.now(),
+      outcome: pendingOutcome,
+      ...(callNote.trim() ? { note: callNote.trim() } : {}),
+    };
+    const previousCallLog = callLog;
+    const previousCallAttempts = callAttempts;
+    
+    setOptimisticCallLog([...callLog, newEntry]);
+    if (pendingOutcome === "no answer") {
+      setOptimisticCallAttempts(callAttempts + 1);
+    }
+    
+    console.log("[CallLog] Optimistic update:", pendingOutcome);
+    
     try {
       const result = await logCallOutcome({
         orderId: order._id,
         outcome: pendingOutcome,
         ...(callNote.trim() ? { note: callNote.trim() } : {}),
       });
+      
       if (!isMountedRef.current()) return;
+      
+      // Clear optimistic state (server state will take over)
+      setOptimisticCallLog(null);
+      setOptimisticCallAttempts(null);
+      setRetryCount(prev => ({ ...prev, [operationKey]: 0 }));
+      
       const meta = OUTCOME_META[pendingOutcome];
+      
       if (result.autoCanceled) {
         toast.error(`Order canceled — ${meta.label.toLowerCase()}`, {
           description: result.cancelReason,
@@ -397,12 +465,36 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
       } else {
         toast.success(`✓ ${meta.label} logged`);
       }
+      
       setShowNoteInput(false);
       setPendingOutcome(null);
       setCallNote("");
-    } catch {
-      if (isMountedRef.current()) {
-        toast.error("Failed to log call");
+      console.log("[CallLog] Saved successfully");
+    } catch (error) {
+      if (!isMountedRef.current()) return;
+      
+      // PHASE 2 TASK 2.1: Rollback optimistic update
+      console.error("[CallLog] Failed:", error);
+      setOptimisticCallLog(previousCallLog);
+      setOptimisticCallAttempts(previousCallAttempts);
+      
+      if (currentRetry >= MAX_RETRY_ATTEMPTS) {
+        toast.error("Failed to log call", {
+          description: "Please contact support if this issue persists.",
+          duration: 10000,
+        });
+      } else {
+        toast.error("Failed to log call", {
+          description: "The call outcome wasn't saved.",
+          action: {
+            label: "Retry",
+            onClick: () => {
+              setRetryCount(prev => ({ ...prev, [operationKey]: currentRetry + 1 }));
+              handleLogCall();
+            },
+          },
+          duration: 8000,
+        });
       }
     } finally {
       if (isMountedRef.current()) {
@@ -418,15 +510,51 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
   };
 
   const handleStatusChange = async (newStatus: MVPStatus, reason?: string) => {
+    const operationKey = `updateStatus-${newStatus}`;
+    const currentRetry = retryCount[operationKey] || 0;
+    
+    // PHASE 2 TASK 2.2: Optimistic update
+    const previousStatus = effectiveStatus;
+    setOptimisticStatus(newStatus);
+    console.log("[Status] Optimistic update:", previousStatus, "→", newStatus);
+    
     try {
       await updateStatus({ id: order._id, status: newStatus, reason });
-      if (isMountedRef.current()) {
-        toast.success(`Order marked as ${newStatus}`);
-        if (newStatus === "canceled") onClose();
-      }
-    } catch {
-      if (isMountedRef.current()) {
-        toast.error("Failed to update status");
+      
+      if (!isMountedRef.current()) return;
+      
+      // Clear optimistic state
+      setOptimisticStatus(null);
+      setRetryCount(prev => ({ ...prev, [operationKey]: 0 }));
+      
+      toast.success(`Order marked as ${newStatus}`);
+      console.log("[Status] Updated successfully:", newStatus);
+      
+      if (newStatus === "canceled") onClose();
+    } catch (error) {
+      if (!isMountedRef.current()) return;
+      
+      // PHASE 2 TASK 2.2: Rollback optimistic update
+      console.error("[Status] Update failed:", error);
+      setOptimisticStatus(previousStatus);
+      
+      if (currentRetry >= MAX_RETRY_ATTEMPTS) {
+        toast.error("Failed to update status", {
+          description: "Please contact support if this issue persists.",
+          duration: 10000,
+        });
+      } else {
+        toast.error("Failed to update status", {
+          description: `Couldn't change status to ${newStatus}.`,
+          action: {
+            label: "Retry",
+            onClick: () => {
+              setRetryCount(prev => ({ ...prev, [operationKey]: currentRetry + 1 }));
+              handleStatusChange(newStatus, reason);
+            },
+          },
+          duration: 8000,
+        });
       }
     }
   };
@@ -469,7 +597,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Unsaved Changes Dialog */}
       <AlertDialog
         open={showUnsavedDialog}
         onOpenChange={(open) => { if (!open) setShowUnsavedDialog(false); }}
@@ -504,6 +631,9 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
 
       <div className="flex flex-col h-full bg-white">
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+          
+          {/* PHASE 2 TASK 2.4: Network Status Banner */}
+          <NetworkStatusBanner className="mb-6" />
 
           {/* Header */}
           <header className="mb-10">
