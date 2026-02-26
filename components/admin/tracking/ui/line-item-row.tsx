@@ -71,135 +71,138 @@ export function LineItemRow({
     <>
       <div
         className={cn(
-          "flex flex-col md:flex-row gap-4 md:gap-6 p-4 md:p-6 border border-[#ECECEC] rounded-xl bg-white transition-colors hover:shadow-sm",
-          isProductDeleted && "bg-gray-50 border-gray-300",
-          (disabled || isRemoving) && "opacity-60"
+          "group relative bg-white border border-[#E5E7EB] rounded-2xl p-6 transition-all duration-200 hover:border-[#D1D5DB] hover:shadow-lg",
+          isProductDeleted && "bg-gray-50 border-gray-300 opacity-75",
+          (disabled || isRemoving) && "opacity-60 pointer-events-none"
         )}
       >
-        {/* Row 1 Mobile / Left Desktop: Image + Product Name */}
-        <div className="flex items-start gap-3 md:gap-6">
-          {/* Thumbnail */}
-          <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden shrink-0 bg-[#F5F5F5] border border-[#ECECEC] shadow-sm">
-            {item.thumbnail && !imageError ? (
-              <Image
-                src={item.thumbnail}
-                alt={item.productName || "Product"}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 64px, 80px"
-                placeholder="blur"
-                blurDataURL={generateShimmerDataURL(64, 64)}
-                loading="lazy"
-                quality={85}
-                onError={() => setImageError(true)}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-[#AAAAAA]">
-                <svg
-                  className="w-6 h-6 md:w-8 md:h-8"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
-              </div>
-            )}
-          </div>
-
-          {/* Product Name */}
-          <div className="flex-1 min-w-0 md:flex-initial md:pr-4">
-            <div className="flex items-start gap-2">
-              <h4
-                className={cn(
-                  "text-[15px] md:text-[17px] font-semibold text-[#2C2C2C] leading-[1.3]",
-                  isProductDeleted && "text-gray-500 line-through"
-                )}
-              >
-                {item.productName}
-              </h4>
-              {isProductDeleted && (
-                <div className="flex items-center gap-1 md:gap-1.5 text-[10px] md:text-[11px] text-amber-600 bg-amber-50 px-2 md:px-2.5 py-0.5 md:py-1 rounded-full shrink-0 font-medium">
-                  <AlertTriangle className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                  <span>Deleted</span>
+        {/* Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* Product Image - Col 1-3 */}
+          <div className="lg:col-span-3">
+            <div className="relative aspect-square w-full max-w-[120px] mx-auto lg:mx-0 rounded-xl overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200">
+              {item.thumbnail && !imageError ? (
+                <Image
+                  src={item.thumbnail}
+                  alt={item.productName || "Product"}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  sizes="(max-width: 1024px) 120px, 120px"
+                  placeholder="blur"
+                  blurDataURL={generateShimmerDataURL(120, 120)}
+                  loading="lazy"
+                  quality={90}
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
                 </div>
               )}
             </div>
           </div>
-        </div>
 
-        {/* Row 2 Mobile / Middle Desktop: Variant Selector */}
-        {!isProductDeleted && (
-          <div className="w-full md:flex-1 md:min-w-0">
-            <VariantSelectorDropdown
-              productId={item.productId}
-              currentVariant={item.variants ?? {}}
-              onChange={onVariantChange}
-              disabled={disabled || isRemoving}
-              className="w-full md:w-auto"
-            />
+          {/* Product Details - Col 4-8 */}
+          <div className="lg:col-span-6 space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-start justify-between gap-4">
+                <h3 className={cn(
+                  "text-lg font-semibold text-gray-900 leading-tight flex-1",
+                  isProductDeleted && "text-gray-500 line-through"
+                )}>
+                  {item.productName}
+                </h3>
+                {isProductDeleted && (
+                  <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full font-medium shrink-0">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>Deleted</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Variant Selector */}
+            {!isProductDeleted && (
+              <div className="space-y-2">
+                <VariantSelectorDropdown
+                  productId={item.productId}
+                  currentVariant={item.variants ?? {}}
+                  onChange={onVariantChange}
+                  disabled={disabled || isRemoving}
+                  className="w-full max-w-sm"
+                />
+              </div>
+            )}
+            {isProductDeleted && item.variants && (
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(item.variants).map(([key, value]) => (
+                  <span
+                    key={key}
+                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg"
+                  >
+                    {key}: {value}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-        {isProductDeleted && item.variants && (
-          <div className="w-full md:flex-1 md:min-w-0">
-            <div className="flex flex-wrap gap-1.5 md:gap-2">
-              {Object.entries(item.variants).map(([key, value]) => (
-                <span
-                  key={key}
-                  className="inline-flex items-center px-2 md:px-3 py-1 md:py-1.5 text-[11px] md:text-[12px] font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg"
+
+          {/* Actions Column - Col 9-12 */}
+          <div className="lg:col-span-3">
+            <div className="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-stretch gap-4">
+              
+              {/* Quantity & Price Container */}
+              <div className="flex-1 lg:flex-initial flex flex-row sm:flex-col lg:flex-row items-center justify-between lg:justify-start gap-4">
+                
+                {/* Quantity Stepper */}
+                <div className="flex flex-col items-center space-y-2">
+                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</label>
+                  <QuantityStepper
+                    value={item.quantity}
+                    onChange={handleQuantityChange}
+                    disabled={disabled || isRemoving}
+                    min={1}
+                    max={99}
+                  />
+                </div>
+
+                {/* Price Display */}
+                <div className="flex flex-col items-center sm:items-start lg:items-center space-y-1 text-right">
+                  <div className="text-2xl font-bold text-gray-900">
+                    {calculatedLineTotal.toLocaleString()} DZD
+                  </div>
+                  <div className="text-xs text-gray-500 font-medium">
+                    {item.unitPrice.toLocaleString()} × {item.quantity}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Remove Button */}
+              <div className="flex items-center justify-center sm:justify-start lg:justify-center">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowRemoveDialog(true)}
+                  disabled={disabled || isRemoving}
+                  className="h-10 w-10 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all duration-200 group-hover:scale-105"
+                  aria-label={`Remove ${item.productName}`}
                 >
-                  {key}: {value}
-                </span>
-              ))}
+                  {isRemoving ? (
+                    <Loader2 className="w-4.5 h-4.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4.5 h-4.5" />
+                  )}
+                </Button>
+              </div>
+              
             </div>
           </div>
-        )}
-
-        {/* Row 3 Mobile / Right Desktop: Quantity + Price + Remove */}
-        <div className="flex items-center justify-between md:justify-end gap-3 md:gap-6">
-          {/* Quantity Stepper */}
-          <div className="flex flex-col items-center md:items-center">
-            <span className="text-[10px] md:text-[11px] font-medium text-[#666666] uppercase tracking-wider mb-1.5 md:mb-2">Qty</span>
-            <QuantityStepper
-              value={item.quantity}
-              onChange={handleQuantityChange}
-              disabled={disabled || isRemoving}
-              min={1}
-              max={99}
-            />
-          </div>
-
-          {/* Line Total */}
-          <div className="flex flex-col items-end gap-1 md:gap-1.5 min-w-[100px] md:min-w-[120px]">
-            <span className="text-[16px] md:text-[18px] font-bold text-[#2C2C2C] whitespace-nowrap">
-              {calculatedLineTotal.toLocaleString()} DZD
-            </span>
-            <span className="text-[11px] md:text-[12px] text-[#888888] font-medium text-right whitespace-nowrap">
-              {item.unitPrice.toLocaleString()} × {item.quantity}
-            </span>
-          </div>
-
-          {/* Remove Button */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowRemoveDialog(true)}
-            disabled={disabled || isRemoving}
-            className="shrink-0 hover:bg-rose-50 hover:text-rose-600 h-9 w-9 md:h-10 md:w-10 rounded-lg transition-all"
-            aria-label={`Remove ${item.productName}`}
-          >
-            {isRemoving ? (
-              <Loader2 className="w-4 h-4 md:w-4.5 md:h-4.5 animate-spin" />
-            ) : (
-              <Trash2 className="w-4 h-4 md:w-4.5 md:h-4.5" />
-            )}
-          </Button>
+          
         </div>
       </div>
 
