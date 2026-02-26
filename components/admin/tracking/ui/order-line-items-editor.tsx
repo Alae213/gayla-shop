@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { Plus, Save, X, Loader2, Check } from "lucide-react";
+import { useState, useCallback, useMemo, useRef } from "react";
+import { Plus, Loader2, Check, RotateCcw } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -23,6 +23,17 @@ interface OrderLineItemsEditorProps {
   onSaveSuccess?: (newTotal: number) => void;
 }
 
+/**
+ * Calculate a stable hash for line items that only includes fields that
+ * affect delivery cost (productId, quantity). Variant changes don't affect
+ * shipping, so we exclude them from the hash to avoid unnecessary recalcs.
+ */
+function getDeliveryRelevantHash(items: LineItem[]): string {
+  return items
+    .map((item) => `${item.productId}:${item.quantity}`)
+    .join("|");
+}
+
 export function OrderLineItemsEditor({
   orderId,
   initialLineItems,
@@ -35,14 +46,17 @@ export function OrderLineItemsEditor({
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems);
   const [deliveryCost, setDeliveryCost] = useState(initialDeliveryCost);
   const [isRecalculating, setIsRecalculating] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [autoSaveError, setAutoSaveError] = useState<Error | null>(null);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
-  const [lastSavedState, setLastSavedState] = useState({ lineItems: initialLineItems, deliveryCost: initialDeliveryCost });
+  const [lastSavedState, setLastSavedState] = useState({ 
+    lineItems: initialLineItems, 
+    deliveryCost: initialDeliveryCost 
+  });
 
-  // Keep a ref of initial values so we can compare without them being deps
+  // Keep refs for initial values and previous delivery-relevant hash
   const initialLineItemsRef = useRef(initialLineItems);
-  const initialDeliveryCostRef = useRef(initialDeliveryCost);
+  const previousDeliveryHashRef = useRef(getDeliveryRelevantHash(initialLineItems));
 
   const updateLineItemsMutation = useMutation(api.orders.updateLineItems);
 
@@ -61,16 +75,27 @@ export function OrderLineItemsEditor({
   );
   const total = subtotal + deliveryCost;
 
-  // Auto-recalculate delivery cost when line items change.
-  // IMPORTANT: do NOT include hasChanges in deps — it is computed from lineItems
-  // and would cause a secondary re-run every time deliveryCost is set.
+  // Auto-recalculate delivery cost when line items change in a way that affects shipping.
+  // OPTIMIZATION: Only recalculate when quantity or items change, not when variants change.
   useAbortableEffect(
     (signal) => {
-      // Skip recalc on initial mount (nothing changed yet)
+      // Skip recalc on initial mount
       const isInitial =
-        JSON.stringify(lineItems) ===
-        JSON.stringify(initialLineItemsRef.current);
+        JSON.stringify(lineItems) === JSON.stringify(initialLineItemsRef.current);
       if (isInitial || lineItems.length === 0) return;
+
+      // Check if delivery-relevant fields changed (productId, quantity)
+      const currentHash = getDeliveryRelevantHash(lineItems);
+      const previousHash = previousDeliveryHashRef.current;
+      
+      // If only variants changed (hash unchanged), skip expensive delivery recalc
+      if (currentHash === previousHash) {
+        console.log("[DeliveryRecalc] Skipped: variant-only change detected");
+        return;
+      }
+
+      console.log("[DeliveryRecalc] Triggered: quantity or items changed");
+      previousDeliveryHashRef.current = currentHash;
 
       const recalc = async () => {
         setIsRecalculating(true);
@@ -90,6 +115,7 @@ export function OrderLineItemsEditor({
             // silently ignore
           } else {
             console.error("Delivery cost recalculation failed:", error);
+            toast.error("Failed to recalculate delivery cost");
           }
         } finally {
           if (!signal.aborted) setIsRecalculating(false);
@@ -99,47 +125,65 @@ export function OrderLineItemsEditor({
       const timeout = setTimeout(recalc, 1000);
       return () => clearTimeout(timeout);
     },
-    // deliveryCost intentionally excluded — we only want to recalc when
-    // lineItems / wilaya / deliveryType change, not when deliveryCost itself
-    // changes (that would create a feedback loop).
+    // Only depend on lineItems - the hash comparison inside the effect
+    // determines if we actually need to recalculate
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [lineItems, wilaya, deliveryType]
   );
 
   // Auto-save with 800ms debounce
-  useEffect(() => {
-    if (!hasChanges || lineItems.length === 0) return;
+  useAbortableEffect(
+    (signal) => {
+      if (!hasChanges || lineItems.length === 0) return;
 
-    const autoSave = async () => {
-      setIsAutoSaving(true);
-      try {
-        const result = await updateLineItemsMutation({
-          id: orderId,
-          lineItems,
-          adminName,
-        });
-        setLastSavedState({ lineItems, deliveryCost });
-        onSaveSuccess?.(result.newTotalAmount);
-      } catch (error) {
-        console.error("Auto-save failed:", error);
-        toast.error("Auto-save failed");
-      } finally {
-        setIsAutoSaving(false);
-      }
-    };
+      const autoSave = async () => {
+        setIsAutoSaving(true);
+        setAutoSaveError(null);
+        try {
+          const result = await updateLineItemsMutation({
+            id: orderId,
+            lineItems,
+            adminName,
+          });
+          
+          if (signal.aborted) return;
+          
+          setLastSavedState({ lineItems, deliveryCost });
+          onSaveSuccess?.(result.newTotalAmount);
+          console.log("[AutoSave] Success:", result.newTotalAmount, "DZD");
+        } catch (error) {
+          if (signal.aborted) return;
+          
+          const err = error instanceof Error ? error : new Error(String(error));
+          console.error("[AutoSave] Failed:", err);
+          setAutoSaveError(err);
+          
+          // Show error toast with retry action
+          toast.error("Auto-save failed", {
+            description: "Your changes weren't saved. Click retry to try again.",
+            action: {
+              label: "Retry",
+              onClick: () => {
+                // Trigger autosave by forcing a state update
+                setLineItems(prev => [...prev]);
+              },
+            },
+            duration: 10000, // Keep visible longer for retry
+          });
+        } finally {
+          if (!signal.aborted) setIsAutoSaving(false);
+        }
+      };
 
-    const timeout = setTimeout(autoSave, 800);
-    return () => clearTimeout(timeout);
+      const timeout = setTimeout(autoSave, 800);
+      return () => clearTimeout(timeout);
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lineItems, deliveryCost]);
+    [lineItems, deliveryCost, hasChanges]
+  );
 
   // ── Stable handlers ──────────────────────────────────────────────────────
-  // Using the functional updater form (prev => ...) means these callbacks
-  // do NOT need lineItems in their closure, so they never re-create on each
-  // render. This breaks the loop:
-  //   onVariantChange prop changes → VariantSelectorDropdown re-renders
-  //   → Select fires onValueChange → setLineItems → re-render → repeat
-
+  
   const handleQuantityChange = useCallback((index: number, quantity: number) => {
     setLineItems((prev) => {
       const updated = [...prev];
@@ -156,13 +200,21 @@ export function OrderLineItemsEditor({
     (index: number, variant: Record<string, string>) => {
       setLineItems((prev) => {
         const updated = [...prev];
+        
         // Only update if variant actually changed to avoid unnecessary renders
-        if (
-          JSON.stringify(updated[index].variants) === JSON.stringify(variant)
-        ) {
+        if (JSON.stringify(updated[index].variants) === JSON.stringify(variant)) {
           return prev; // Return same reference — no re-render
         }
-        updated[index] = { ...updated[index], variants: variant };
+        
+        // FIX Task 1.2: Recalculate lineTotal when variant changes
+        // (All variants use same base price - no per-variant pricing)
+        const item = updated[index];
+        updated[index] = {
+          ...item,
+          variants: variant,
+          lineTotal: item.quantity * item.unitPrice, // Ensure lineTotal stays accurate
+        };
+        
         return updated;
       });
     },
@@ -179,35 +231,6 @@ export function OrderLineItemsEditor({
     setShowAddProductModal(false);
   }, []);
 
-  const handleSave = async () => {
-    if (lineItems.length === 0) {
-      toast.error("Order must have at least one product");
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const result = await updateLineItemsMutation({
-        id: orderId,
-        lineItems,
-        adminName,
-      });
-      setLastSavedState({ lineItems, deliveryCost });
-      toast.success("Order items updated");
-      onSaveSuccess?.(result.newTotalAmount);
-    } catch (error) {
-      console.error("Failed to save line items:", error);
-      toast.error("Failed to update order items");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDiscard = () => {
-    setLineItems(lastSavedState.lineItems);
-    setDeliveryCost(lastSavedState.deliveryCost);
-    toast.info("Changes discarded");
-  };
-
   return (
     <section className="space-y-4">
       {/* Header */}
@@ -222,11 +245,21 @@ export function OrderLineItemsEditor({
               <span>Saving...</span>
             </div>
           )}
-          {!hasChanges && !isAutoSaving && lastSavedState.lineItems.length > 0 && (
+          {!hasChanges && !isAutoSaving && !autoSaveError && lastSavedState.lineItems.length > 0 && (
             <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 animate-in fade-in">
               <Check className="w-3 h-3" />
               <span>Saved</span>
             </div>
+          )}
+          {autoSaveError && !isAutoSaving && (
+            <button
+              onClick={() => setLineItems(prev => [...prev])} // Force retry
+              className="flex items-center gap-1.5 text-[11px] text-rose-600 hover:text-rose-700 transition-colors animate-in fade-in"
+              title="Click to retry save"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Failed - Click to retry</span>
+            </button>
           )}
         </div>
         <Button
@@ -234,7 +267,7 @@ export function OrderLineItemsEditor({
           variant="outline"
           size="sm"
           onClick={() => setShowAddProductModal(true)}
-          disabled={isSaving || isAutoSaving}
+          disabled={isAutoSaving}
           className="gap-2 h-8 text-[13px]"
         >
           <Plus className="w-4 h-4" />
@@ -242,7 +275,7 @@ export function OrderLineItemsEditor({
         </Button>
       </div>
 
-      {/* Line Items - Improved spacing */}
+      {/* Line Items */}
       <div className="space-y-4">
         {lineItems.map((item, index) => (
           <MemoizedLineItemRow
@@ -252,7 +285,7 @@ export function OrderLineItemsEditor({
             onQuantityChange={handleQuantityChange}
             onVariantChange={handleVariantChange}
             onRemove={handleRemove}
-            disabled={isSaving || isAutoSaving}
+            disabled={isAutoSaving}
           />
         ))}
 
@@ -288,35 +321,6 @@ export function OrderLineItemsEditor({
         </div>
       </div>
 
-      {/* Save/Discard Buttons (shown only when there are pending changes) */}
-      {hasChanges && (
-        <div className="flex gap-3 pt-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleDiscard}
-            disabled={isSaving || isAutoSaving}
-            className="flex-1 h-10"
-          >
-            <X className="w-4 h-4 mr-2" />
-            Discard Changes
-          </Button>
-          <Button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving || isAutoSaving || lineItems.length === 0}
-            className="flex-[2] h-10 gap-2 bg-[#3A3A3A] hover:bg-[#2A2A2A]"
-          >
-            {isSaving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
-            Save Now
-          </Button>
-        </div>
-      )}
-
       {/* Add Product Modal */}
       <AddProductModal
         open={showAddProductModal}
@@ -329,9 +333,6 @@ export function OrderLineItemsEditor({
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MemoizedLineItemRow
-// Wraps LineItemRow and accepts stable index-based callbacks instead of
-// inline arrow functions. React.memo ensures it only re-renders when item
-// data or the disabled flag actually changes.
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface MemoizedLineItemRowProps {
@@ -352,8 +353,6 @@ const MemoizedLineItemRow = React.memo(
     onRemove,
     disabled,
   }: MemoizedLineItemRowProps) {
-    // These callbacks are stable because onQuantityChange etc. never change
-    // (they are useCallback with [] deps in the parent).
     const handleQty = useCallback(
       (qty: number) => onQuantityChange(index, qty),
       [onQuantityChange, index]
