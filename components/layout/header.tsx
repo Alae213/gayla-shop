@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ShoppingBag, ShoppingCart, Menu, X } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { useCart } from "@/hooks/use-cart";
 import { CartSidePanel } from "@/components/cart/cart-side-panel";
 
@@ -17,8 +18,8 @@ export function Header() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
-  const { items } = useCart();
-  
+  const { items, isLoaded } = useCart();
+
   // Badge count = number of distinct cart lines (not total quantity)
   const cartLineCount = items.length;
 
@@ -38,11 +39,12 @@ export function Header() {
               <Link
                 key={href}
                 href={href}
-                className={`caption-text font-semibold transition-colors ${
+                className={cn(
+                  "caption-text font-semibold transition-colors",
                   pathname === href || pathname.startsWith(href + "/")
                     ? "text-brand-200"
                     : "text-system-300 hover:text-system-400"
-                }`}
+                )}
               >
                 {label}
               </Link>
@@ -58,7 +60,8 @@ export function Header() {
               className="relative p-2 rounded-lg hover:bg-system-100 transition-colors text-system-400"
             >
               <ShoppingCart className="h-5 w-5" />
-              {cartLineCount > 0 && (
+              {/* Only show badge after cart has loaded from localStorage */}
+              {isLoaded && cartLineCount > 0 && (
                 <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-brand-200 text-white text-xs font-bold flex items-center justify-center">
                   {cartLineCount > 9 ? "9+" : cartLineCount}
                 </span>
@@ -85,11 +88,12 @@ export function Header() {
                   key={href}
                   href={href}
                   onClick={() => setMobileOpen(false)}
-                  className={`py-3 px-2 rounded-lg body-text font-semibold transition-colors ${
+                  className={cn(
+                    "py-3 px-2 rounded-lg body-text font-semibold transition-colors",
                     pathname === href || pathname.startsWith(href + "/")
                       ? "text-brand-200 bg-primary-50"
                       : "text-system-400 hover:bg-system-50"
-                  }`}
+                  )}
                 >
                   {label}
                 </Link>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { ImageIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ProductGalleryProps {
   product: {
@@ -43,11 +44,12 @@ export function ProductGallery({ product }: ProductGalleryProps) {
             <button
               key={image.storageId}
               onClick={() => setSelectedImageIndex(index)}
-              className={`aspect-square relative overflow-hidden rounded-lg border-2 transition-all ${
+              className={cn(
+                "aspect-square relative overflow-hidden rounded-lg border-2 transition-all",
                 selectedImageIndex === index
                   ? "border-brand-200 scale-105"
                   : "border-system-200 hover:border-system-300"
-              }`}
+              )}
               aria-label={`View image ${index + 1}`}
             >
               <Image

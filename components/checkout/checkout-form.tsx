@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { WILAYAS, COMMUNES_BY_WILAYA } from "@/lib/constants";
 import { isValidAlgerianPhone } from "@/lib/utils/yalidin-api";
+import { cn } from "@/lib/utils";
 import { Loader2, Home, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -98,7 +99,7 @@ export function CheckoutForm() {
   // Submit handler
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
+
     if (!validate()) {
       toast.error("Please fix the errors in the form");
       return;
@@ -135,7 +136,7 @@ export function CheckoutForm() {
         customerAddress: deliveryType === "Domicile" ? address.trim() : undefined,
         deliveryType,
         deliveryCost,
-        lineItems, // Send all cart items
+        lineItems,
       });
 
       toast.success("Order placed successfully!", {
@@ -210,11 +211,12 @@ export function CheckoutForm() {
                   setCommune("");
                   setAddress("");
                 }}
-                className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-colors ${
+                className={cn(
+                  "flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-colors",
                   deliveryType === "Stopdesk"
                     ? "border-primary bg-primary/5 text-primary"
                     : "border-muted hover:border-primary/40"
-                }`}
+                )}
               >
                 <Building2 className="h-4 w-4" />
                 Stopdesk
@@ -222,11 +224,12 @@ export function CheckoutForm() {
               <button
                 type="button"
                 onClick={() => setDeliveryType("Domicile")}
-                className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-colors ${
+                className={cn(
+                  "flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-colors",
                   deliveryType === "Domicile"
                     ? "border-primary bg-primary/5 text-primary"
                     : "border-muted hover:border-primary/40"
-                }`}
+                )}
               >
                 <Home className="h-4 w-4" />
                 Home Delivery
@@ -313,7 +316,7 @@ export function CheckoutForm() {
 
           <Separator className="my-6" />
 
-          {/* Order Summary - Now before button */}
+          {/* Order Summary */}
           <div className="space-y-3">
             <h3 className="font-semibold">Order Summary</h3>
             <div className="space-y-2 text-sm">
@@ -343,7 +346,7 @@ export function CheckoutForm() {
             </div>
           </div>
 
-          {/* Submit Button - Moved to bottom */}
+          {/* Submit Button */}
           <Button
             type="submit"
             className="w-full"

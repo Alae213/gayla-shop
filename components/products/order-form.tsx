@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { WILAYAS, COMMUNES_BY_WILAYA } from "@/lib/constants";
 import { Loader2, Home, Building2, CheckCircle2 } from "lucide-react";
 import {
@@ -45,16 +46,16 @@ export function OrderForm({ product }: OrderFormProps) {
   // Cart and variant state
   const [cartPanelOpen, setCartPanelOpen] = useState(false);
   const [selectedVariants, setSelectedVariants] = useState<VariantSelection>({});
-  
+
   // Determine if product has variants
   const hasVariants = Boolean(
     (product.variantGroups && product.variantGroups.length > 0) ||
     (product.variants && product.variants.length > 0)
   );
-  
+
   // Get thumbnail from first image
   const thumbnail = product.images?.[0]?.url;
-  
+
   // ── Form state ────────────────────────────────────────────────
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -198,11 +199,12 @@ export function OrderForm({ product }: OrderFormProps) {
                                 [group.name]: value.label,
                               }))
                             }
-                            className={`px-4 py-2 rounded-md border-2 transition-all ${
+                            className={cn(
+                              "px-4 py-2 rounded-md border-2 transition-all",
                               isSelected
                                 ? "border-brand-200 bg-brand-50 text-brand-200 font-medium"
                                 : "border-system-200 hover:border-system-300 text-system-400"
-                            }`}
+                            )}
                           >
                             {value.label}
                           </button>
@@ -213,12 +215,12 @@ export function OrderForm({ product }: OrderFormProps) {
               ))}
             </div>
           )}
-          
+
           <form onSubmit={handleSubmit} className="space-y-5">
 
             {/* 1. Full Name */}
             <div className="space-y-1">
-              <Label htmlFor="customerName">Full Name <span className="text-red-500">*</span></Label>
+              <Label htmlFor="customerName">Full Name <span className="text-destructive">*</span></Label>
               <Input
                 id="customerName"
                 value={customerName}
@@ -230,7 +232,7 @@ export function OrderForm({ product }: OrderFormProps) {
 
             {/* 2. Phone */}
             <div className="space-y-1">
-              <Label htmlFor="customerPhone">Phone Number <span className="text-red-500">*</span></Label>
+              <Label htmlFor="customerPhone">Phone Number <span className="text-destructive">*</span></Label>
               <Input
                 id="customerPhone"
                 type="tel"
@@ -243,16 +245,17 @@ export function OrderForm({ product }: OrderFormProps) {
 
             {/* 3. Delivery Type */}
             <div className="space-y-1">
-              <Label>Delivery Type <span className="text-red-500">*</span></Label>
+              <Label>Delivery Type <span className="text-destructive">*</span></Label>
               <div className="grid grid-cols-2 gap-3 mt-1">
                 <button
                   type="button"
                   onClick={() => { setDeliveryType("Stopdesk"); setCommune(""); setAddress(""); }}
-                  className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-colors ${
+                  className={cn(
+                    "flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-colors",
                     deliveryType === "Stopdesk"
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-muted hover:border-primary/40"
-                  }`}
+                  )}
                 >
                   <Building2 className="h-4 w-4" />
                   Stopdesk
@@ -260,11 +263,12 @@ export function OrderForm({ product }: OrderFormProps) {
                 <button
                   type="button"
                   onClick={() => { setDeliveryType("Domicile"); }}
-                  className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-colors ${
+                  className={cn(
+                    "flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-colors",
                     deliveryType === "Domicile"
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-muted hover:border-primary/40"
-                  }`}
+                  )}
                 >
                   <Home className="h-4 w-4" />
                   Home Delivery
@@ -274,7 +278,7 @@ export function OrderForm({ product }: OrderFormProps) {
 
             {/* 4. Wilaya */}
             <div className="space-y-1">
-              <Label>Wilaya <span className="text-red-500">*</span></Label>
+              <Label>Wilaya <span className="text-destructive">*</span></Label>
               <Select
                 value={wilayaId}
                 onValueChange={(v) => { setWilayaId(v); setCommune(""); }}
@@ -296,7 +300,7 @@ export function OrderForm({ product }: OrderFormProps) {
             {/* 5. Baladia (Home only) */}
             {deliveryType === "Domicile" && (
               <div className="space-y-1">
-                <Label>Baladia <span className="text-red-500">*</span></Label>
+                <Label>Baladia <span className="text-destructive">*</span></Label>
                 <Select
                   value={commune}
                   onValueChange={setCommune}
@@ -318,7 +322,7 @@ export function OrderForm({ product }: OrderFormProps) {
             {/* 6. Full Address (Home only) */}
             {deliveryType === "Domicile" && (
               <div className="space-y-1">
-                <Label htmlFor="address">Full Address <span className="text-red-500">*</span></Label>
+                <Label htmlFor="address">Full Address <span className="text-destructive">*</span></Label>
                 <Textarea
                   id="address"
                   value={address}
@@ -396,7 +400,7 @@ export function OrderForm({ product }: OrderFormProps) {
               {isSubmitting ? "Placing Order..." : "Place Order"}
             </Button>
           </form>
-          
+
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
@@ -406,7 +410,7 @@ export function OrderForm({ product }: OrderFormProps) {
               <span className="bg-background px-2 text-system-300">Or</span>
             </div>
           </div>
-          
+
           {/* Add to Cart Button */}
           <AddToCartButton
             productId={product._id}
