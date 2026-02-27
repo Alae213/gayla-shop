@@ -4,7 +4,7 @@
 **Version**: 1.0  
 **Last Updated**: February 27, 2026  
 **Status**: Single Source of Truth  
-**Owner**: Alae Eddine
+**Owner**: Belkhiri Abdessamad
 
 ---
 
@@ -494,10 +494,6 @@ Allow merchants to optionally integrate with Algerian delivery companies (ZR Exp
 ##### 7.5 Order Confirmation Page
 - After customer clicks "Place Order":
   - Order created in database (status: "new")
-  - Email sent to customer (via Resend) with:
-    - Order ID
-    - Order details
-    - "We'll call you at {phone} to confirm"
   - Customer sees confirmation message:
     - **"Order Confirmed!"**
     - **"We'll call you at {phone} to confirm your order."**
@@ -716,7 +712,7 @@ deliveryCosts: defineTable({
 
 ## Technical Architecture
 
-### Tech Stack (No Changes)
+### Tech Stack:
 
 #### Frontend
 - **Framework**: Next.js 16 (App Router)
@@ -858,10 +854,6 @@ deliveryCosts: defineTable({
 15. System:
     - Creates order in DB (status: "new")
     - Increments store `orderCount` (+1)
-    - Sends email to customer (Resend):
-      - Order ID: `#1234`
-      - Order details
-      - Message: "We'll call you at 0555123456 to confirm"
 16. Customer sees **"Order Confirmed!"** page:
     - "We'll call you at 0555123456 to confirm your order."
     - Order ID: `#1234`
@@ -873,7 +865,7 @@ deliveryCosts: defineTable({
 
 ### Flow 3: Merchant Confirms Order (Tracking Mode)
 
-1. Merchant receives notification (future: mobile app push; MVP: email or checks admin manually)
+1. Merchant checks admin manually
 2. Merchant goes to **Home Dashboard** (`/[userId]`)
 3. Clicks store card ("Fatima's Jewelry")
 4. Lands in **Build Mode** by default
@@ -1314,42 +1306,6 @@ export const unlockStore = mutation({
 
 ---
 
-### Resend (Email)
-
-**Keep existing integration** for order confirmation emails.
-
-Example:
-```typescript
-// Convex action
-export const sendOrderConfirmation = action({
-  args: { orderId: v.id('orders') },
-  handler: async (ctx, args) => {
-    const order = await ctx.runQuery(internal.orders.get, { id: args.orderId })
-    
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'orders@gayla.dz',
-        to: order.customerEmail,
-        subject: `Order Confirmation #${order._id}`,
-        html: `
-          <h1>Order Confirmed!</h1>
-          <p>Thank you for your order. We'll call you at ${order.customerPhone} to confirm.</p>
-          <p>Order ID: #${order._id}</p>
-          <p>Total: ${order.total} DZD</p>
-        `,
-      }),
-    })
-  },
-})
-```
-
----
-
 ### Delivery APIs (Optional)
 
 #### ZR Express API (if merchant configures)
@@ -1468,9 +1424,9 @@ export const shipWithZRExpress = action({
 
 ---
 
-## Out of Scope (MVP)
+## Out of Scope
 
-Explicitly **NOT** building for MVP:
+Explicitly **NOT** building:
 
 1. **Store Templates**: No pre-made themes or layouts
 2. **Store Customization**: No color pickers, font selectors, CSS editors
@@ -1487,9 +1443,7 @@ Explicitly **NOT** building for MVP:
 13. **Customer Accounts**: No customer login, order history, wishlists
 14. **Marketing Tools**: No email campaigns, discount codes, referral programs
 15. **API for Merchants**: No public API for third-party integrations
-16. **White-label**: No reselling or agency plans
-
-These are **future features** (post-MVP).
+16. **White-label**: No reselling or agency plans.
 
 ---
 
@@ -1539,41 +1493,6 @@ These are **future features** (post-MVP).
 
 ---
 
-## Launch Plan
-
-### Phase 1: Development (8-12 weeks)
-1. **Week 1-2**: Clerk Auth integration, user & store models
-2. **Week 3-4**: Multi-store Home Dashboard, store creation flow
-3. **Week 5-6**: Refactor existing Build Mode & Tracking Mode to multi-tenant
-4. **Week 7-8**: Subscription logic, order counting, store locking
-5. **Week 9-10**: Chargily Pay integration, payment flow, webhooks
-6. **Week 11-12**: Testing, bug fixes, polish
-
-### Phase 2: Private Beta (4 weeks)
-1. Invite 10-20 trusted merchants
-2. Collect feedback on:
-   - Onboarding experience
-   - Build Mode usability
-   - Order management workflow
-   - Payment flow clarity
-3. Fix critical bugs
-4. Iterate on UX pain points
-
-### Phase 3: Public Launch (Algeria)
-1. Marketing campaign:
-   - Instagram/Facebook ads targeting Algerian entrepreneurs
-   - Influencer partnerships (give 3 months free to popular influencers)
-   - Content marketing (blog posts, YouTube tutorials in Arabic/French)
-2. Launch on Product Hunt (with Arabic translation)
-3. PR: Reach out to Algerian tech blogs
-
-### Phase 4: Growth (Ongoing)
-1. Iterate based on user feedback
-2. Add highly-requested features (analytics, custom domains)
-3. Expand to other MENA countries (Morocco, Tunisia)
-
----
-
 ## Conclusion
 
 This PRD defines the complete transformation of Gayla Shop from a single storefront into a multi-tenant SaaS platform designed specifically for the Algerian e-commerce market.
@@ -1583,18 +1502,3 @@ This PRD defines the complete transformation of Gayla Shop from a single storefr
 - **Algeria-First**: COD workflows, Algerian Dinar payments, local delivery integrations
 - **Pay-When-You-Succeed**: Free until 50 orders, then 2000 DZD/month
 - **Multi-Store**: One user can manage multiple independent stores
-
-**Next Steps**:
-1. Review and approve this PRD
-2. Design database migrations (add `users`, `stores` tables, modify `products`, `orders`)
-3. Plan AI agent/subagent workflow for implementation
-4. Begin Phase 1 development
-
----
-
-**Document Control**
-- **Version**: 1.0
-- **Status**: Draft → Awaiting Approval
-- **Next Review**: After agent planning phase
-- **Owner**: Alae Eddine
-- **Last Updated**: February 27, 2026

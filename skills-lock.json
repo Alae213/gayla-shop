@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "computedHash": "25872a21881a950edc3db1f3329664d60405d539660ce05b3265db2de06a7dfd"
+    },
     "frontend-design": {
       "source": "anthropics/skills",
       "sourceType": "github",
@@ -10,6 +15,11 @@
       "source": "vercel-labs/next-skills",
       "sourceType": "github",
       "computedHash": "c31ddd68ba5798a79a516c619b1e1fc4408cc4876ad600fefa4f5add4425719d"
+    },
+    "planning-with-files": {
+      "source": "othmanadi/planning-with-files",
+      "sourceType": "github",
+      "computedHash": "6e6393cbb3373b53a59e54dedbe11401262884afdb8a208cdee8006272e3bd06"
     },
     "vercel-react-best-practices": {
       "source": "vercel-labs/agent-skills",
