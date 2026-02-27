@@ -5,7 +5,7 @@ Fix all 9 critical architectural violations identified in the V2 frontend review
 scalable, production-safe, and fully aligned with the rules in `.claude/rules/`.
 
 ## Current Phase
-Phase 6 (CURRENT)
+Phase 7 (CURRENT)
 
 ---
 
@@ -24,23 +24,21 @@ Phase 6 (CURRENT)
 - [x] Moved `order-confirmation` into `(public)/` route group
 
 ### Phase 5: Architecture — Resolve Directory Duplications ✓
-- [x] Deleted `components/providers/convex-client-provider.tsx` (duplicate, unused)
-- [x] Kept `providers/convex-provider.tsx` (used by root layout, has error handling)
-- [x] Added doc comment to `lib/utils.ts` explaining `@/lib/utils` vs `lib/utils/` namespace
+- [x] Deleted duplicate `components/providers/convex-client-provider.tsx`
+- [x] Added doc comment to `lib/utils.ts`
+
+### Phase 6: Performance — Fix React Keys ✓
+- [x] Replaced `key={\`${item.productId}-${JSON.stringify(item.variants)}\`}` with `key={getCartItemKey(item)}`
+- [x] Added import: `import { getCartItemKey } from "@/lib/types/cart"`
 - **Status:** complete
+- **Note:** `getCartItemKey()` sorts variant keys alphabetically for stable output, no runtime serialization cost
 
 ---
 
-### Phase 6: Performance — Fix React Keys (CURRENT)
-- [ ] Replace `JSON.stringify(item.variants)` with `getCartItemKey(item)` in cart-side-panel.tsx
-- **Status:** in_progress
-
----
-
-### Phase 7: State — Lightweight Cart Hook for Header
-- [x] `isLoaded` guard (done Phase 1)
-- [ ] Create `hooks/use-cart-count.ts`
-- [ ] Update Header to use `useCartCount()`
+### Phase 7: State — Lightweight Cart Hook for Header (CURRENT)
+- [x] `isLoaded` guard on badge (done Phase 1)
+- [ ] Create `hooks/use-cart-count.ts` returning `{ count, isLoaded }`
+- [ ] Update Header to use `useCartCount()` instead of full `useCart()`
 - **Status:** in_progress
 
 ---
@@ -69,7 +67,8 @@ Phase 6 (CURRENT)
 | Hook-extracted checkout | Hooks own state+mutations, components own JSX |
 | `AddToCartButton` no longer fetches | Parent has data — no duplicate queries |
 | Move order-confirmation into `(public)/` | All public routes share Header+Footer |
-| Keep `providers/convex-provider.tsx` | Used by layout, has error handling; deleted duplicate |
+| Keep `providers/convex-provider.tsx` | Used by layout, has error handling |
+| Use `getCartItemKey()` for React keys | Pre-sorts keys, stable output, no JSON serialization |
 
 ## Errors Encountered
 
@@ -79,5 +78,5 @@ Phase 6 (CURRENT)
 | `create_or_update_file` stale SHA | 1 | Re-fetched SHA |
 
 ## Notes
-- Each phase committed independently
+- Phase 6: `getCartItemKey()` was already implemented in `lib/types/cart.ts` — just needed to import it
 - After Phase 9: manual test `/order-confirmation/[id]`
