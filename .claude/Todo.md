@@ -11,14 +11,15 @@ Phase 2 (CURRENT)
 
 ## Phases
 
-### Phase 1: Design System — Fix Tailwind Class Scanning
+### Phase 1: Design System — Fix Tailwind Class Scanning ✓
 > All template-literal `className` strings break Tailwind PurgeCSS. Classes get stripped in production.
 
-- [ ] `components/checkout/checkout-form.tsx` — Replace all `` `... ${condition ? "..." : "..."}` `` with `cn()` calls
-- [ ] `components/layout/header.tsx` — Replace nav link active/inactive template strings with `cn()`
-- [ ] Search entire codebase for remaining template-literal classNames: `grep -r 'className={`' --include="*.tsx"`
-- [ ] Fix any additional hits found by grep
-- **Status:** pending
+- [x] `components/checkout/checkout-form.tsx` — Replace all template-literal classNames with `cn()` calls
+- [x] `components/layout/header.tsx` — Replace nav link active/inactive template strings with `cn()`
+- [x] `components/products/order-form.tsx` — Replace delivery type buttons + variant selector with `cn()`
+- [x] `components/products/product-gallery.tsx` — Replace thumbnail border with `cn()`
+- [x] Bonus: added `isLoaded` guard on cart badge in Header (prevents flash of "0" on hydration)
+- **Status:** complete
 
 ---
 
@@ -89,14 +90,11 @@ Phase 2 (CURRENT)
 ### Phase 7: State — Document Cart Limitation + Add isLoaded Guard
 > Header shows badge count before cart loads from localStorage (flashes "0"). Cart state isolation risk undocumented.
 
-- [ ] `components/layout/header.tsx` — Add `isLoaded` check before rendering cart badge:
-  ```tsx
-  {isLoaded && cartLineCount > 0 && <span>...</span>}
-  ```
+- [x] `components/layout/header.tsx` — `isLoaded` guard added in Phase 1 (done early)
 - [ ] Extract `useCartCount()` lightweight hook in `hooks/use-cart-count.ts` that returns only `{ count, isLoaded }`
   to avoid full cart state load in Header
 - [ ] Update Header to use `useCartCount()` instead of full `useCart()`
-- **Status:** pending
+- **Status:** in_progress (isLoaded guard done, hook extraction pending)
 
 ---
 
@@ -142,12 +140,13 @@ Phase 2 (CURRENT)
 | Use `getCartItemKey()` for React keys | Already exists in `lib/types/cart.ts`, designed specifically for this, stable key ordering |
 | Move `order-confirmation` into `(public)/` | All public-facing routes must share the Header+Footer layout via the route group |
 | `useCartCount()` lightweight hook for Header | Header only needs count + isLoaded — pulling full cart state is wasteful on every page render |
+| Added `isLoaded` guard in Phase 1 | Prevented cart badge flash — low-risk change, done early while already editing header.tsx |
 
 ## Errors Encountered
 
 | Error | Attempt | Resolution |
 |---|---|---|
-| — | — | — |
+| GitHub code search returned 0 results for template literals | 1 | Manually listed component directories and read each file directly |
 
 ## Notes
 
