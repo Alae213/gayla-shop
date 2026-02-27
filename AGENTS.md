@@ -6,8 +6,6 @@ Gayla Shop is a modern full-stack e-commerce platform for the Algerian market wi
 
 **Tech Stack:** Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS, shadcn/ui, Convex backend, Zod validation.
 
-**Main Features:** Product catalog with variants, 58 wilayas delivery costs, order tracking, admin dashboard with drag-and-drop, call center tools, ZR Express integration.
-
 ---
 
 ## Build, Lint, and Test Commands
@@ -25,15 +23,6 @@ npx convex dev                # Start Convex backend (keep running)
 npm run build                  # Production build
 npm run start                  # Start production server
 npm run lint                   # Run ESLint
-```
-
-### Testing
-```bash
-npm test                       # Run all Vitest tests
-npm test -- --watch           # Watch mode
-npm test -- --coverage        # With coverage
-npm test -- --run             # CI mode (single run)
-npm test -- path/to/test.ts   # Run specific test file
 ```
 
 ### Database Migrations
@@ -57,7 +46,6 @@ npm run lint && npm run build
 - Define shared types in `lib/types/`
 
 ```tsx
-// From components/products/product-card.tsx
 interface ProductCardProps {
   product: {
     _id: Id<"products">;
@@ -95,7 +83,6 @@ import { formatPrice } from "@/lib/utils";
 - Use functional components with TypeScript interfaces for props
 
 ```tsx
-// From components/ui/button.tsx
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, ...props }, ref) => {
     return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
@@ -109,7 +96,6 @@ Button.displayName = "Button";
 - Align with Convex schema in `convex/schema.ts`
 
 ```tsx
-// From lib/validations.ts
 export const productSchema = z.object({
   title: z.string().min(1, "Title is required"),
   price: z.number().positive("Price must be positive"),
@@ -135,15 +121,15 @@ export const productSchema = z.object({
 ```
 app/                    # Next.js App Router (public/, admin/, api/)
 components/ui/          # shadcn/ui base components
-components/admin/      # Admin-specific components
+components/admin/       # Admin-specific components
 components/products/    # Product components
-convex/                # Backend (schema.ts, products.ts, orders.ts, auth.ts)
-hooks/                 # Custom hooks (useCart.ts, useToast.ts)
-lib/utils.ts           # Utilities (cn(), formatPrice())
-lib/validations.ts     # Zod schemas
-lib/types/             # Shared TypeScript types
-providers/             # React context (ConvexProvider)
-scripts/               # Migration scripts
+convex/                 # Backend (schema.ts, products.ts, orders.ts, auth.ts)
+hooks/                  # Custom hooks (useCart.ts, useToast.ts)
+lib/utils.ts            # Utilities (cn(), formatPrice())
+lib/validations.ts      # Zod schemas
+lib/types/              # Shared TypeScript types
+providers/              # React context (ConvexProvider)
+scripts/                # Migration scripts
 ```
 
 ### Critical Patterns
@@ -151,15 +137,6 @@ scripts/               # Migration scripts
 2. **Forms**: React Hook Form + Zod validation
 3. **Cart**: Client-side with localStorage via `useCart` hook
 4. **Error Boundaries**: Wrap admin sections with `AdminErrorBoundary`
-
----
-
-## Testing Guidelines
-
-- Vitest + React Testing Library configured
-- No test files currently exist
-- Place tests: `__tests__/` or `*.test.ts` near code they test
-- Add tests for: utility functions, complex hooks, bug fixes, critical user flows
 
 ---
 
@@ -204,15 +181,3 @@ Required in `.env.local`:
 - Schema changes affecting existing data
 - New features needing architecture decisions
 - Payment/delivery integration changes
-
-### Commit Messages
-- Clear, descriptive (e.g., "fix: resolve product image loading in cart")
-
----
-
-## Unknowns & Assumptions
-
-- No test files exist; Vitest unused but configured
-- ZR Express may use mock data in dev
-- Sentry optional (DSN can be empty)
-- No CI/CD pipeline configured
