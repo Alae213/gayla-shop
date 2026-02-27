@@ -3,6 +3,11 @@
 /**
  * AddToCartButton - Add product to cart with variant validation
  * Opens cart side panel on success
+ *
+ * ARCHITECTURE NOTE:
+ * This component no longer fetches product data. The parent must pass variantGroups
+ * if the product has variants. This avoids duplicate queries — the parent already
+ * has the product data from its own useQuery.
  */
 
 import { useState } from "react";
@@ -12,8 +17,17 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/use-cart";
 import { VariantSelection } from "@/lib/types/cart";
 import { toast } from "sonner";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+
+interface VariantValue {
+  label: string;
+  enabled: boolean;
+  order: number;
+}
+
+interface VariantGroup {
+  name: string;
+  values: VariantValue[];
+}
 
 interface AddToCartButtonProps {
   productId: Id<"products">;
@@ -24,7 +38,8 @@ interface AddToCartButtonProps {
   thumbnail?: string;
   variants: VariantSelection;
   hasVariants: boolean;
-  onSuccess?: () => void; // Callback to open cart panel
+  variantGroups?: VariantGroup[]; // Parent must pass if hasVariants=true
+  onSuccess?: () => void;
   className?: string;
 }
 
@@ -37,14 +52,12 @@ export function AddToCartButton({
   thumbnail,
   variants,
   hasVariants,
+  variantGroups,
   onSuccess,
   className,
 }: AddToCartButtonProps) {
   const { addItem, canAdd } = useCart();
   const [isAdding, setIsAdding] = useState(false);
-  
-  // Fetch product to get variant groups for auto-selection
-  const product = useQuery(api.products.getById, { id: productId });
 
   // Hide button for non-active products
   if (status !== "Active") {
@@ -60,15 +73,15 @@ export function AddToCartButton({
 
     // Auto-select default variants if user hasn't selected any
     let finalVariants = variants;
-    
-    if (hasVariants && Object.keys(variants).length === 0 && product?.variantGroups) {
+
+    if (hasVariants && Object.keys(variants).length === 0 && variantGroups) {
       // Auto-pick first enabled value from each variant group
       finalVariants = {};
-      for (const group of product.variantGroups) {
+      for (const group of variantGroups) {
         const firstEnabled = group.values
           .filter((v) => v.enabled)
           .sort((a, b) => a.order - b.order)[0];
-        
+
         if (firstEnabled) {
           finalVariants[group.name] = firstEnabled.label;
         }
@@ -79,7 +92,7 @@ export function AddToCartButton({
 
     try {
       addItem(productId, slug, name, price, finalVariants, thumbnail, 1);
-      
+
       toast.success("Added to cart", {
         description: hasVariants && Object.keys(finalVariants).length > 0
           ? `${name} (${Object.entries(finalVariants)
@@ -103,7 +116,7 @@ export function AddToCartButton({
   return (
     <Button
       onClick={handleAddToCart}
-      disabled={isAdding || !product}
+      disabled={isAdding}
       size="lg"
       className={className}
     >

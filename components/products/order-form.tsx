@@ -421,6 +421,7 @@ export function OrderForm({ product }: OrderFormProps) {
             thumbnail={thumbnail}
             variants={selectedVariants}
             hasVariants={hasVariants}
+            variantGroups={product.variantGroups}
             onSuccess={() => setCartPanelOpen(true)}
             className="w-full"
           />
