@@ -44,6 +44,8 @@ export function useCart() {
         "Cart storage near capacity. Consider clearing old data."
       );
     }
+    // Dispatch custom event for useCartCount to listen
+    window.dispatchEvent(new Event("cart-updated"));
   }, []);
 
   /**
@@ -172,6 +174,8 @@ export function useCart() {
   const clearCart = useCallback(() => {
     setCart(EMPTY_CART);
     clearStorageCart();
+    // Dispatch custom event for useCartCount
+    window.dispatchEvent(new Event("cart-updated"));
   }, []);
 
   /**
