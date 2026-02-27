@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { ShoppingBag, ShoppingCart, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { useCart } from "@/hooks/use-cart";
+import { useCartCount } from "@/hooks/use-cart-count";
 import { CartSidePanel } from "@/components/cart/cart-side-panel";
 
 const NAV_LINKS = [
@@ -18,10 +18,7 @@ export function Header() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
-  const { items, isLoaded } = useCart();
-
-  // Badge count = number of distinct cart lines (not total quantity)
-  const cartLineCount = items.length;
+  const { count: cartLineCount, isLoaded } = useCartCount();
 
   return (
     <>
