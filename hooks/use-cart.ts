@@ -44,8 +44,11 @@ export function useCart() {
         "Cart storage near capacity. Consider clearing old data."
       );
     }
-    // Dispatch custom event for useCartCount to listen
-    window.dispatchEvent(new Event("cart-updated"));
+    // Defer event dispatch to avoid setState-during-render error
+    // queueMicrotask ensures the event fires AFTER React finishes rendering
+    queueMicrotask(() => {
+      window.dispatchEvent(new Event("cart-updated"));
+    });
   }, []);
 
   /**
@@ -174,8 +177,10 @@ export function useCart() {
   const clearCart = useCallback(() => {
     setCart(EMPTY_CART);
     clearStorageCart();
-    // Dispatch custom event for useCartCount
-    window.dispatchEvent(new Event("cart-updated"));
+    // Defer event dispatch to avoid setState-during-render error
+    queueMicrotask(() => {
+      window.dispatchEvent(new Event("cart-updated"));
+    });
   }, []);
 
   /**
