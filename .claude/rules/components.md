@@ -6,7 +6,7 @@ This is a Next.js App Router project with React 19 and Convex. Components are or
 
 ```
 components/
-├── ui/           # shadcn/ui base components — DO NOT modify
+├── ui/           # shadcn/ui base components
 ├── product/      # Single product components (detail, add-to-cart, variant selector)
 ├── products/     # Product list and grid components
 ├── cart/         # Cart panel and cart item components
