@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { CartItemCard } from "./cart-item-card";
 import { useCart } from "@/hooks/use-cart";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getCartItemKey } from "@/lib/types/cart";
 
 interface CartSidePanelProps {
   open: boolean;
@@ -86,7 +87,7 @@ export function CartSidePanel({ open, onOpenChange }: CartSidePanelProps) {
               <div className="space-y-0">
                 {items.map((item) => (
                   <CartItemCard
-                    key={`${item.productId}-${JSON.stringify(item.variants)}`}
+                    key={getCartItemKey(item)}
                     item={item}
                   />
                 ))}
