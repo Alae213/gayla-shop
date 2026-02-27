@@ -2,105 +2,152 @@
 
 ## Architecture
 
-This is a Next.js 16 App Router project with React 19. Components are organized by feature:
+This is a Next.js App Router project with React 19 and Convex. Components are organized by feature:
 
 ```
 components/
-├── ui/           # shadcn/ui base components
-├── products/     # Product-related components
-├── cart/         # Cart components
-├── checkout/     # Checkout flow
+├── ui/           # shadcn/ui base components — DO NOT modify
+├── product/      # Single product components (detail, add-to-cart, variant selector)
+├── products/     # Product list and grid components
+├── cart/         # Cart panel and cart item components
+├── checkout/     # Checkout form and cart summary
 ├── admin/        # Admin dashboard components
-└── layout/       # Header, footer, etc.
+└── layout/       # Header, Footer
 ```
+
+> `product/` = single item scope. `products/` = list/grid scope. Never mix them.
 
 ## Server vs Client Components
 
-- **Server Components** (default): Data fetching, SEO content
-- **Client Components**: Use `"use client"` for:
-  - Hooks (`useState`, `useEffect`, custom hooks)
-  - Event handlers (`onClick`, `onSubmit`)
-  - Browser APIs (localStorage, DOM)
-  - React libraries without SSR support
+- **Server Components** (default, no directive): Used for layout shells, static content, SEO
+- **Client Components** (`"use client"`): Required for hooks, event handlers, browser APIs
 
 ```tsx
-// Client component
+// ✅ Client component — uses hooks and event handlers
 "use client";
-
 import { useState } from "react";
 
-export function AddToCartButton({ productId }: { productId: string }) {
+export function AddToCartButton({ productId, variantGroups }: AddToCartButtonProps) {
   const [loading, setLoading] = useState(false);
+  const { addItem } = useCart();
   // ...
 }
 ```
 
 ```tsx
-// Server component (default - no "use client")
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-
-export function ProductList() {
-  const products = useQuery(api.products.list);
-  // ...
+// ✅ Server component — renders static data, no hooks needed
+// NO "use client" directive
+export async function ProductPageShell({ slug }: { slug: string }) {
+  return (
+    <main>
+      <ProductDetails slug={slug} />
+    </main>
+  );
 }
 ```
+
+> ⚠️ `useQuery` from `convex/react` is a **client-only hook** — components using it require `"use client"`. There is no server-side Convex `useQuery`. Use `preloadQuery` (Convex) or pass data from a parent client component for server-rendered data.
+
+## Component Responsibilities
+
+Each component must have a **single responsibility**:
+
+| Type | Responsibility | Where |
+|---|---|---|
+| Page (`page.tsx`) | Compose feature components, handle route params | `app/` |
+| Feature component | Render a specific UI section, delegate logic to hooks | `components/[feature]/` |
+| Base component | Atomic UI (button, input, badge) | `components/ui/` |
+| Layout component | Page-level structure (header, footer) | `components/layout/` |
+
+**God Component rule:** If a component contains validation logic, mutation calls, AND navigation — extract logic to a `use-[feature].ts` hook. See `architecture.md` for the full rule.
 
 ## Props & Typing
 
-Use TypeScript interfaces for component props:
+Always define props with TypeScript interfaces:
 
 ```tsx
-interface ProductCardProps {
-  product: {
-    _id: Id<"products">;
-    title: string;
-    price: number;
-    images: Array<{ url: string; storageId: string }>;
-    status: "Active" | "Draft" | "Out of stock";
-  };
+interface CartItemCardProps {
+  item: CartItem;
+  className?: string;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function CartItemCard({ item, className }: CartItemCardProps) {
   // ...
 }
 ```
 
+- `className?: string` — always accept for style extension
+- `onSuccess?: () => void` — use callback props for parent notification
+- Never accept `style?: React.CSSProperties` — enforces design system compliance
+
 ## Styling
 
-- **Tailwind CSS** for all styling
-- **shadcn/ui** base components in `components/ui/`
-- Use `cn()` from `lib/utils.ts` for conditional classes:
+- **Tailwind CSS** for all styling — no inline styles, no CSS modules
+- **`cn()`** from `@/lib/utils` for ALL conditional class logic
+- See `design-system.md` for token usage and the `cn()` rule
 
 ```tsx
 import { cn } from "@/lib/utils";
 
-<Button className={cn("base-classes", isActive && "active-state")} />
+<button
+  className={cn(
+    "flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-colors",
+    isActive
+      ? "border-primary bg-primary/5 text-primary"
+      : "border-muted hover:border-primary/40"
+  )}
+/>
 ```
 
 ## Data Fetching
 
-- Use Convex `useQuery` in client components
-- Pass data from server components to client components via props
-- For admin pages, fetch in client components with loading states
-
-## Import Order
-
-1. External libs (react, convex)
-2. Internal libs (@/lib, @/convex)
-3. Components (@/components)
-4. Assets/other
+- Fetch data as high as possible in the tree, then pass down via props
+- Do NOT call `useQuery` inside a button or leaf component that already has access to the data from its parent
+- For admin pages, fetch in the page or a dedicated data hook
 
 ```tsx
-import { useState } from "react";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Button } from "@/components/ui/button";
-import { formatPrice } from "@/lib/utils";
+// ❌ Redundant query in leaf component
+export function AddToCartButton({ productId }) {
+  const product = useQuery(api.products.getById, { id: productId }); // wrong
+}
+
+// ✅ Parent fetches, passes data down
+export function ProductPage({ slug }) {
+  const product = useQuery(api.products.getBySlug, { slug });
+  return <AddToCartButton variantGroups={product?.variantGroups} />;
+}
 ```
 
 ## File Naming
 
-- Components: PascalCase (`ProductCard.tsx`, `OrderDetails.tsx`)
-- Hooks: camelCase with `use` prefix (`useCart.ts`)
-- Keep components focused - split large components
+- Components: **kebab-case** (`cart-item-card.tsx`, `checkout-form.tsx`)
+- Hooks: **kebab-case** with `use-` prefix (`use-cart.ts`, `use-checkout.ts`)
+- One component per file
+- File name must match the exported component name (kebab version)
+
+## Import Order
+
+1. React and Next.js (`react`, `next/navigation`, `next/image`)
+2. External libraries (`convex/react`, `lucide-react`, `sonner`)
+3. Internal generated (`@/convex/_generated/api`)
+4. Internal lib (`@/lib/types`, `@/lib/utils`, `@/lib/constants`)
+5. Internal hooks (`@/hooks/use-cart`)
+6. Internal components (`@/components/ui/button`)
+
+```tsx
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMutation } from "convex/react";
+import { Loader2 } from "lucide-react";
+import { api } from "@/convex/_generated/api";
+import { cn } from "@/lib/utils";
+import { useCart } from "@/hooks/use-cart";
+import { Button } from "@/components/ui/button";
+```
+
+## Accessibility Checklist
+
+- `aria-label` on all icon-only buttons
+- `disabled` prop + visual indicator during async operations
+- Keyboard-navigable interactive elements
+- `alt` text on all `<Image>` components
