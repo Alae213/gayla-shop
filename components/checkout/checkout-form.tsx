@@ -1,15 +1,6 @@
 "use client";
 
-/**
- * CheckoutForm - Order placement with delivery integration
- * Reuses COD form logic with cart support
- */
-
-import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { useRouter } from "next/navigation";
-import { useCart } from "@/hooks/use-cart";
+import { useCheckout } from "@/hooks/use-checkout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,140 +14,25 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { WILAYAS, COMMUNES_BY_WILAYA } from "@/lib/constants";
-import { isValidAlgerianPhone } from "@/lib/utils/yalidin-api";
+import { WILAYAS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { Loader2, Home, Building2 } from "lucide-react";
-import { toast } from "sonner";
-import type { Id } from "@/convex/_generated/dataModel";
-
-type DeliveryType = "Stopdesk" | "Domicile";
 
 export function CheckoutForm() {
-  const router = useRouter();
-  const { items, subtotal, clearCart } = useCart();
-
-  // Form state
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [deliveryType, setDeliveryType] = useState<DeliveryType>("Stopdesk");
-  const [wilayaId, setWilayaId] = useState("");
-  const [commune, setCommune] = useState("");
-  const [address, setAddress] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Convex queries
-  const createOrder = useMutation(api.orders.create);
-  const deliveryCostData = useQuery(
-    api.deliveryCosts.getByWilayaId,
-    wilayaId ? { wilayaId: parseInt(wilayaId) } : "skip"
-  );
-
-  // Calculate costs
-  const deliveryCost = deliveryCostData
-    ? deliveryType === "Domicile"
-      ? deliveryCostData.domicileCost
-      : deliveryCostData.stopdeskCost
-    : 0;
-
-  const totalAmount = subtotal + deliveryCost;
-
-  // Available communes for selected wilaya
-  const availableCommunes = wilayaId
-    ? COMMUNES_BY_WILAYA[parseInt(wilayaId)] || []
-    : [];
-
-  // Validation
-  function validate(): boolean {
-    const newErrors: Record<string, string> = {};
-
-    if (!customerName.trim() || customerName.trim().length < 2) {
-      newErrors.customerName = "Full name is required";
-    }
-
-    if (!isValidAlgerianPhone(customerPhone)) {
-      newErrors.customerPhone = "Enter a valid Algerian phone number";
-    }
-
-    if (!wilayaId) {
-      newErrors.wilaya = "Please select a wilaya";
-    }
-
-    if (deliveryType === "Domicile") {
-      if (!commune) {
-        newErrors.commune = "Please select a commune";
-      }
-      if (!address.trim() || address.trim().length < 5) {
-        newErrors.address = "Please enter your full address";
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }
-
-  // Submit handler
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (!validate()) {
-      toast.error("Please fix the errors in the form");
-      return;
-    }
-
-    if (items.length === 0) {
-      toast.error("Your cart is empty");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const wilayaObj = WILAYAS.find((w) => w.id.toString() === wilayaId);
-
-      // Convert cart items to lineItems format
-      const lineItems = items.map((item) => ({
-        productId: item.productId as Id<"products">,
-        productName: item.name,
-        productSlug: item.slug,
-        quantity: item.quantity,
-        unitPrice: item.price,
-        variants: Object.keys(item.variants).length > 0 ? item.variants : undefined,
-        lineTotal: item.price * item.quantity,
-        thumbnail: item.thumbnail,
-      }));
-
-      // Create order with multiple line items
-      const result = await createOrder({
-        customerName: customerName.trim(),
-        customerPhone: customerPhone.replace(/\s/g, ""),
-        customerWilaya: wilayaObj?.name || "",
-        customerCommune: commune || undefined,
-        customerAddress: deliveryType === "Domicile" ? address.trim() : undefined,
-        deliveryType,
-        deliveryCost,
-        lineItems,
-      });
-
-      toast.success("Order placed successfully!", {
-        description: `Order number: ${result.orderNumber}`,
-      });
-
-      // Clear cart
-      clearCart();
-
-      // Redirect to order confirmation
-      router.push(`/order-confirmation/${result.orderId}`);
-    } catch (error) {
-      console.error("Order submission error:", error);
-      toast.error("Failed to place order", {
-        description: error instanceof Error ? error.message : "Please try again",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
+  const {
+    form,
+    setField,
+    setDeliveryType,
+    errors,
+    deliveryCost,
+    totalAmount,
+    availableCommunes,
+    isDeliveryCostLoading,
+    items,
+    subtotal,
+    isSubmitting,
+    submit,
+  } = useCheckout();
 
   return (
     <Card>
@@ -164,7 +40,8 @@ export function CheckoutForm() {
         <CardTitle>Delivery Information</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={submit} className="space-y-5">
+
           {/* Full Name */}
           <div className="space-y-1">
             <Label htmlFor="customerName">
@@ -172,8 +49,8 @@ export function CheckoutForm() {
             </Label>
             <Input
               id="customerName"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
+              value={form.customerName}
+              onChange={(e) => setField("customerName", e.target.value)}
               placeholder="Ahmed Benali"
             />
             {errors.customerName && (
@@ -189,8 +66,8 @@ export function CheckoutForm() {
             <Input
               id="customerPhone"
               type="tel"
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
+              value={form.customerPhone}
+              onChange={(e) => setField("customerPhone", e.target.value)}
               placeholder="0555 123 456"
             />
             {errors.customerPhone && (
@@ -206,14 +83,10 @@ export function CheckoutForm() {
             <div className="grid grid-cols-2 gap-3 mt-1">
               <button
                 type="button"
-                onClick={() => {
-                  setDeliveryType("Stopdesk");
-                  setCommune("");
-                  setAddress("");
-                }}
+                onClick={() => setDeliveryType("Stopdesk")}
                 className={cn(
                   "flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-colors",
-                  deliveryType === "Stopdesk"
+                  form.deliveryType === "Stopdesk"
                     ? "border-primary bg-primary/5 text-primary"
                     : "border-muted hover:border-primary/40"
                 )}
@@ -226,7 +99,7 @@ export function CheckoutForm() {
                 onClick={() => setDeliveryType("Domicile")}
                 className={cn(
                   "flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-colors",
-                  deliveryType === "Domicile"
+                  form.deliveryType === "Domicile"
                     ? "border-primary bg-primary/5 text-primary"
                     : "border-muted hover:border-primary/40"
                 )}
@@ -243,10 +116,10 @@ export function CheckoutForm() {
               Wilaya <span className="text-destructive">*</span>
             </Label>
             <Select
-              value={wilayaId}
+              value={form.wilayaId}
               onValueChange={(v) => {
-                setWilayaId(v);
-                setCommune("");
+                setField("wilayaId", v);
+                setField("commune", "");
               }}
             >
               <SelectTrigger>
@@ -266,19 +139,21 @@ export function CheckoutForm() {
           </div>
 
           {/* Commune (Domicile only) */}
-          {deliveryType === "Domicile" && (
+          {form.deliveryType === "Domicile" && (
             <div className="space-y-1">
               <Label>
                 Commune <span className="text-destructive">*</span>
               </Label>
               <Select
-                value={commune}
-                onValueChange={setCommune}
-                disabled={!wilayaId}
+                value={form.commune}
+                onValueChange={(v) => setField("commune", v)}
+                disabled={!form.wilayaId}
               >
                 <SelectTrigger>
                   <SelectValue
-                    placeholder={wilayaId ? "Select a commune..." : "Select wilaya first"}
+                    placeholder={
+                      form.wilayaId ? "Select a commune..." : "Select wilaya first"
+                    }
                   />
                 </SelectTrigger>
                 <SelectContent className="max-h-[260px]">
@@ -296,15 +171,15 @@ export function CheckoutForm() {
           )}
 
           {/* Address (Domicile only) */}
-          {deliveryType === "Domicile" && (
+          {form.deliveryType === "Domicile" && (
             <div className="space-y-1">
               <Label htmlFor="address">
                 Full Address <span className="text-destructive">*</span>
               </Label>
               <Textarea
                 id="address"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                value={form.address}
+                onChange={(e) => setField("address", e.target.value)}
                 placeholder="Street, building, apartment..."
                 rows={3}
               />
@@ -331,9 +206,11 @@ export function CheckoutForm() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Delivery Cost</span>
                 <span className="font-medium">
-                  {wilayaId && deliveryCostData !== undefined
-                    ? `${deliveryCost.toLocaleString("fr-DZ")} DA`
-                    : "Select wilaya"}
+                  {isDeliveryCostLoading
+                    ? "..."
+                    : form.wilayaId
+                      ? `${deliveryCost.toLocaleString("fr-DZ")} DA`
+                      : "Select wilaya"}
                 </span>
               </div>
               <Separator />
@@ -351,7 +228,7 @@ export function CheckoutForm() {
             type="submit"
             className="w-full"
             size="lg"
-            disabled={isSubmitting || !wilayaId || items.length === 0}
+            disabled={isSubmitting || !form.wilayaId || items.length === 0}
           >
             {isSubmitting ? (
               <>
@@ -366,6 +243,7 @@ export function CheckoutForm() {
           <p className="text-xs text-center text-muted-foreground">
             By placing your order, you agree to our terms and conditions
           </p>
+
         </form>
       </CardContent>
     </Card>
