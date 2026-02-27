@@ -5,7 +5,7 @@ Fix all 9 critical architectural violations identified in the V2 frontend review
 scalable, production-safe, and fully aligned with the rules in `.claude/rules/`.
 
 ## Current Phase
-Phase 4 (CURRENT)
+Phase 5 (CURRENT)
 
 ---
 
@@ -21,30 +21,23 @@ Phase 4 (CURRENT)
 - **Status:** complete
 
 ### Phase 3: Architecture — Remove Duplicate Query in AddToCartButton ✓
-- [x] Removed `useQuery(api.products.getById)` from `add-to-cart-button.tsx`
-- [x] Added `variantGroups?: VariantGroup[]` prop to component interface
-- [x] Updated `order-form.tsx` to pass `variantGroups={product.variantGroups}`
-- [x] Changed `disabled={isAdding || !product}` → `disabled={isAdding}`
-- [x] Added architecture note explaining parent must pass variantGroups (no duplicate queries)
+- [x] Removed `useQuery` from `add-to-cart-button.tsx`
+- [x] Added `variantGroups` prop, updated caller
 - **Status:** complete
 
----
-
-### Phase 4: Architecture — Fix Route Group Structure (CURRENT)
-> `app/order-confirmation/` renders without Header + Footer (outside `(public)/` group).
-
-- [ ] Check if `app/order-confirmation/` has its own `layout.tsx` (may conflict with move)
-- [ ] Move `app/order-confirmation/` → `app/(public)/order-confirmation/`
-- [ ] Verify route resolves at `/order-confirmation/[id]`
-- [ ] Verify Header/Footer render on confirmation page
-- **Status:** in_progress
+### Phase 4: Architecture — Fix Route Group Structure ✓
+- [x] Moved `app/order-confirmation/[orderId]/` → `app/(public)/order-confirmation/[orderId]/`
+- [x] Confirmed no `layout.tsx` conflict (only `page.tsx` existed)
+- [x] Deleted old location
+- **Status:** complete
+- **Note:** Route now resolves at `/order-confirmation/[id]` with Header + Footer from `(public)/layout.tsx`
 
 ---
 
-### Phase 5: Architecture — Resolve Directory Duplications
-- [ ] Audit root `/providers` vs `components/providers/` — consolidate
+### Phase 5: Architecture — Resolve Directory Duplications (CURRENT)
+- [ ] Audit root `/providers` vs `components/providers/` — consolidate if needed
 - [ ] Add comment to `lib/utils.ts` explaining cn() + `lib/utils/` coexistence
-- **Status:** pending
+- **Status:** in_progress
 
 ---
 
@@ -72,7 +65,7 @@ Phase 4 (CURRENT)
 
 ### Phase 9: Verification & Rules Update
 - [ ] Grep audits: template literals, JSON keys, direct useQuery
-- [ ] Manual test: add to cart → checkout → confirmation
+- [ ] Manual test: add to cart → checkout → confirmation (verify Header/Footer render)
 - [ ] Update `.claude/rules/*.md` if needed
 - **Status:** pending
 
@@ -84,17 +77,17 @@ Phase 4 (CURRENT)
 |---|---|
 | Keep `lib/utils.ts` as-is | Imported as `@/lib/utils` everywhere — renaming breaks 50+ files |
 | Hook-extracted checkout | Architecture rule: hooks own state+mutations, components own JSX |
-| `AddToCartButton` no longer fetches product | Parent already has product data — no duplicate queries |
-| Pass `variantGroups` as prop | Explicit data flow, testable, no hidden dependencies |
+| `AddToCartButton` no longer fetches | Parent has product data — no duplicate queries |
+| Move order-confirmation into `(public)/` | All public routes must share Header+Footer via route group |
 
 ## Errors Encountered
 
 | Error | Attempt | Resolution |
 |---|---|---|
-| GitHub code search returned 0 for template literals | 1 | Manually listed and read each component file |
-| `create_or_update_file` stale SHA | 1 | Re-fetched current file SHA then retried |
-| GitHub code search returned 0 for AddToCartButton usage | 1 | Checked known callers (order-form.tsx) directly |
+| GitHub code search: 0 results (template literals) | 1 | Manually read files |
+| `create_or_update_file` stale SHA | 1 | Re-fetched SHA |
+| GitHub code search: 0 results (AddToCartButton) | 1 | Checked known callers directly |
 
 ## Notes
-- Each phase committed independently
-- After Phase 4, test `/order-confirmation/[id]` manually
+- Phase 4 complete: `/order-confirmation/[id]` now has Header+Footer
+- Test manually after Phase 9
