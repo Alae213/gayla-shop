@@ -14,27 +14,27 @@ import { Badge } from "@/components/ui/badge";
 function ProductDetailSkeleton() {
   return (
     <div className="page-container py-12">
-      <div className="h-4 w-48 bg-system-200 rounded animate-pulse mb-8" />
+      <div className="h-4 w-48 bg-muted rounded animate-pulse mb-8" />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
         <div className="space-y-4">
-          <div className="aspect-square rounded-2xl bg-system-100 animate-pulse" />
+          <div className="aspect-square rounded-2xl bg-muted animate-pulse" />
           <div className="grid grid-cols-4 gap-2">
             {[0,1,2,3].map((i) => (
-              <div key={i} className="aspect-square rounded-lg bg-system-100 animate-pulse" />
+              <div key={i} className="aspect-square rounded-lg bg-muted animate-pulse" />
             ))}
           </div>
         </div>
         <div className="space-y-6 pt-2">
           <div className="space-y-3">
-            <div className="h-9 w-3/4 bg-system-200 rounded animate-pulse" />
-            <div className="h-7 w-24 bg-system-200 rounded animate-pulse" />
+            <div className="h-9 w-3/4 bg-muted rounded animate-pulse" />
+            <div className="h-7 w-24 bg-muted rounded animate-pulse" />
           </div>
           <div className="space-y-2">
             {[0,1,2].map((i) => (
-              <div key={i} className="h-4 bg-system-100 rounded animate-pulse" />
+              <div key={i} className="h-4 bg-muted rounded animate-pulse" />
             ))}
           </div>
-          <div className="h-64 bg-system-100 rounded-xl animate-pulse" />
+          <div className="h-64 bg-muted rounded-xl animate-pulse" />
         </div>
       </div>
     </div>
@@ -64,19 +64,19 @@ export default function ProductDetailPage() {
 
   return (
     <div className="page-container py-10 md:py-14">
-      <nav className="mb-8 flex gap-2 caption-text text-system-300">
-        <Link href="/" className="hover:text-system-400 transition-colors">Home</Link>
+      <nav className="mb-8 flex gap-2 caption-text text-muted-foreground">
+        <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
         <span>/</span>
-        <Link href="/products" className="hover:text-system-400 transition-colors">Shop</Link>
+        <Link href="/products" className="hover:text-foreground transition-colors">Shop</Link>
         <span>/</span>
-        <span className="text-system-400 truncate max-w-[200px]">{product.title}</span>
+        <span className="text-foreground truncate max-w-[200px]">{product.title}</span>
       </nav>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
         {/* Left Column: Images + Description */}
         <div className="space-y-6">
           {/* Main Image */}
-          <div className="aspect-square relative overflow-hidden rounded-2xl bg-system-100 group">
+          <div className="aspect-square relative overflow-hidden rounded-2xl bg-muted group">
             {currentImage ? (
               <Image
                 src={currentImage}
@@ -87,7 +87,7 @@ export default function ProductDetailPage() {
                 priority
               />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-system-300">
+              <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-muted-foreground">
                 <ImageIcon className="h-16 w-16 opacity-20" />
                 <span className="caption-text">No Image Available</span>
               </div>
@@ -104,7 +104,7 @@ export default function ProductDetailPage() {
                   className={`aspect-square relative overflow-hidden rounded-lg border-2 transition-all ${
                     selectedImageIndex === index
                       ? "border-brand-200 scale-105"
-                      : "border-system-200 hover:border-system-300"
+                      : "border-border hover:border-muted-foreground"
                   }`}
                   aria-label={`View image ${index + 1}`}
                 >
@@ -123,10 +123,10 @@ export default function ProductDetailPage() {
 
           {/* Description - now below images */}
           {product.description && (
-            <div className="pt-4 border-t border-system-200">
-              <h2 className="text-lg font-bold text-system-400 mb-3">Description</h2>
+            <div className="pt-4 border-t border-border">
+              <h2 className="text-lg font-bold text-foreground mb-3">Description</h2>
               <div
-                className="prose prose-sm max-w-none text-system-300 leading-relaxed"
+                className="prose prose-sm max-w-none text-muted-foreground leading-relaxed"
                 dangerouslySetInnerHTML={{ __html: product.description }}
               />
             </div>
@@ -141,7 +141,7 @@ export default function ProductDetailPage() {
                 {product.category}
               </Badge>
             )}
-            <h1 className="headline-h1 text-system-400 leading-tight">
+            <h1 className="headline-h1 text-foreground leading-tight">
               {product.title}
             </h1>
             <p className="text-3xl font-extrabold text-brand-200 tracking-tight">
@@ -149,7 +149,7 @@ export default function ProductDetailPage() {
             </p>
           </div>
 
-          <div className="border-t border-system-200" />
+          <div className="border-t border-border" />
 
           <OrderForm product={product} />
         </div>

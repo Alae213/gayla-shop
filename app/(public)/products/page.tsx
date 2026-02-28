@@ -36,16 +36,16 @@ export default function ProductsPage() {
     <div className="page-container py-12">
       {/* Page header */}
       <div className="mb-10">
-        <nav className="mb-3 flex gap-2 caption-text text-system-300">
-          <a href="/" className="hover:text-system-400">Home</a>
+        <nav className="mb-3 flex gap-2 caption-text text-muted-foreground">
+          <a href="/" className="hover:text-foreground">Home</a>
           <span>/</span>
-          <span className="text-system-400">Shop</span>
+          <span className="text-foreground">Shop</span>
         </nav>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="headline-h1 text-system-400">All Products</h1>
+            <h1 className="headline-h1 text-foreground">All Products</h1>
             {filtered !== undefined && (
-              <p className="caption-text text-system-300 mt-1">
+              <p className="caption-text text-muted-foreground mt-1">
                 {filtered.length} {filtered.length === 1 ? "product" : "products"}
                 {selectedCategory !== "all" ? ` in ${selectedCategory}` : ""}
               </p>
@@ -76,7 +76,7 @@ export default function ProductsPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3 text-system-300">
+        <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
           <p className="body-text">No products in this category</p>
           <button
             onClick={() => setSelectedCategory("all")}
