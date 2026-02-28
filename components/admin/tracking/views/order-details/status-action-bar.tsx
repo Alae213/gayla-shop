@@ -10,7 +10,7 @@ import {
   PhoneForwarded,
   TriangleAlert,
 } from "lucide-react";
-import { TrackingButton } from "../../ui/tracking-button";
+import { Button } from "../../components/button";
 import { CallLoggingSection } from "./call-logging-section";
 
 type MVPStatus = "new" | "confirmed" | "packaged" | "shipped" | "canceled" | "blocked" | "hold";
@@ -132,9 +132,9 @@ export function StatusActionBar({
             onCancelNote={onCancelNote}
             onLogCall={onLogCall}
           />
-          <TrackingButton variant="primary" onClick={onConfirmClick} className="w-full gap-2 mt-2 h-12 text-[15px]">
+          <Button variant="primary" onClick={onConfirmClick} className="w-full gap-2 mt-2 h-12 text-[15px]">
             <Check className="w-5 h-5" /> Confirm Order
-          </TrackingButton>
+          </Button>
         </div>
       )}
 
@@ -157,12 +157,12 @@ export function StatusActionBar({
             <PhoneForwarded className="w-4 h-4 shrink-0" />
             Wrong number — please correct the phone number below, then resume.
           </div>
-          <TrackingButton variant="secondary" onClick={onStartEdit} className="w-full gap-2 h-11 border-orange-200 text-orange-600 hover:bg-orange-50">
+          <Button variant="secondary" onClick={onStartEdit} className="w-full gap-2 h-11 border-orange-200 text-orange-600 hover:bg-orange-50">
             <Edit2 className="w-4 h-4" /> Edit Phone Number
-          </TrackingButton>
-          <TrackingButton variant="primary" onClick={() => onStatusChange("new", "Resumed from wrong number hold")} className="w-full gap-2 h-11">
+          </Button>
+          <Button variant="primary" onClick={() => onStatusChange("new", "Resumed from wrong number hold")} className="w-full gap-2 h-11">
             <ArrowRight className="w-4 h-4" /> Resume as New
-          </TrackingButton>
+          </Button>
         </div>
       )}
 
@@ -172,16 +172,16 @@ export function StatusActionBar({
             <div className="space-y-3 p-4 bg-rose-50 rounded-xl border border-rose-200 animate-in zoom-in-95">
               <p className="text-[13px] text-rose-700 font-medium">Cancel this order?</p>
               <div className="flex gap-2">
-                <TrackingButton variant="secondary" onClick={() => onSetShowCancelConfirm(false)} className="flex-1">Keep it</TrackingButton>
-                <TrackingButton onClick={() => { onSetShowCancelConfirm(false); onStatusChange("canceled"); }} className="flex-1 bg-rose-600 hover:bg-rose-700 text-white">Yes, cancel</TrackingButton>
+                <Button variant="secondary" onClick={() => onSetShowCancelConfirm(false)} className="flex-1">Keep it</Button>
+                <Button onClick={() => { onSetShowCancelConfirm(false); onStatusChange("canceled"); }} className="flex-1 bg-rose-600 hover:bg-rose-700 text-white">Yes, cancel</Button>
               </div>
             </div>
           ) : (
             <div className="flex gap-3">
-              <TrackingButton variant="secondary" onClick={() => onSetShowCancelConfirm(true)} className="flex-1 text-rose-600 hover:bg-rose-50 h-12">Cancel</TrackingButton>
-              <TrackingButton variant="primary" onClick={onDispatchClick} className="flex-[2] gap-2 h-12">
+              <Button variant="secondary" onClick={() => onSetShowCancelConfirm(true)} className="flex-1 text-rose-600 hover:bg-rose-50 h-12">Cancel</Button>
+              <Button variant="primary" onClick={onDispatchClick} className="flex-[2] gap-2 h-12">
                 Send to Yalidin <ArrowRight className="w-5 h-5" aria-hidden="true" />
-              </TrackingButton>
+              </Button>
             </div>
           )}
         </div>
@@ -189,10 +189,10 @@ export function StatusActionBar({
 
       {effectiveStatus === "packaged" && (
         <div className="flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <TrackingButton variant="secondary" onClick={onPrintLabel} className="flex-[2] h-12">Print Label</TrackingButton>
-          <TrackingButton variant="primary" onClick={() => onStatusChange("shipped")} className="flex-1 gap-2 h-12">
+          <Button variant="secondary" onClick={onPrintLabel} className="flex-[2] h-12">Print Label</Button>
+          <Button variant="primary" onClick={() => onStatusChange("shipped")} className="flex-1 gap-2 h-12">
             Ship <ArrowRight className="w-5 h-5" aria-hidden="true" />
-          </TrackingButton>
+          </Button>
         </div>
       )}
 
@@ -222,9 +222,9 @@ export function StatusActionBar({
               </span>
             </div>
           </div>
-          <TrackingButton variant="secondary" onClick={() => onStatusChange("new", "Unblocked by admin")} className="w-full gap-2 h-11 text-emerald-600 border-emerald-200 hover:bg-emerald-50">
+          <Button variant="secondary" onClick={() => onStatusChange("new", "Unblocked by admin")} className="w-full gap-2 h-11 text-emerald-600 border-emerald-200 hover:bg-emerald-50">
             <ShieldOff className="w-4 h-4" /> Restore to New
-          </TrackingButton>
+          </Button>
         </div>
       )}
     </div>

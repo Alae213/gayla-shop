@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Id } from "@/convex/_generated/dataModel";
-import { OrderLineItemsEditor } from "../../ui/order-line-items-editor";
-import { LineItem } from "../../ui/line-item-row";
+import { Editor } from "../../features/line-items/editor";
+import { LineItem } from "../../features/line-items";
 
 interface OrderItemsSectionProps {
   orderId: Id<"orders">;
@@ -44,7 +44,7 @@ export function OrderItemsSection({
   if (lineItems.length > 0) {
     return (
       <section className="mb-8" aria-labelledby="line-items-heading">
-        <OrderLineItemsEditor
+        <Editor
           orderId={orderId}
           initialLineItems={lineItems}
           initialDeliveryCost={deliveryCost}
