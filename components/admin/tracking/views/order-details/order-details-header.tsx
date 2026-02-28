@@ -3,7 +3,7 @@
 import * as React from "react";
 import { format } from "date-fns";
 import { Clock, User } from "lucide-react";
-import { StatusPill } from "../../ui/status-pill";
+import { StatusPill } from "../../components/status-pill";
 
 type MVPStatus = "new" | "confirmed" | "packaged" | "shipped" | "canceled" | "blocked" | "hold";
 
