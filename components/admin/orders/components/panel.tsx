@@ -41,11 +41,14 @@ export function Panel({
 
   return (
     <>
+      {/* Backdrop */}
       <div
         className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] animate-in fade-in duration-200"
         onClick={handleDismiss}
         aria-hidden="true"
       />
+
+      {/* Slide-in Panel */}
       <div
         className={cn(
           "fixed top-0 right-0 h-full w-full sm:w-[480px] max-w-[100vw] bg-card z-[110]",
@@ -58,6 +61,7 @@ export function Panel({
         aria-labelledby="panel-title"
         {...props}
       >
+        {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border shrink-0">
           <h2 id="panel-title" className="text-lg font-semibold text-foreground m-0 truncate pr-4">
             {title}
@@ -72,6 +76,8 @@ export function Panel({
             <X className="w-5 h-5" />
           </Button>
         </div>
+
+        {/* Content */}
         <div className="flex-1 overflow-hidden">
           {children}
         </div>

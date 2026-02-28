@@ -107,6 +107,7 @@ export const OrderCard = React.forwardRef<HTMLDivElement, OrderCardProps>(
         )}
         {...props}
       >
+        {/* Header: Checkbox + Call Log + Status */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className={cn(
@@ -127,6 +128,7 @@ export const OrderCard = React.forwardRef<HTMLDivElement, OrderCardProps>(
           <StatusPill status={status} />
         </div>
 
+        {/* Customer Info */}
         <div className="flex flex-col gap-1">
           <span className="text-[15px] font-semibold font-mono leading-tight">{orderNumber}</span>
           <span className="text-sm font-medium text-foreground leading-snug">{customerName}</span>
@@ -137,6 +139,7 @@ export const OrderCard = React.forwardRef<HTMLDivElement, OrderCardProps>(
           )}
         </div>
 
+        {/* Product Section */}
         {productName && (
           <div className="flex gap-3 items-start">
             {thumbnail && !imageError && (
@@ -178,12 +181,18 @@ export const OrderCard = React.forwardRef<HTMLDivElement, OrderCardProps>(
               </h4>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {quantity && quantity > 1 && (
-                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-bold">
+                  <Badge
+                    variant="secondary"
+                    className="h-5 px-1.5 text-[10px] font-bold"
+                  >
                     ×{quantity}
                   </Badge>
                 )}
                 {variantLabel && (
-                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-medium">
+                  <Badge
+                    variant="outline"
+                    className="h-5 px-1.5 text-[10px] font-medium"
+                  >
                     {variantLabel}
                   </Badge>
                 )}
@@ -201,6 +210,7 @@ export const OrderCard = React.forwardRef<HTMLDivElement, OrderCardProps>(
           </div>
         )}
 
+        {/* Footer */}
         <div className="flex items-center justify-between mt-1 pt-4 border-t border-border">
           <span className="text-sm font-bold text-foreground">{totalPrice.toLocaleString()} DZD</span>
           <span className="text-xs text-muted-foreground">{date}</span>

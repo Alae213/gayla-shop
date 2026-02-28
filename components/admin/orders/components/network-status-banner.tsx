@@ -8,6 +8,13 @@ interface NetworkStatusBannerProps {
   className?: string;
 }
 
+/**
+ * Network Status Banner
+ * 
+ * Displays a warning banner when the user goes offline.
+ * Auto-hides when reconnected. Helps users understand
+ * why their changes might not be syncing.
+ */
 export function NetworkStatusBanner({ className = "" }: NetworkStatusBannerProps) {
   const [isOnline, setIsOnline] = useState(true);
   const [wasOffline, setWasOffline] = useState(false);
