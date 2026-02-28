@@ -66,11 +66,9 @@ export function TrackingWorkspace() {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showBulkCancelDialog, setShowBulkCancelDialog] = useState(false);
 
-  // Refs for click-outside detection
   const sortDropdownRef   = useRef<HTMLDivElement>(null);
   const filterDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close both dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -94,13 +92,11 @@ export function TrackingWorkspace() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showSortDropdown, showFilterDropdown]);
 
-  // Close dropdowns on view change
   useEffect(() => {
     setShowSortDropdown(false);
     setShowFilterDropdown(false);
   }, [view]);
 
-  // Unsaved-changes panel close ref
   const panelRequestCloseRef = useRef<(() => void) | null>(null);
 
   const handleRegisterRequestClose = useCallback((fn: () => void) => {
@@ -120,8 +116,6 @@ export function TrackingWorkspace() {
     setSelectedOrderId(null);
   }, []);
 
-  // FIX 16A: Reset the close-guard ref whenever a NEW order is selected, so
-  // a guard registered for order A can never fire while order B is open.
   const handleSelectOrder = useCallback((id: Id<"orders">) => {
     panelRequestCloseRef.current = null;
     setSelectedOrderId(id);
@@ -133,17 +127,10 @@ export function TrackingWorkspace() {
     selectedOrderId ? { id: selectedOrderId } : "skip"
   );
 
-  // FIX 16B: Auto-close the panel when the open order transitions to a
-  // terminal status (auto-cancel, bulk-cancel, block). Skip if the operator
-  // has unsaved edits — let the unsaved-changes dialog handle that instead.
   useEffect(() => {
     if (!selectedOrder) return;
     const normalized = normalizeLegacyStatus(selectedOrder.status);
     if (TERMINAL_STATUSES.has(normalized)) {
-      // Only auto-close if there is no registered close-guard (i.e. no
-      // unsaved edits). If there IS a guard, the details panel will show
-      // the order's canceled/blocked action bar and the operator can close
-      // manually — consistent with the existing UX.
       if (!panelRequestCloseRef.current) {
         setSelectedOrderId(null);
       }
@@ -191,7 +178,6 @@ export function TrackingWorkspace() {
     ? sortedActive
     : sortedActive.filter(o => o._normalizedStatus === listStatusFilter);
 
-  // Selection handlers
   const handleToggleSelect = (id: Id<"orders">) => {
     setSelectedOrderIds(prev => {
       const next = new Set(prev);
@@ -212,13 +198,12 @@ export function TrackingWorkspace() {
 
   const handleClearSelection = () => setSelectedOrderIds(new Set());
 
-  // Bulk actions
   const handleBulkConfirm = async () => {
     if (!selectedOrderIds.size) return;
     setIsProcessing(true);
     try {
       const results = await bulkConfirm({ ids: Array.from(selectedOrderIds) });
-      if (results.failed === 0) toast.success(`\u2713 ${results.success} orders confirmed`);
+      if (results.failed === 0) toast.success(`✓ ${results.success} orders confirmed`);
       else toast.warning(`${results.success} confirmed, ${results.failed} failed`);
       handleClearSelection();
     } catch {
@@ -262,9 +247,9 @@ export function TrackingWorkspace() {
       if (results.skipped  > 0) parts.push(`${results.skipped} already terminal`);
       if (results.failed   > 0) parts.push(`${results.failed} failed`);
       if (results.failed > 0) {
-        toast.warning(parts.join(" \u00b7 "));
+        toast.warning(parts.join(" · "));
       } else {
-        toast.success(`\u2713 ${parts.join(" \u00b7 ")}`);
+        toast.success(`✓ ${parts.join(" · ")}`);
       }
       handleClearSelection();
     } catch {
@@ -281,7 +266,7 @@ export function TrackingWorkspace() {
     setIsProcessing(true);
     try {
       const results = await bulkUnblock({ ids: Array.from(selectedOrderIds) });
-      if (results.failed === 0) toast.success(`\u2713 ${results.success} customers unblocked`);
+      if (results.failed === 0) toast.success(`✓ ${results.success} customers unblocked`);
       else toast.warning(`${results.success} unblocked, ${results.failed} failed`);
       handleClearSelection();
     } catch {
@@ -298,7 +283,7 @@ export function TrackingWorkspace() {
     try {
       const result = await migrateOrderStatuses({});
       if (result.migrated > 0) {
-        toast.success(`\u2713 Migration complete: ${result.migrated} orders updated, ${result.skipped} already up-to-date`);
+        toast.success(`✓ Migration complete: ${result.migrated} orders updated, ${result.skipped} already up-to-date`);
       } else {
         toast.success(`All ${result.skipped} orders already use MVP statuses`);
       }
@@ -326,15 +311,14 @@ export function TrackingWorkspace() {
   ];
 
   return (
-    <div className="relative flex flex-col h-full w-full bg-[#F5F5F5]">
+    <div className="relative flex flex-col h-full w-full bg-background">
 
-      {/* Bulk Cancel Confirmation Dialog */}
       <AlertDialog open={showBulkCancelDialog} onOpenChange={setShowBulkCancelDialog}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <div className="flex items-center gap-2 text-rose-600 mb-1">
+            <div className="flex items-center gap-2 text-destructive mb-1">
               <Trash2 className="h-5 w-5 shrink-0" />
-              <AlertDialogTitle className="text-rose-700">
+              <AlertDialogTitle className="text-destructive">
                 Cancel {selectedOrderIds.size} order{selectedOrderIds.size !== 1 ? "s" : ""}?
               </AlertDialogTitle>
             </div>
@@ -346,7 +330,7 @@ export function TrackingWorkspace() {
             <AlertDialogCancel>Keep them</AlertDialogCancel>
             <AlertDialogAction
               onClick={executeBulkCancel}
-              className="bg-rose-600 hover:bg-rose-700 text-white"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
             >
               Yes, cancel all
             </AlertDialogAction>
@@ -354,9 +338,8 @@ export function TrackingWorkspace() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Migration Banner */}
       {hasLegacyOrders && (
-        <div className="flex items-center justify-between gap-4 px-8 py-3 bg-amber-50 border-b border-amber-200 text-amber-900 text-[13px]">
+        <div className="flex items-center justify-between gap-4 px-8 py-3 bg-warning/10 border-b border-warning/20 text-warning-foreground text-sm">
           <div className="flex items-center gap-2">
             <DatabaseZap className="w-4 h-4 shrink-0" />
             <span>
@@ -369,27 +352,26 @@ export function TrackingWorkspace() {
           <button
             onClick={handleMigrate}
             disabled={isMigrating}
-            className="flex items-center gap-1.5 shrink-0 bg-amber-800 text-white text-[13px] font-medium px-4 py-1.5 rounded-full hover:bg-amber-900 disabled:opacity-60 transition-colors"
+            className="flex items-center gap-1.5 shrink-0 bg-warning text-warning-foreground text-sm font-medium px-4 py-1.5 rounded-full hover:bg-warning/90 disabled:opacity-60 transition-colors"
           >
             {isMigrating
-              ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ? <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
               : <DatabaseZap className="w-3.5 h-3.5" />}
             {isMigrating ? "Migrating..." : "Run Migration"}
           </button>
         </div>
       )}
 
-      {/* View Controls Toolbar */}
-      <div className="flex items-center justify-between px-8 py-4 bg-white border-b border-[#ECECEC]">
-        <div className="flex items-center bg-[#F7F7F7] p-1 rounded-tracking-input border border-[#ECECEC]">
+      <div className="flex items-center justify-between px-8 py-4 bg-card border-b border-border">
+        <div className="flex items-center bg-muted p-1 rounded-lg border border-border">
           {(["kanban", "list"] as const).map(v => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-tracking-input text-[14px] font-medium transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 view === v
-                  ? "bg-white text-[#3A3A3A] shadow-sm"
-                  : "text-[#AAAAAA] hover:text-[#3A3A3A]"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {v === "kanban"
@@ -398,18 +380,18 @@ export function TrackingWorkspace() {
               {v.charAt(0).toUpperCase() + v.slice(1)}
             </button>
           ))}
-          <div className="w-[1px] h-4 bg-[#ECECEC] mx-2" />
+          <div className="w-[1px] h-4 bg-border mx-2" />
           <button
             onClick={() => setView("blacklist")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-tracking-input text-[14px] font-medium transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               view === "blacklist"
-                ? "bg-white text-rose-600 shadow-sm"
-                : "text-[#AAAAAA] hover:text-rose-600"
+                ? "bg-card text-destructive shadow-sm"
+                : "text-muted-foreground hover:text-destructive"
             }`}
           >
             <Ban className="w-4 h-4" /> Blacklist
             {blacklistOrders && blacklistOrders.length > 0 && (
-              <span className="ml-1 bg-rose-100 text-rose-600 text-[11px] font-bold px-1.5 py-0.5 rounded-full">
+              <span className="ml-1 bg-destructive/10 text-destructive text-xs font-bold px-1.5 py-0.5 rounded-full">
                 {blacklistOrders.length}
               </span>
             )}
@@ -418,18 +400,17 @@ export function TrackingWorkspace() {
 
         <div className="flex items-center gap-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#AAAAAA]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search orders..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               aria-label="Search orders"
-              className="pl-9 pr-4 py-2 w-[280px] bg-[#F7F7F7] border border-[#ECECEC] rounded-tracking-input text-[14px] text-[#3A3A3A] placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#AAAAAA] transition-all"
+              className="pl-9 pr-4 py-2 w-[280px] bg-muted border border-input rounded-md text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
             />
           </div>
 
-          {/* Sort dropdown */}
           <div ref={sortDropdownRef} className="relative">
             <button
               aria-label="Sort orders"
@@ -439,8 +420,8 @@ export function TrackingWorkspace() {
               onClick={() => { setShowSortDropdown(p => !p); setShowFilterDropdown(false); }}
               className={`p-2 rounded-full transition-colors ${
                 showSortDropdown
-                  ? "text-[#3A3A3A] bg-[#F0F0F0]"
-                  : "text-[#AAAAAA] hover:text-[#3A3A3A] hover:bg-[#F7F7F7]"
+                  ? "text-foreground bg-secondary"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
               <ArrowDownUp className="w-5 h-5" />
@@ -449,7 +430,7 @@ export function TrackingWorkspace() {
               <div
                 role="listbox"
                 aria-label="Sort options"
-                className="absolute right-0 top-11 bg-white border border-[#ECECEC] rounded-xl shadow-tracking-elevated p-2 z-50 flex flex-col gap-1 min-w-[180px] animate-in fade-in zoom-in-95 duration-150"
+                className="absolute right-0 top-11 bg-card border border-border rounded-xl shadow-md p-2 z-50 flex flex-col gap-1 min-w-[180px] animate-in fade-in zoom-in-95 duration-150"
               >
                 {SORT_OPTIONS.map(opt => (
                   <button
@@ -457,10 +438,10 @@ export function TrackingWorkspace() {
                     role="option"
                     aria-selected={sortOrder === opt.value}
                     onClick={() => { setSortOrder(opt.value); setShowSortDropdown(false); }}
-                    className={`text-left px-3 py-2 text-[14px] rounded-lg transition-colors ${
+                    className={`text-left px-3 py-2 text-sm rounded-lg transition-colors ${
                       sortOrder === opt.value
-                        ? "bg-[#F0F0F0] font-semibold text-[#3A3A3A]"
-                        : "hover:bg-[#F7F7F7] text-[#3A3A3A]"
+                        ? "bg-secondary font-semibold text-foreground"
+                        : "hover:bg-muted text-foreground"
                     }`}
                   >
                     {opt.label}
@@ -470,7 +451,6 @@ export function TrackingWorkspace() {
             )}
           </div>
 
-          {/* Filter dropdown — list view only */}
           {view === "list" && (
             <div ref={filterDropdownRef} className="relative">
               <button
@@ -481,8 +461,8 @@ export function TrackingWorkspace() {
                 onClick={() => { setShowFilterDropdown(p => !p); setShowSortDropdown(false); }}
                 className={`p-2 rounded-full transition-colors ${
                   showFilterDropdown
-                    ? "text-[#3A3A3A] bg-[#F0F0F0]"
-                    : "text-[#AAAAAA] hover:text-[#3A3A3A] hover:bg-[#F7F7F7]"
+                    ? "text-foreground bg-secondary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
               >
                 <Filter className="w-5 h-5" />
@@ -491,7 +471,7 @@ export function TrackingWorkspace() {
                 <div
                   role="listbox"
                   aria-label="Filter options"
-                  className="absolute right-0 top-11 bg-white border border-[#ECECEC] rounded-xl shadow-tracking-elevated p-2 z-50 flex flex-col gap-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-150"
+                  className="absolute right-0 top-11 bg-card border border-border rounded-xl shadow-md p-2 z-50 flex flex-col gap-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-150"
                 >
                   {FILTER_OPTIONS.map(opt => (
                     <button
@@ -499,10 +479,10 @@ export function TrackingWorkspace() {
                       role="option"
                       aria-selected={listStatusFilter === opt.value}
                       onClick={() => { setListStatusFilter(opt.value); setShowFilterDropdown(false); }}
-                      className={`text-left px-3 py-2 text-[14px] rounded-lg transition-colors capitalize ${
+                      className={`text-left px-3 py-2 text-sm rounded-lg transition-colors capitalize ${
                         listStatusFilter === opt.value
-                          ? "bg-[#F0F0F0] font-semibold text-[#3A3A3A]"
-                          : "hover:bg-[#F7F7F7] text-[#3A3A3A]"
+                          ? "bg-secondary font-semibold text-foreground"
+                          : "hover:bg-muted text-foreground"
                       }`}
                     >
                       {opt.label}
@@ -515,22 +495,21 @@ export function TrackingWorkspace() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden">
         {orders === undefined ? (
           <div className="flex items-center justify-center h-full">
-            <div className="w-8 h-8 border-4 border-[#ECECEC] border-t-[#3A3A3A] rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-border border-t-foreground rounded-full animate-spin" />
           </div>
         ) : (
           <div className="h-full p-8 min-w-[1200px]">
             {(view === "kanban" || view === "list") && (
               sortedActive.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center py-24">
-                  <div className="w-16 h-16 rounded-full bg-[#F5F5F5] flex items-center justify-center mb-4 text-[#AAAAAA]">
+                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4 text-muted-foreground">
                     <LayoutGrid className="w-8 h-8" />
                   </div>
-                  <h3 className="text-[18px] font-semibold text-[#3A3A3A]">No active orders</h3>
-                  <p className="text-[14px] text-[#AAAAAA] mt-2 max-w-sm">
+                  <h3 className="text-lg font-semibold text-foreground">No active orders</h3>
+                  <p className="text-sm text-muted-foreground mt-2 max-w-sm">
                     Orders placed from the public store will appear here.
                   </p>
                 </div>
@@ -567,7 +546,6 @@ export function TrackingWorkspace() {
         )}
       </div>
 
-      {/* Bulk Action Bar */}
       {selectedOrderIds.size > 0 && (
         <TrackingBulkActionBar
           selectedIds={selectedOrderIds}
@@ -582,7 +560,6 @@ export function TrackingWorkspace() {
         />
       )}
 
-      {/* Right Panel */}
       <TrackingPanel
         isOpen={selectedOrderId !== null}
         onClose={handlePanelClose}
@@ -597,7 +574,7 @@ export function TrackingWorkspace() {
           />
         ) : (
           <div className="flex items-center justify-center py-12">
-            <div className="w-6 h-6 border-2 border-[#ECECEC] border-t-[#3A3A3A] rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-border border-t-foreground rounded-full animate-spin" />
           </div>
         )}
       </TrackingPanel>
