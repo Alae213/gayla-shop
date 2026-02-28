@@ -9,6 +9,9 @@
     "build": "npx --no-install next build",
     "start": "npx --no-install next start",
     "lint": "npx --no-install next lint",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
     "migrate:orders": "tsx scripts/migrate-orders.ts",
     "migrate:orders:dry-run": "tsx scripts/migrate-orders.ts --dry-run"
   },
