@@ -9,6 +9,7 @@ import { Order } from "../views/kanban-board";
 
 const MAX_RETRY_ATTEMPTS = 3;
 
+// DZ Phone formatter
 function formatDZPhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
   if (digits.startsWith("213") && digits.length >= 12) {
@@ -22,6 +23,7 @@ function formatDZPhone(raw: string): string {
   return raw;
 }
 
+// Build form snapshot from order
 function orderToForm(order: Order) {
   return {
     customerName:    order.customerName    ?? "",
@@ -38,6 +40,16 @@ interface UseOrderEditingProps {
   isMountedRef: React.MutableRefObject<() => boolean>;
 }
 
+/**
+ * Custom hook for managing order customer info editing.
+ * 
+ * Handles:
+ * - Edit mode state management
+ * - Form data with live sync
+ * - Unsaved changes detection
+ * - Save/discard with retry logic
+ * - Phone number formatting
+ */
 export function useOrderEditing({ order, isMountedRef }: UseOrderEditingProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState(() => orderToForm(order));
@@ -45,16 +57,23 @@ export function useOrderEditing({ order, isMountedRef }: UseOrderEditingProps) {
 
   const updateCustomerInfoMutation = useMutation(api.orders.updateCustomerInfo);
 
+  // Re-sync form when order updates (but not while editing)
   useEffect(() => {
     if (!isEditing && isMountedRef.current()) {
       setEditForm(orderToForm(order));
     }
   }, [
-    order.customerName, order.customerPhone, order.customerAddress,
-    order.customerWilaya, order.customerCommune, order.notes,
-    isEditing, isMountedRef,
+    order.customerName,
+    order.customerPhone,
+    order.customerAddress,
+    order.customerWilaya,
+    order.customerCommune,
+    order.notes,
+    isEditing,
+    isMountedRef,
   ]);
 
+  // Detect unsaved changes
   const hasUnsavedChanges = isEditing && (
     editForm.customerName    !== (order.customerName    ?? "") ||
     editForm.customerPhone   !== (order.customerPhone   ?? "") ||
@@ -67,21 +86,35 @@ export function useOrderEditing({ order, isMountedRef }: UseOrderEditingProps) {
   const handleSave = useCallback(async () => {
     const operationKey = "updateCustomerInfo";
     const currentRetry = retryCount[operationKey] || 0;
+
     try {
       await updateCustomerInfoMutation({ id: order._id, ...editForm });
       if (isMountedRef.current()) {
         setIsEditing(false);
         setRetryCount(prev => ({ ...prev, [operationKey]: 0 }));
         toast.success("Order updated");
+        console.log("[CustomerInfo] Updated successfully");
       }
     } catch (error) {
       if (!isMountedRef.current()) return;
+      
+      console.error("[CustomerInfo] Update failed:", error);
+      
       if (currentRetry >= MAX_RETRY_ATTEMPTS) {
-        toast.error("Failed to update order", { description: "Please contact support if this issue persists.", duration: 10000 });
+        toast.error("Failed to update order", {
+          description: "Please contact support if this issue persists.",
+          duration: 10000,
+        });
       } else {
         toast.error("Failed to update order", {
           description: "Your changes weren't saved.",
-          action: { label: "Retry", onClick: () => { setRetryCount(prev => ({ ...prev, [operationKey]: currentRetry + 1 })); handleSave(); } },
+          action: {
+            label: "Retry",
+            onClick: () => {
+              setRetryCount(prev => ({ ...prev, [operationKey]: currentRetry + 1 }));
+              handleSave();
+            },
+          },
           duration: 8000,
         });
       }
@@ -97,5 +130,17 @@ export function useOrderEditing({ order, isMountedRef }: UseOrderEditingProps) {
     setEditForm(prev => ({ ...prev, customerPhone: formatDZPhone(value) }));
   }, []);
 
-  return { isEditing, setIsEditing, editForm, setEditForm, hasUnsavedChanges, handleSave, handleDiscard, handlePhoneBlur };
+  return {
+    // State
+    isEditing,
+    setIsEditing,
+    editForm,
+    setEditForm,
+    hasUnsavedChanges,
+    
+    // Handlers
+    handleSave,
+    handleDiscard,
+    handlePhoneBlur,
+  };
 }

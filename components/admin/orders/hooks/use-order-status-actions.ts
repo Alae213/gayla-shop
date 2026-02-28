@@ -20,6 +20,16 @@ interface UseOrderStatusActionsProps {
   onFocusAddress?: () => void;
 }
 
+/**
+ * Custom hook for managing order status transitions.
+ * 
+ * Handles:
+ * - Status changes with optimistic updates
+ * - Rollback on failure with retry
+ * - Validation (e.g., address required for dispatch)
+ * - Confirm flow with no-call warning
+ * - Cancel confirmation dialog
+ */
 export function useOrderStatusActions({
   orderId,
   currentStatus: initialStatus,
@@ -31,34 +41,61 @@ export function useOrderStatusActions({
 }: UseOrderStatusActionsProps) {
   const [showNoCallWarning, setShowNoCallWarning] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  
+  // Optimistic state
   const [optimisticStatus, setOptimisticStatus] = useState<MVPStatus | null>(null);
+  
+  // Retry tracking
   const [retryCount, setRetryCount] = useState<Record<string, number>>({});
 
   const updateStatusMutation = useMutation(api.orders.updateStatus);
+
   const effectiveStatus = optimisticStatus ?? initialStatus;
 
   const handleStatusChange = useCallback(async (newStatus: MVPStatus, reason?: string) => {
     const operationKey = `updateStatus-${newStatus}`;
     const currentRetry = retryCount[operationKey] || 0;
+    
+    // Optimistic update
     const previousStatus = effectiveStatus;
     setOptimisticStatus(newStatus);
-
+    console.log("[Status] Optimistic update:", previousStatus, "\u2192", newStatus);
+    
     try {
       await updateStatusMutation({ id: orderId, status: newStatus, reason });
+      
       if (!isMountedRef.current()) return;
+      
+      // Clear optimistic state
       setOptimisticStatus(null);
       setRetryCount(prev => ({ ...prev, [operationKey]: 0 }));
+      
       toast.success(`Order marked as ${newStatus}`);
+      console.log("[Status] Updated successfully:", newStatus);
+      
       if (newStatus === "canceled") onClose();
     } catch (error) {
       if (!isMountedRef.current()) return;
+      
+      // Rollback optimistic update
+      console.error("[Status] Update failed:", error);
       setOptimisticStatus(previousStatus);
+      
       if (currentRetry >= MAX_RETRY_ATTEMPTS) {
-        toast.error("Failed to update status", { description: "Please contact support if this issue persists.", duration: 10000 });
+        toast.error("Failed to update status", {
+          description: "Please contact support if this issue persists.",
+          duration: 10000,
+        });
       } else {
         toast.error("Failed to update status", {
           description: `Couldn't change status to ${newStatus}.`,
-          action: { label: "Retry", onClick: () => { setRetryCount(prev => ({ ...prev, [operationKey]: currentRetry + 1 })); handleStatusChange(newStatus, reason); } },
+          action: {
+            label: "Retry",
+            onClick: () => {
+              setRetryCount(prev => ({ ...prev, [operationKey]: currentRetry + 1 }));
+              handleStatusChange(newStatus, reason);
+            },
+          },
           duration: 8000,
         });
       }
@@ -66,8 +103,12 @@ export function useOrderStatusActions({
   }, [orderId, effectiveStatus, retryCount, isMountedRef, updateStatusMutation, onClose]);
 
   const handleConfirmClick = useCallback(() => {
-    if (!hasCallLog) { setShowNoCallWarning(true); }
-    else { setShowNoCallWarning(false); handleStatusChange("confirmed"); }
+    if (!hasCallLog) {
+      setShowNoCallWarning(true);
+    } else {
+      setShowNoCallWarning(false);
+      handleStatusChange("confirmed");
+    }
   }, [hasCallLog, handleStatusChange]);
 
   const handleConfirmAnyway = useCallback(() => {
@@ -77,13 +118,30 @@ export function useOrderStatusActions({
 
   const handleDispatchClick = useCallback(async () => {
     if (!customerAddress || customerAddress.trim() === "") {
-      toast.warning("Please add a delivery address before dispatching", { description: "Address field is highlighted below." });
+      toast.warning("Please add a delivery address before dispatching", {
+        description: "Address field is highlighted below.",
+      });
       onFocusAddress?.();
       return;
     }
     await handleStatusChange("packaged", "Sent to courier");
-    if (isMountedRef.current()) toast.success("Order sent to Yalidin");
+    if (isMountedRef.current()) {
+      toast.success("Order sent to Yalidin");
+    }
   }, [customerAddress, handleStatusChange, isMountedRef, onFocusAddress]);
 
-  return { effectiveStatus, showNoCallWarning, setShowNoCallWarning, showCancelConfirm, setShowCancelConfirm, handleStatusChange, handleConfirmClick, handleConfirmAnyway, handleDispatchClick };
+  return {
+    // State
+    effectiveStatus,
+    showNoCallWarning,
+    setShowNoCallWarning,
+    showCancelConfirm,
+    setShowCancelConfirm,
+    
+    // Handlers
+    handleStatusChange,
+    handleConfirmClick,
+    handleConfirmAnyway,
+    handleDispatchClick,
+  };
 }
