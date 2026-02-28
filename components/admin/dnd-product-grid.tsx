@@ -87,20 +87,20 @@ function SortableCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative border rounded-xl overflow-hidden bg-white",
+        "group relative border rounded-xl overflow-hidden bg-card",
         "transition-shadow duration-200",
         isDragging
-          ? "shadow-2xl ring-2 ring-indigo-400 border-indigo-300"
-          : "border-gray-200 hover:shadow-md",
+          ? "shadow-2xl ring-2 ring-brand-200 border-brand-200"
+          : "border-border hover:shadow-md",
       )}
     >
       {/* ── Image area */}
-      <div className="relative aspect-square bg-gray-100 overflow-hidden">
+      <div className="relative aspect-square bg-muted overflow-hidden">
         {firstImage ? (
           <Image src={firstImage} alt={product.title} fill className="object-cover" />
         ) : (
           <div className="flex items-center justify-center h-full">
-            <ImageIcon className="h-12 w-12 text-gray-300" />
+            <ImageIcon className="h-12 w-12 text-muted-foreground" />
           </div>
         )}
 
@@ -108,9 +108,9 @@ function SortableCard({
         <Badge
           className={cn(
             "absolute top-2 right-2 text-[10px] font-semibold px-2 py-0.5 border-0",
-            isActive                      && "bg-emerald-500 text-white",
-            product.status === "Draft"    && "bg-gray-500 text-white",
-            product.status === "Out of stock" && "bg-amber-500 text-white",
+            isActive                      && "bg-success text-white",
+            product.status === "Draft"    && "bg-muted-foreground text-white",
+            product.status === "Out of stock" && "bg-warning text-white",
           )}
         >
           {product.status}
@@ -133,7 +133,7 @@ function SortableCard({
             onClick={(e) => { e.stopPropagation(); onToggleStatus(product._id); }}
             className={cn(
               "p-2.5 rounded-full text-white transition-colors",
-              isActive ? "bg-emerald-500/80 hover:bg-emerald-500" : "bg-gray-500/80 hover:bg-gray-500",
+              isActive ? "bg-success/80 hover:bg-success" : "bg-muted-foreground/80 hover:bg-muted-foreground",
             )}
             title={isActive ? "Set to Draft" : "Set to Active"}
           >
@@ -144,7 +144,7 @@ function SortableCard({
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onEdit(product._id); }}
-            className="p-2.5 rounded-full bg-indigo-500/80 hover:bg-indigo-500 text-white transition-colors"
+            className="p-2.5 rounded-full bg-brand-200/80 hover:bg-brand-300 text-white transition-colors"
             title="Edit product"
           >
             <Pencil className="h-4 w-4" />
@@ -154,7 +154,7 @@ function SortableCard({
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onDeleteRequest(product); }}
-            className="p-2.5 rounded-full bg-red-500/80 hover:bg-red-500 text-white transition-colors"
+            className="p-2.5 rounded-full bg-destructive/80 hover:bg-destructive text-white transition-colors"
             title="Delete product"
           >
             <Trash2 className="h-4 w-4" />
@@ -179,12 +179,12 @@ function SortableCard({
 
       {/* ── Info footer */}
       <div className="px-3 py-2.5">
-        <h3 className="font-semibold text-sm leading-tight line-clamp-1 text-gray-900 mb-0.5">
+        <h3 className="font-semibold text-sm leading-tight line-clamp-1 text-foreground mb-0.5">
           {product.title}
         </h3>
-        <p className="text-sm font-bold text-indigo-600">
+        <p className="text-sm font-bold text-brand-200">
           {product.price.toLocaleString()}
-          <span className="text-[10px] font-semibold text-indigo-400 ml-0.5">DZD</span>
+          <span className="text-[10px] font-semibold text-brand-100 ml-0.5">DZD</span>
         </p>
         {product.category && (
           <Badge variant="outline" className="mt-1 text-[10px] px-1.5 py-0">
@@ -205,17 +205,17 @@ function AddCard({ onClick, isLoading }: { onClick: () => void; isLoading: boole
       onClick={onClick}
       disabled={isLoading}
       className={cn(
-        "relative border-2 border-dashed border-gray-300 rounded-xl",
+        "relative border-2 border-dashed border-border rounded-xl",
         "aspect-square flex flex-col items-center justify-center",
-        "text-gray-400 transition-all duration-200 select-none",
-        "hover:border-indigo-400 hover:bg-indigo-50/60 hover:text-indigo-500",
+        "text-muted-foreground transition-all duration-200 select-none",
+        "hover:border-brand-200 hover:bg-brand-50 hover:text-brand-200",
         "disabled:opacity-60 disabled:cursor-not-allowed",
       )}
     >
       {isLoading ? (
         <>
-          <Loader2 className="h-7 w-7 animate-spin text-indigo-400 mb-1" />
-          <span className="text-[11px] font-medium text-indigo-400">Creating…</span>
+          <Loader2 className="h-7 w-7 animate-spin text-brand-200 mb-1" />
+          <span className="text-[11px] font-medium text-brand-200">Creating…</span>
         </>
       ) : (
         <>
@@ -287,18 +287,18 @@ export function DndProductGrid({
   // ── Empty state
   if (products.length === 0 && !isAddingProduct) {
     return (
-      <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+      <div className="bg-card rounded-2xl shadow-xl p-8 border border-border">
         <div className="flex items-center gap-2 mb-8">
-          <Package className="h-6 w-6 text-indigo-600" />
-          <h2 className="text-2xl font-bold text-gray-900">Product Catalog</h2>
+          <Package className="h-6 w-6 text-brand-200" />
+          <h2 className="text-2xl font-bold text-foreground">Product Catalog</h2>
         </div>
         <div className="text-center py-12">
           <div className="relative mx-auto mb-6 h-20 w-20">
-            <div className="absolute inset-0 bg-indigo-100 rounded-full animate-pulse" />
-            <Package className="h-20 w-20 text-indigo-300 relative" />
+            <div className="absolute inset-0 bg-brand-50 rounded-full animate-pulse" />
+            <Package className="h-20 w-20 text-brand-100 relative" />
           </div>
-          <h3 className="text-gray-800 font-bold text-xl">Catalog is empty</h3>
-          <p className="text-gray-500 text-sm mt-2">
+          <h3 className="text-foreground font-bold text-xl">Catalog is empty</h3>
+          <p className="text-muted-foreground text-sm mt-2">
             Click the card below to create your first product.
           </p>
           <div className="flex justify-center mt-8">
@@ -312,17 +312,17 @@ export function DndProductGrid({
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+    <div className="bg-card rounded-2xl shadow-xl p-8 border border-border">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Package className="h-6 w-6 text-indigo-600" />
-          <h2 className="text-2xl font-bold text-gray-900">Product Catalog</h2>
-          <span className="text-sm text-gray-400">
+          <Package className="h-6 w-6 text-brand-200" />
+          <h2 className="text-2xl font-bold text-foreground">Product Catalog</h2>
+          <span className="text-sm text-muted-foreground">
             {products.length} product{products.length !== 1 ? "s" : ""}
           </span>
         </div>
-        <p className="text-xs text-gray-400 italic hidden sm:block">
+        <p className="text-xs text-muted-foreground italic hidden sm:block">
           Drag to reorder · hover for actions
         </p>
       </div>

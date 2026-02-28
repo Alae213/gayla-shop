@@ -73,37 +73,37 @@ export function StatsCards({
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
 
         {/* Total Products */}
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-brand-200 to-brand-300 rounded-xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-100 text-sm font-medium">Total Products</p>
+              <p className="text-white/80 text-sm font-medium">Total Products</p>
               <p className="text-3xl font-bold mt-2">{total}</p>
-              <p className="text-purple-200 text-xs mt-1">{active} active</p>
+              <p className="text-white/70 text-xs mt-1">{active} active</p>
             </div>
-            <Package className="h-12 w-12 text-purple-200 opacity-80" />
+            <Package className="h-12 w-12 text-white/70 opacity-80" />
           </div>
         </div>
 
         {/* Active Products */}
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-success to-success/80 rounded-xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-sm font-medium">Active Products</p>
+              <p className="text-white/80 text-sm font-medium">Active Products</p>
               <p className="text-3xl font-bold mt-2">{active}</p>
-              <p className="text-green-200 text-xs mt-1">Visible in storefront</p>
+              <p className="text-white/70 text-xs mt-1">Visible in storefront</p>
             </div>
-            <TrendingUp className="h-12 w-12 text-green-200 opacity-80" />
+            <TrendingUp className="h-12 w-12 text-white/70 opacity-80" />
           </div>
         </div>
 
-        {/* No Image — amber/red if > 0, clickable to filter */}
+        {/* No Image — warning/destructive if > 0, clickable to filter */}
         <button
           type="button"
           onClick={noImageAlert ? onNoImageClick : undefined}
           className={`rounded-xl p-6 text-white shadow-lg text-left w-full transition-transform ${
             noImageAlert
-              ? "bg-gradient-to-br from-amber-500 to-red-500 hover:scale-[1.02] cursor-pointer"
-              : "bg-gradient-to-br from-gray-400 to-gray-500 cursor-default"
+              ? "bg-gradient-to-br from-warning to-destructive hover:scale-[1.02] cursor-pointer"
+              : "bg-muted cursor-default"
           }`}
         >
           <div className="flex items-center justify-between">
@@ -119,14 +119,14 @@ export function StatsCards({
         </button>
 
         {/* Hero Last Updated */}
-        <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-brand-200 to-brand-300 rounded-xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-indigo-100 text-sm font-medium">Hero Last Saved</p>
+              <p className="text-white/80 text-sm font-medium">Hero Last Saved</p>
               <p className="text-2xl font-bold mt-2 leading-tight">{relativeTime(heroUpdated)}</p>
-              <p className="text-indigo-200 text-xs mt-1">Hero section</p>
+              <p className="text-white/70 text-xs mt-1">Hero section</p>
             </div>
-            <Clock className="h-12 w-12 text-indigo-200 opacity-80" />
+            <Clock className="h-12 w-12 text-white/70 opacity-80" />
           </div>
         </div>
 
@@ -149,44 +149,44 @@ export function StatsCards({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl p-6 text-white shadow-lg">
+      <div className="bg-gradient-to-br from-warning to-warning/80 rounded-xl p-6 text-white shadow-lg">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-amber-100 text-sm font-medium">Active Orders</p>
+            <p className="text-white/80 text-sm font-medium">Active Orders</p>
             <p className="text-3xl font-bold mt-1">{active}</p>
-            <p className="text-amber-200 text-xs mt-1.5">{pending} pending · {called} calling</p>
+            <p className="text-white/70 text-xs mt-1.5">{pending} pending · {called} calling</p>
           </div>
-          <PhoneCall className="h-10 w-10 text-amber-200 opacity-80 shrink-0" />
+          <PhoneCall className="h-10 w-10 text-white/70 opacity-80 shrink-0" />
         </div>
       </div>
-      <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
+      <div className="bg-gradient-to-br from-brand-200 to-brand-300 rounded-xl p-6 text-white shadow-lg">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-purple-100 text-sm font-medium">Ready to Ship</p>
+            <p className="text-white/80 text-sm font-medium">Ready to Ship</p>
             <p className="text-3xl font-bold mt-1">{readyToShip}</p>
-            <p className="text-purple-200 text-xs mt-1.5">Packaged, awaiting courier</p>
+            <p className="text-white/70 text-xs mt-1.5">Packaged, awaiting courier</p>
           </div>
-          <Package className="h-10 w-10 text-purple-200 opacity-80 shrink-0" />
+          <Package className="h-10 w-10 text-white/70 opacity-80 shrink-0" />
         </div>
       </div>
-      <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
+      <div className="bg-gradient-to-br from-brand-200 to-brand-300 rounded-xl p-6 text-white shadow-lg">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-indigo-100 text-sm font-medium">In Transit</p>
+            <p className="text-white/80 text-sm font-medium">In Transit</p>
             <p className="text-3xl font-bold mt-1">{inTransit}</p>
-            <p className="text-indigo-200 text-xs mt-1.5">Currently shipped</p>
+            <p className="text-white/70 text-xs mt-1.5">Currently shipped</p>
           </div>
-          <Truck className="h-10 w-10 text-indigo-200 opacity-80 shrink-0" />
+          <Truck className="h-10 w-10 text-white/70 opacity-80 shrink-0" />
         </div>
       </div>
-      <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-6 text-white shadow-lg">
+      <div className="bg-gradient-to-br from-success to-success/80 rounded-xl p-6 text-white shadow-lg">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-green-100 text-sm font-medium">Delivered</p>
+            <p className="text-white/80 text-sm font-medium">Delivered</p>
             <p className="text-3xl font-bold mt-1">{delivered}</p>
-            <p className="text-green-200 text-xs mt-1.5">{cancelled} cancelled · {retour} retour</p>
+            <p className="text-white/70 text-xs mt-1.5">{cancelled} cancelled · {retour} retour</p>
           </div>
-          <CheckCircle2 className="h-10 w-10 text-green-200 opacity-80 shrink-0" />
+          <CheckCircle2 className="h-10 w-10 text-white/70 opacity-80 shrink-0" />
         </div>
       </div>
     </div>

@@ -64,7 +64,7 @@ export function HeroEditor({ siteContent, onDirtyChange }: HeroEditorProps) {
     : { background: "var(--gradient-button)" };
 
   // ── Per-field save handlers ─────────────────────────────────────────────────
-  // Each field saves itself independently — no “Save All” button needed.
+  // Each field saves itself independently — no "Save All" button needed.
 
   const saveTitle = async (value: string) => {
     await updateSiteContent({ heroTitle: value });
@@ -84,7 +84,7 @@ export function HeroEditor({ siteContent, onDirtyChange }: HeroEditorProps) {
   // ── Background image flow ───────────────────────────────────────────────────
   //  1. Admin double-clicks background → hidden file input opens
   //  2. File selected → blob URL created → ImageCropDialog opens
-  //  3. Admin adjusts 16:9 crop → clicks “Save Image”
+  //  3. Admin adjusts 16:9 crop → clicks "Save Image"
   //  4. Blob is XHR-uploaded to Convex storage with progress feedback
   //  5. siteContent is patched with the new storageId + url
   //  6. Optimistic URL shows the new image before Convex live-query updates
@@ -169,12 +169,12 @@ export function HeroEditor({ siteContent, onDirtyChange }: HeroEditorProps) {
   // ── Loading skeleton ───────────────────────────────────────────────────────────
   if (!siteContent) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2 bg-gray-50">
-          <Sparkles className="h-4 w-4 text-indigo-400" />
-          <span className="text-sm font-semibold text-gray-500">Hero Section</span>
+      <div className="bg-card rounded-2xl border border-border shadow-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-border flex items-center gap-2 bg-muted">
+          <Sparkles className="h-4 w-4 text-brand-200" />
+          <span className="text-sm font-semibold text-muted-foreground">Hero Section</span>
         </div>
-        <div className="w-full aspect-video bg-gray-100 animate-pulse" />
+        <div className="w-full aspect-video bg-muted animate-pulse" />
       </div>
     );
   }
@@ -182,13 +182,13 @@ export function HeroEditor({ siteContent, onDirtyChange }: HeroEditorProps) {
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <>
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden">
+      <div className="bg-card rounded-2xl border border-border shadow-xl overflow-hidden">
 
         {/* ── Header bar */}
-        <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2 bg-gray-50/70">
-          <Sparkles className="h-4 w-4 text-indigo-500" />
-          <span className="text-sm font-semibold text-gray-700">Hero Section</span>
-          <span className="ml-auto text-[11px] text-gray-400 italic hidden sm:block">
+        <div className="px-5 py-3 border-b border-border flex items-center gap-2 bg-muted/70">
+          <Sparkles className="h-4 w-4 text-brand-200" />
+          <span className="text-sm font-semibold text-foreground">Hero Section</span>
+          <span className="ml-auto text-[11px] text-muted-foreground italic hidden sm:block">
             Double-click&nbsp;<strong>text</strong>&nbsp;to edit&nbsp;&nbsp;·&nbsp;&nbsp;
             Double-click&nbsp;<strong>background</strong>&nbsp;to change image
           </span>
