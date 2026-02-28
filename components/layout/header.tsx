@@ -24,12 +24,12 @@ export function Header() {
 
   return (
     <>
-      <header className="border-b sticky top-0 z-50 bg-background/80 backdrop-blur-md">
+      <header className="border-b sticky top-0 z-50 bg-white/80 backdrop-blur-md dark:bg-background/80">
         <div className="page-container flex h-16 items-center justify-between gap-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <ShoppingBag className="h-6 w-6 text-brand-200" />
-            <span className="font-extrabold text-lg tracking-tight text-foreground">Gayla</span>
+            <span className="font-extrabold text-lg tracking-tight text-system-400">Gayla</span>
           </Link>
 
           {/* Desktop nav */}
@@ -42,7 +42,7 @@ export function Header() {
                   "caption-text font-semibold transition-colors",
                   pathname === href || pathname.startsWith(href + "/")
                     ? "text-brand-200"
-                    : "text-muted-foreground hover:text-foreground"
+                    : "text-system-300 hover:text-system-400"
                 )}
               >
                 {label}
@@ -53,7 +53,7 @@ export function Header() {
           {/* Right side */}
           <div className="flex items-center gap-1">
             {/* Theme toggle */}
-            <ThemeToggle className="text-foreground" />
+            <ThemeToggle className="text-system-400" />
 
             {/* Cart button */}
             <Button
@@ -61,7 +61,7 @@ export function Header() {
               size="icon"
               onClick={() => setCartOpen(true)}
               aria-label="Cart"
-              className="relative text-foreground"
+              className="relative text-system-400"
             >
               <ShoppingCart className="h-5 w-5" />
               {isLoaded && cartLineCount > 0 && (
@@ -77,7 +77,7 @@ export function Header() {
               size="icon"
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
               onClick={() => setMobileOpen((o) => !o)}
-              className="md:hidden text-foreground"
+              className="md:hidden text-system-400"
             >
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
@@ -86,7 +86,7 @@ export function Header() {
 
         {/* Mobile dropdown */}
         {mobileOpen && (
-          <div className="md:hidden border-t bg-background">
+          <div className="md:hidden border-t bg-white dark:bg-background">
             <nav className="page-container py-4 flex flex-col gap-1">
               {NAV_LINKS.map(({ href, label }) => (
                 <Link
@@ -97,7 +97,7 @@ export function Header() {
                     "py-3 px-2 rounded-lg body-text font-semibold transition-colors",
                     pathname === href || pathname.startsWith(href + "/")
                       ? "text-brand-200 bg-primary-50"
-                      : "text-foreground hover:bg-muted"
+                      : "text-system-400 hover:bg-system-100"
                   )}
                 >
                   {label}
