@@ -6,8 +6,6 @@ import { TrackingButton } from "./tracking-button";
 export interface TrackingPanelProps extends React.HTMLAttributes<HTMLDivElement> {
   isOpen: boolean;
   onClose: () => void;
-  /** If provided, fires instead of onClose for backdrop, X button, and Escape.
-   *  Use this to let the child component intercept the close (e.g. unsaved-changes guard). */
   onRequestClose?: () => void;
   title?: string;
 }
@@ -23,7 +21,6 @@ export function TrackingPanel({
 }: TrackingPanelProps) {
   const handleDismiss = onRequestClose ?? onClose;
 
-  // Close on Escape — respects onRequestClose
   React.useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -33,9 +30,6 @@ export function TrackingPanel({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, handleDismiss]);
 
-  // Prevent body scroll while panel is open.
-  // We save and restore any existing overflow value so we don’t clobber
-  // a parent layout that sets its own overflow.
   React.useEffect(() => {
     if (!isOpen) return;
     const prev = document.body.style.overflow;
@@ -49,18 +43,16 @@ export function TrackingPanel({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/10 z-[100] animate-in fade-in duration-200"
+        className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] animate-in fade-in duration-200"
         onClick={handleDismiss}
         aria-hidden="true"
       />
 
-      {/* Slide-in Panel
-          • Full-width on mobile, 480px on sm+, never wider than 100vw
-          • duration-300 (duration-250 is not a valid Tailwind value) */}
+      {/* Slide-in Panel */}
       <div
         className={cn(
-          "fixed top-0 right-0 h-full w-full sm:w-[480px] max-w-[100vw] bg-white z-[110]",
-          "shadow-tracking-elevated flex flex-col",
+          "fixed top-0 right-0 h-full w-full sm:w-[480px] max-w-[100vw] bg-card z-[110]",
+          "shadow-lg flex flex-col",
           "animate-in slide-in-from-right duration-300 ease-out",
           className
         )}
@@ -70,8 +62,8 @@ export function TrackingPanel({
         {...props}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[#ECECEC] shrink-0">
-          <h2 id="panel-title" className="text-[18px] font-semibold text-[#3A3A3A] m-0 truncate pr-4">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border shrink-0">
+          <h2 id="panel-title" className="text-lg font-semibold text-foreground m-0 truncate pr-4">
             {title}
           </h2>
           <TrackingButton
@@ -85,7 +77,7 @@ export function TrackingPanel({
           </TrackingButton>
         </div>
 
-        {/* Content — children handle their own internal scroll */}
+        {/* Content */}
         <div className="flex-1 overflow-hidden">
           {children}
         </div>
