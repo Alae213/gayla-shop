@@ -40,7 +40,7 @@ export function ProductCard({ product }: ProductCardProps) {
               loading="lazy"
             />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center text-system-300 gap-2">
+            <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground gap-2">
               <ImageIcon className="h-10 w-10 opacity-30" />
               <span className="caption-text">No Image</span>
             </div>
