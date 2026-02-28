@@ -1,7 +1,7 @@
 "use client";
 
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
+import { Header } from "@/components/public/layout/header";
+import { Footer } from "@/components/public/layout/footer";
 
 export default function PublicLayout({
   children,

@@ -7,8 +7,8 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/hooks/use-cart";
-import { CheckoutCartItems } from "@/components/checkout/checkout-cart-items";
-import { CheckoutForm } from "@/components/checkout/checkout-form";
+import { CheckoutCartItems } from "@/components/public/checkout/checkout-cart-items";
+import { CheckoutForm } from "@/components/public/checkout/checkout-form";
 import { Loader2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
