@@ -40,17 +40,17 @@ export default function AdminLayout({
   // Show loading state while checking auth
   if (!adminUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-indigo-600 mx-auto" />
-          <p className="mt-4 text-gray-600 font-medium">Verifying access...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-border border-t-brand-200 mx-auto" />
+          <p className="mt-4 text-muted-foreground font-medium">Verifying access...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="min-h-screen flex bg-background">
       <main className="flex-1 overflow-auto">{children}</main>
     </div>
   );

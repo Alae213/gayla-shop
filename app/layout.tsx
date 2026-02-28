@@ -12,12 +12,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning>
+      <body className="font-sans antialiased">
         <ThemeProvider
           attribute="class"
-          defaultTheme="light"
-          enableSystem={false}
-          disableTransitionOnChange={false}
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
           storageKey="gayla-shop-theme"
         >
           <ConvexClientProvider>

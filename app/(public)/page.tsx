@@ -55,8 +55,8 @@ export default function HomePage() {
       {/* Products Catalog - Changed from lg:grid-cols-4 to lg:grid-cols-3 for better visual balance */}
       <section id="products" className="py-16">
         <div className="page-container">
-          <h2 className="headline-h2 mb-2 text-system-400">Our Products</h2>
-          <p className="caption-text text-system-300 mb-8">Handpicked streetwear for every style</p>
+          <h2 className="headline-h2 mb-2 text-foreground">Our Products</h2>
+          <p className="caption-text text-muted-foreground mb-8">Handpicked streetwear for every style</p>
 
           {products === undefined ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -65,7 +65,7 @@ export default function HomePage() {
               ))}
             </div>
           ) : products.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4 text-system-300">
+            <div className="flex flex-col items-center justify-center py-20 gap-4 text-muted-foreground">
               <p className="body-text">No products available at the moment</p>
               <p className="caption-text">Check back soon — new arrivals dropping weekly.</p>
             </div>
