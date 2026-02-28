@@ -16,37 +16,37 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; icon: React.ReactNode;
   new: {
     label: "New",
     icon: <CircleDashed className="h-3 w-3" />,
-    className: "bg-blue-100 text-blue-700 border-blue-200",
+    className: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
   },
   confirmed: {
     label: "Confirmed",
     icon: <CheckCircle2 className="h-3 w-3" />,
-    className: "bg-green-100 text-green-700 border-green-200",
+    className: "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
   },
   packaged: {
     label: "Packaged",
     icon: <Package className="h-3 w-3" />,
-    className: "bg-purple-100 text-purple-700 border-purple-200",
+    className: "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20",
   },
   shipped: {
     label: "Shipped",
     icon: <Truck className="h-3 w-3" />,
-    className: "bg-indigo-100 text-indigo-700 border-indigo-200",
+    className: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-500/20",
   },
   canceled: {
     label: "Canceled",
     icon: <XCircle className="h-3 w-3" />,
-    className: "bg-red-100 text-red-700 border-red-200",
+    className: "bg-destructive/10 text-destructive border-destructive/20",
   },
   blocked: {
     label: "Blocked",
     icon: <Ban className="h-3 w-3" />,
-    className: "bg-gray-100 text-gray-700 border-gray-300",
+    className: "bg-muted text-muted-foreground border-border",
   },
   hold: {
     label: "Hold",
     icon: <PhoneForwarded className="h-3 w-3" />,
-    className: "bg-yellow-100 text-yellow-700 border-yellow-200",
+    className: "bg-warning/10 text-warning border-warning/20",
   },
 }
 

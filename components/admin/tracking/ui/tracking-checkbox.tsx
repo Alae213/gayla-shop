@@ -12,10 +12,10 @@ export const TrackingCheckbox = React.forwardRef<HTMLInputElement, TrackingCheck
     return (
       <label 
         className={cn(
-          "relative flex items-center justify-center w-5 h-5 rounded-[4px] border transition-colors cursor-pointer focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-[#AAAAAA]",
+          "relative flex items-center justify-center w-5 h-5 rounded-[4px] border transition-colors cursor-pointer focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-ring",
           checked 
-            ? "bg-[#3A3A3A] border-[#3A3A3A] text-white" 
-            : "bg-white border-[#ECECEC] hover:border-[#AAAAAA]",
+            ? "bg-foreground border-foreground text-background" 
+            : "bg-background border-border hover:border-muted-foreground",
           className
         )}
       >
