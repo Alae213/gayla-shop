@@ -4,22 +4,22 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const trackingButtonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap text-[15px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#AAAAAA] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center whitespace-nowrap text-[15px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
         primary:
-          "bg-[#3A3A3A] text-white hover:bg-[#1A1A1A] rounded-tracking-button",
+          "bg-foreground text-background hover:bg-foreground/90 rounded-md",
         secondary:
-          "border border-[#ECECEC] bg-white text-[#3A3A3A] hover:bg-[#F5F5F5] rounded-tracking-button",
+          "border border-border bg-background text-foreground hover:bg-muted rounded-md",
         icon:
-          "bg-[#F5F5F5] text-[#3A3A3A] hover:bg-[#ECECEC] rounded-full",
+          "bg-muted text-foreground hover:bg-secondary rounded-full",
       },
       size: {
         default: "h-11 px-6 py-2",
         sm: "h-9 px-4 text-sm",
         lg: "h-12 px-8 text-base",
-        icon: "h-10 w-10", // 40px circle
+        icon: "h-10 w-10",
       },
     },
     defaultVariants: {
