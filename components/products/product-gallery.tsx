@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface ProductGalleryProps {
   product: {
@@ -37,15 +38,16 @@ export function ProductGallery({ product }: ProductGalleryProps) {
         )}
       </div>
 
-      {/* Thumbnail Gallery */}
+      {/* Thumbnail Gallery - Phase 1 T1.4: Replaced raw button with Button primitive */}
       {product.images && product.images.length > 1 && (
         <div className="grid grid-cols-5 gap-2">
           {product.images.map((image, index) => (
-            <button
+            <Button
+              variant="ghost"
               key={image.storageId}
               onClick={() => setSelectedImageIndex(index)}
               className={cn(
-                "aspect-square relative overflow-hidden rounded-lg border-2 transition-all",
+                "aspect-square relative overflow-hidden rounded-lg border-2 transition-all p-0 h-auto",
                 selectedImageIndex === index
                   ? "border-brand-200 scale-105"
                   : "border-system-200 hover:border-system-300"
@@ -60,7 +62,7 @@ export function ProductGallery({ product }: ProductGalleryProps) {
                 sizes="20vw"
                 loading="lazy"
               />
-            </button>
+            </Button>
           ))}
         </div>
       )}

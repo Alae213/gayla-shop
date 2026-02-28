@@ -7,6 +7,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useCartCount } from "@/hooks/use-cart-count";
 import { CartSidePanel } from "@/components/cart/cart-side-panel";
+import { Button } from "@/components/ui/button";
 
 const NAV_LINKS = [
   { href: "/products", label: "Shop" },
@@ -50,11 +51,13 @@ export function Header() {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
-            {/* Cart icon with badge */}
-            <button
+            {/* Cart button - Phase 1 T1.3: Replaced raw button with Button primitive */}
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setCartOpen(true)}
               aria-label="Cart"
-              className="relative p-2 rounded-lg hover:bg-system-100 transition-colors text-system-400"
+              className="relative text-system-400"
             >
               <ShoppingCart className="h-5 w-5" />
               {/* Only show badge after cart has loaded from localStorage */}
@@ -63,16 +66,18 @@ export function Header() {
                   {cartLineCount > 9 ? "9+" : cartLineCount}
                 </span>
               )}
-            </button>
+            </Button>
 
-            {/* Mobile menu toggle */}
-            <button
+            {/* Mobile menu toggle - Phase 1 T1.3: Replaced raw button with Button primitive */}
+            <Button
+              variant="ghost"
+              size="icon"
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
               onClick={() => setMobileOpen((o) => !o)}
-              className="md:hidden p-2 rounded-lg hover:bg-system-100 transition-colors text-system-400"
+              className="md:hidden text-system-400"
             >
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
+            </Button>
           </div>
         </div>
 

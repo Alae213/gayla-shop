@@ -71,7 +71,7 @@ Design System Tokens - Global Styles
 
   /* ============================================
   Color Tokens - WCAG AA Compliant
-  Updated: February 25, 2026
+  Updated: February 28, 2026
   All colors meet 4.5:1 contrast ratio minimum
   ============================================ */
   
@@ -106,6 +106,30 @@ Design System Tokens - Global Styles
   --success-200: #047857;  /* Primary Green | FIXED: Was #00bc7d (3.08:1) → Now 5.12:1 ✅ */
   --success-300: #065f46;  /* Dark Green | FIXED: Was #059866 (4.18:1) → Now 6.87:1 ✅ */
   --success-400: #064e3b;  /* Darkest Green | NEW: 8.21:1 ✅ AAA Compliant */
+
+  /* ============================================
+  Tracking Tokens - CSS Variables (Phase 1)
+  Added: February 28, 2026
+  ============================================ */
+  
+  /* Tracking colors */
+  --tracking-bg-primary: 255 255 255;
+  --tracking-bg-secondary: 245 245 245;
+  --tracking-bg-card: 247 247 247;
+  --tracking-text-primary: 58 58 58;
+  --tracking-text-secondary: 117 117 117;
+  --tracking-border: 236 236 236;
+  --tracking-interactive: 58 58 58;
+  --tracking-interactive-hover: 26 26 26;
+  
+  /* Tracking shadows */
+  --shadow-tracking-card: 0px 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-tracking-elevated: 0px 8px 32px rgba(0, 0, 0, 0.08);
+  
+  /* Tracking radii */
+  --radius-tracking-card: 24px;
+  --radius-tracking-button: 9999px;
+  --radius-tracking-input: 12px;
 
   /* ============================================
   Gradient Tokens
@@ -182,8 +206,9 @@ Design System Tokens - Global Styles
   --body-bg: var(--system-100);
 }
 
-/* Preserve existing dark theme tokens */
+/* Dark theme tokens */
 .dark {
+  /* Shadcn tokens */
   --background: 222.2 84% 4.9%;
   --foreground: 210 40% 98%;
   --card: 222.2 84% 4.9%;
@@ -208,6 +233,25 @@ Design System Tokens - Global Styles
   --chart-3: 30 80% 55%;
   --chart-4: 280 65% 60%;
   --chart-5: 340 75% 55%;
+
+  /* System tokens - Dark mode variants (Phase 1 - T1.1) */
+  --system-50: 42 42 42;      /* #2a2a2a */
+  --system-100: 26 26 26;     /* #1a1a1a */
+  --system-200: 58 58 58;     /* #3a3a3a */
+  --system-300: 176 176 176;  /* #b0b0b0 (lighter for dark bg) */
+  --system-400: 224 224 224;  /* #e0e0e0 (lighter for dark bg) */
+
+  /* Tracking tokens - Dark mode variants (Phase 1 - T1.2) */
+  --tracking-bg-primary: 26 26 26;
+  --tracking-bg-secondary: 34 34 34;
+  --tracking-bg-card: 42 42 42;
+  --tracking-text-primary: 224 224 224;
+  --tracking-text-secondary: 176 176 176;
+  --tracking-border: 58 58 58;
+  --tracking-interactive: 224 224 224;
+  --tracking-interactive-hover: 255 255 255;
+  --shadow-tracking-card: 0px 4px 16px rgba(0, 0, 0, 0.3);
+  --shadow-tracking-elevated: 0px 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 /* Typography Classes */

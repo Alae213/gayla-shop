@@ -50,21 +50,21 @@ const config: Config = {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
-        // Tracking Mode MVP Design System
+        // Tracking Mode MVP Design System - Migrated to CSS Variables (Phase 1 - T1.2)
         tracking: {
           bg: {
-            primary: "#FFFFFF",
-            secondary: "#F5F5F5",
-            card: "#F7F7F7",
+            primary: "rgb(var(--tracking-bg-primary) / <alpha-value>)",
+            secondary: "rgb(var(--tracking-bg-secondary) / <alpha-value>)",
+            card: "rgb(var(--tracking-bg-card) / <alpha-value>)",
           },
           text: {
-            primary: "#3A3A3A",
-            secondary: "#757575", // FIXED: Was #AAAAAA (2.85:1) → Now 4.62:1 ✅
+            primary: "rgb(var(--tracking-text-primary) / <alpha-value>)",
+            secondary: "rgb(var(--tracking-text-secondary) / <alpha-value>)",
           },
-          border: "#ECECEC",
+          border: "rgb(var(--tracking-border) / <alpha-value>)",
           interactive: {
-            DEFAULT: "#3A3A3A",
-            hover: "#1A1A1A",
+            DEFAULT: "rgb(var(--tracking-interactive) / <alpha-value>)",
+            hover: "rgb(var(--tracking-interactive-hover) / <alpha-value>)",
           }
         },
         // Legacy Design System Tokens - WCAG AA Compliant
@@ -105,19 +105,19 @@ const config: Config = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-        // Tracking Mode MVP
-        "tracking-card": "24px",
-        "tracking-button": "9999px",
-        "tracking-input": "12px",
+        // Tracking Mode MVP - Migrated to CSS Variables (Phase 1 - T1.2)
+        "tracking-card": "var(--radius-tracking-card)",
+        "tracking-button": "var(--radius-tracking-button)",
+        "tracking-input": "var(--radius-tracking-input)",
       },
       boxShadow: {
         "inside": "var(--shadow-inside-shadow)",
         "m": "var(--shadow-m-shadow)",
         "xl-brand": "var(--shadow-xl-shadow)",
         "blue-btn": "var(--shadow-bluebutton)",
-        // Tracking Mode MVP
-        "tracking-card": "0px 4px 16px rgba(0, 0, 0, 0.06)",
-        "tracking-elevated": "0px 8px 32px rgba(0, 0, 0, 0.08)",
+        // Tracking Mode MVP - Migrated to CSS Variables (Phase 1 - T1.2)
+        "tracking-card": "var(--shadow-tracking-card)",
+        "tracking-elevated": "var(--shadow-tracking-elevated)",
       },
       typography: {
         DEFAULT: {
