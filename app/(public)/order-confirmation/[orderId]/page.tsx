@@ -47,7 +47,7 @@ export default function OrderConfirmationPage() {
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       {/* Success Header */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success/10 text-success mb-4">
           <CheckCircle2 className="h-8 w-8" />
         </div>
         <h1 className="text-3xl font-bold mb-2">Order Placed Successfully!</h1>
@@ -66,8 +66,8 @@ export default function OrderConfirmationPage() {
             </div>
             <div className="text-right">
               <p className="text-sm text-muted-foreground">Status</p>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-medium mt-1">
-                <div className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 text-brand-200 text-sm font-medium mt-1">
+                <div className="h-2 w-2 rounded-full bg-brand-200 animate-pulse" />
                 {order.status === "new" ? "Processing" : order.status}
               </div>
             </div>
@@ -197,8 +197,8 @@ export default function OrderConfirmationPage() {
       </Card>
 
       {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <p className="text-sm text-blue-900">
+      <div className="bg-brand-50 border border-brand-100 rounded-lg p-4 mb-6">
+        <p className="text-sm text-foreground">
           <strong>What's next?</strong> Our team will contact you within 24 hours to confirm your
           order and delivery details. Please keep your phone available.
         </p>
