@@ -38,7 +38,6 @@ interface TrackingOrderDetailsProps {
   onRegisterRequestClose?: (fn: () => void) => void;
 }
 
-// Extract line items from order (with legacy migration)
 function extractLineItems(order: Order) {
   if (order.lineItems && order.lineItems.length > 0) {
     return order.lineItems;
@@ -61,21 +60,6 @@ function extractLineItems(order: Order) {
   return [];
 }
 
-/**
- * Tracking Order Details Dialog Content
- * 
- * Main orchestrator component that:
- * - Initializes custom hooks for state management
- * - Handles unsaved changes guard
- * - Renders section components
- * - Manages dialog close behavior
- * 
- * Refactored from 900 lines to ~300 lines by extracting:
- * - Call logging logic → useOrderCallLogging hook
- * - Customer editing logic → useOrderEditing hook
- * - Status actions logic → useOrderStatusActions hook
- * - UI sections → 6 modular components
- */
 export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }: TrackingOrderDetailsProps) {
   const isMounted = useIsMounted();
   const isMountedRef = useRef(isMounted);
@@ -84,13 +68,11 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const addressInputRef = useRef<HTMLInputElement>(null);
 
-  // Extract normalized data from order
   const effectiveStatusFromOrder: MVPStatus = (order as any)._normalizedStatus ?? order.status ?? "new";
   const callLogFromOrder = (order as any).callLog ?? [];
   const callAttemptsFromOrder = (order as any).callAttempts ?? 0;
   const statusHistory = (order as any).statusHistory ?? [];
 
-  // Memoize line items to prevent infinite loops in OrderLineItemsEditor
   const lineItems = useMemo(
     () => extractLineItems(order),
     [
@@ -103,8 +85,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
       order.selectedVariant,
     ]
   );
-
-  // ── Custom Hooks ──────────────────────────────────────────────────────────
 
   const {
     callNote,
@@ -162,8 +142,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     },
   });
 
-  // ── Unsaved Changes Guard ─────────────────────────────────────────────────
-
   const handleRequestClose = useCallback(() => {
     if (hasUnsavedChanges) {
       setShowUnsavedDialog(true);
@@ -183,8 +161,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     };
   }, [handleRequestClose, onRegisterRequestClose]);
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
-
   const handleEditFormChange = useCallback((field: string, value: string) => {
     setEditForm(prev => ({ ...prev, [field]: value }));
   }, [setEditForm]);
@@ -199,20 +175,17 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
     window.open(`/api/labels/${order._id}`, "_blank");
   }, [order._id]);
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
   return (
     <>
-      {/* Unsaved Changes Dialog */}
       <AlertDialog
         open={showUnsavedDialog}
         onOpenChange={(open) => { if (!open) setShowUnsavedDialog(false); }}
       >
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <div className="flex items-center gap-2 text-amber-600 mb-1">
+            <div className="flex items-center gap-2 text-warning mb-1">
               <TriangleAlert className="h-5 w-5 shrink-0" />
-              <AlertDialogTitle className="text-amber-700">Unsaved changes</AlertDialogTitle>
+              <AlertDialogTitle className="text-warning">Unsaved changes</AlertDialogTitle>
             </div>
             <AlertDialogDescription>
               This order has unsaved customer edits. If you leave now they will be lost.
@@ -228,7 +201,7 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
                 setShowUnsavedDialog(false);
                 onClose();
               }}
-              className="bg-gray-900 hover:bg-gray-700 text-white"
+              className="bg-foreground hover:bg-foreground/90 text-background"
             >
               Leave anyway
             </AlertDialogAction>
@@ -236,16 +209,13 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Main Dialog Content */}
-      <div className="flex flex-col h-full bg-white">
+      <div className="flex flex-col h-full bg-card">
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           
-          {/* Network Status Banner */}
           <div className="mb-6">
             <NetworkStatusBanner />
           </div>
 
-          {/* Header */}
           <div className="mb-6">
             <OrderDetailsHeader
               orderNumber={order.orderNumber}
@@ -258,7 +228,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             />
           </div>
 
-          {/* Customer Details */}
           <div className="mb-6">
             <CustomerDetailsSection
               isEditing={isEditing}
@@ -277,7 +246,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             />
           </div>
 
-          {/* Order Items */}
           <div className="mb-6">
             <OrderItemsSection
               orderId={order._id}
@@ -294,7 +262,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
             />
           </div>
 
-          {/* Call History & Status Timeline - Last section, no margin */}
           <OrderTimelinesSection
             callLog={callLog}
             statusHistory={statusHistory}
@@ -304,7 +271,6 @@ export function TrackingOrderDetails({ order, onClose, onRegisterRequestClose }:
           />
         </div>
 
-        {/* Fixed Bottom Action Bar */}
         <StatusActionBar
           effectiveStatus={effectiveStatus}
           callAttempts={callAttempts}
