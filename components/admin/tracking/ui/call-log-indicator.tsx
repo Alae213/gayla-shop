@@ -17,10 +17,10 @@ interface CallLogIndicatorProps {
 }
 
 const OUTCOME_COLORS: Record<CallOutcome, string> = {
-  answered: "bg-emerald-500",
-  "no answer": "bg-red-500",
-  "wrong number": "bg-orange-500",
-  refused: "bg-rose-500",
+  answered: "bg-emerald-500 dark:bg-emerald-400",
+  "no answer": "bg-red-500 dark:bg-red-400",
+  "wrong number": "bg-orange-500 dark:bg-orange-400",
+  refused: "bg-rose-500 dark:bg-rose-400",
 };
 
 const OUTCOME_LABELS: Record<CallOutcome, string> = {
@@ -42,7 +42,6 @@ export function CallLogIndicator({
   const visibleCalls = callLog.slice(0, maxVisible);
   const hiddenCount = Math.max(0, callLog.length - maxVisible);
 
-  // Build tooltip content with full call history
   const tooltipContent = (
     <div className="space-y-1 max-w-[200px]">
       <p className="font-semibold text-xs mb-2">Call History</p>
@@ -64,13 +63,13 @@ export function CallLogIndicator({
         <TooltipTrigger asChild>
           <div
             className={cn(
-              "inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#F5F5F5] border border-[#ECECEC]",
+              "inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted border border-border",
               className
             )}
             role="status"
             aria-label={`${callLog.length} call attempt${callLog.length !== 1 ? "s" : ""}`}
           >
-            <Phone className="w-3.5 h-3.5 text-[#AAAAAA]" aria-hidden="true" />
+            <Phone className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
             <div className="flex items-center gap-1">
               {visibleCalls.map((call, idx) => (
                 <div
@@ -84,14 +83,14 @@ export function CallLogIndicator({
                 />
               ))}
               {hiddenCount > 0 && (
-                <span className="text-[10px] font-bold text-[#AAAAAA] ml-0.5">
+                <span className="text-[10px] font-bold text-muted-foreground ml-0.5">
                   +{hiddenCount}
                 </span>
               )}
             </div>
           </div>
         </TooltipTrigger>
-        <TooltipContent side="top" className="bg-[#3A3A3A] text-white border-[#3A3A3A]">
+        <TooltipContent side="top" className="bg-foreground text-background border-foreground">
           {tooltipContent}
         </TooltipContent>
       </Tooltip>

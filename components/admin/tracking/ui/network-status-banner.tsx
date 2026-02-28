@@ -20,14 +20,12 @@ export function NetworkStatusBanner({ className = "" }: NetworkStatusBannerProps
   const [wasOffline, setWasOffline] = useState(false);
 
   useEffect(() => {
-    // Initial check
     setIsOnline(navigator.onLine);
 
     const handleOnline = () => {
       console.log("[NetworkStatus] Reconnected");
       setIsOnline(true);
       setWasOffline(true);
-      // Hide "reconnected" message after 3 seconds
       setTimeout(() => setWasOffline(false), 3000);
     };
 
@@ -49,11 +47,11 @@ export function NetworkStatusBanner({ className = "" }: NetworkStatusBannerProps
   if (isOnline && wasOffline) {
     return (
       <div
-        className={`flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-[13px] font-medium animate-in fade-in slide-in-from-top-2 duration-300 ${className}`}
+        className={`flex items-center gap-3 p-3 bg-success/10 border border-success/20 rounded-xl text-success text-sm font-medium animate-in fade-in slide-in-from-top-2 duration-300 ${className}`}
         role="status"
         aria-live="polite"
       >
-        <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+        <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center shrink-0">
           <Wifi className="w-3.5 h-3.5" aria-hidden="true" />
         </div>
         <span>Back online. Your changes will now sync automatically.</span>
@@ -65,11 +63,11 @@ export function NetworkStatusBanner({ className = "" }: NetworkStatusBannerProps
   if (!isOnline) {
     return (
       <div
-        className={`flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[13px] font-medium animate-in fade-in slide-in-from-top-2 duration-300 ${className}`}
+        className={`flex items-center gap-3 p-3 bg-warning/10 border border-warning/20 rounded-xl text-warning text-sm font-medium animate-in fade-in slide-in-from-top-2 duration-300 ${className}`}
         role="alert"
         aria-live="assertive"
       >
-        <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center shrink-0 animate-pulse">
+        <div className="w-6 h-6 rounded-full bg-warning/20 flex items-center justify-center shrink-0 animate-pulse">
           <WifiOff className="w-3.5 h-3.5" aria-hidden="true" />
         </div>
         <span>
@@ -79,6 +77,5 @@ export function NetworkStatusBanner({ className = "" }: NetworkStatusBannerProps
     );
   }
 
-  // Online and stable - show nothing
   return null;
 }

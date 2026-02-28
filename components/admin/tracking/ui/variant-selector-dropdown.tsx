@@ -22,11 +22,6 @@ interface VariantSelectorDropdownProps {
   className?: string;
 }
 
-// Inner component — defined as a plain named function so Webpack always
-// resolves it as a callable. React.memo is applied separately below.
-// (Combining `export const X = React.memo(function X(){})` in a single
-// statement confuses Webpack's module graph when the export shape changed
-// from a previous `export function`, causing "Component is not a function".)
 function VariantSelectorDropdownInner({
   productId,
   currentVariant,
@@ -36,8 +31,6 @@ function VariantSelectorDropdownInner({
 }: VariantSelectorDropdownProps) {
   const product = useQuery(api.products.getById, { id: productId });
 
-  // Keep onChange in a ref so handleVariantChange stays stable without
-  // needing onChange in its dependency array.
   const onChangeRef = React.useRef(onChange);
   React.useEffect(() => {
     onChangeRef.current = onChange;
@@ -45,8 +38,6 @@ function VariantSelectorDropdownInner({
 
   const handleVariantChange = React.useCallback(
     (groupName: string, value: string) => {
-      // Guard: skip if value didn't actually change — prevents Radix Select
-      // from triggering setState on mount and causing an infinite loop.
       if (currentVariant[groupName] === value) return;
       const newVariant = { ...currentVariant, [groupName]: value };
       onChangeRef.current(newVariant);
@@ -57,7 +48,7 @@ function VariantSelectorDropdownInner({
   // Loading state
   if (product === undefined) {
     return (
-      <div className="flex items-center gap-2 text-[12px] text-[#AAAAAA] italic">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground italic">
         <Loader2 className="w-3 h-3 animate-spin" />
         <span>Loading variants...</span>
       </div>
@@ -67,7 +58,7 @@ function VariantSelectorDropdownInner({
   // Product not found or error
   if (product === null) {
     return (
-      <div className="text-[12px] text-rose-600 italic">
+      <div className="text-xs text-destructive italic">
         Product not found
       </div>
     );
@@ -89,7 +80,7 @@ function VariantSelectorDropdownInner({
         // If no enabled values, show warning message
         if (enabledValues.length === 0) {
           return (
-            <div key={group.name} className="text-[12px] text-amber-600 italic bg-amber-50 px-2 py-1 rounded-md">
+            <div key={group.name} className="text-xs text-warning italic bg-warning/10 px-2 py-1 rounded-md">
               No {group.name.toLowerCase()} available
             </div>
           );
@@ -99,7 +90,7 @@ function VariantSelectorDropdownInner({
           <div key={group.name} className="flex flex-col gap-1 flex-1 md:flex-initial">
             <label
               htmlFor={`variant-${group.name}-${productId}`}
-              className="text-[10px] md:text-[11px] font-semibold text-[#555555] uppercase tracking-wider"
+              className="text-[10px] md:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider"
             >
               {group.name}
             </label>
@@ -110,7 +101,7 @@ function VariantSelectorDropdownInner({
             >
               <SelectTrigger
                 id={`variant-${group.name}-${productId}`}
-                className="h-8 md:h-9 text-[13px] w-full md:w-[120px] bg-white border-[#ECECEC] focus:ring-[#AAAAAA]"
+                className="h-8 md:h-9 text-sm w-full md:w-[120px] bg-background border-border focus:ring-ring"
               >
                 <SelectValue placeholder={`Select ${group.name.toLowerCase()}`} />
               </SelectTrigger>
@@ -119,7 +110,7 @@ function VariantSelectorDropdownInner({
                   <SelectItem
                     key={variant.label}
                     value={variant.label}
-                    className="text-[13px]"
+                    className="text-sm"
                   >
                     {variant.label}
                   </SelectItem>
@@ -131,7 +122,7 @@ function VariantSelectorDropdownInner({
                       key={variant.label}
                       value={variant.label}
                       disabled
-                      className="text-[13px] text-[#AAAAAA] line-through"
+                      className="text-sm text-muted-foreground line-through"
                     >
                       {variant.label} (Unavailable)
                     </SelectItem>
@@ -145,7 +136,5 @@ function VariantSelectorDropdownInner({
   );
 }
 
-// Apply React.memo separately so the named export is always a plain function
-// reference at the module level — never a MemoExoticComponent object literal.
 export const VariantSelectorDropdown = React.memo(VariantSelectorDropdownInner);
 VariantSelectorDropdown.displayName = "VariantSelectorDropdown";
