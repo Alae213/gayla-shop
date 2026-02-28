@@ -24,7 +24,7 @@ export function Header() {
 
   return (
     <>
-      <header className="border-b sticky top-0 z-50 bg-white/80 backdrop-blur-md dark:bg-background/80">
+      <header className="border-b sticky top-0 z-50 bg-white/80 backdrop-blur-md">
         <div className="page-container flex h-16 items-center justify-between gap-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
@@ -86,7 +86,7 @@ export function Header() {
 
         {/* Mobile dropdown */}
         {mobileOpen && (
-          <div className="md:hidden border-t bg-white dark:bg-background">
+          <div className="md:hidden border-t bg-white">
             <nav className="page-container py-4 flex flex-col gap-1">
               {NAV_LINKS.map(({ href, label }) => (
                 <Link

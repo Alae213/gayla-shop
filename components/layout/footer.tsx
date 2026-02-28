@@ -12,7 +12,7 @@ export function Footer() {
   const contactPhone = siteContent?.contactPhone || "";
 
   return (
-    <footer className="border-t bg-white mt-auto dark:bg-background">
+    <footer className="border-t bg-white mt-auto">
       <div className="page-container py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
           <div className="space-y-3">
