@@ -75,10 +75,7 @@ export function LineItemRow({
           (disabled || isRemoving) && "opacity-60 pointer-events-none"
         )}
       >
-        {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
-          {/* Product Image - Col 1-3 */}
           <div className="lg:col-span-3">
             <div className="relative aspect-square w-full max-w-[120px] mx-auto lg:mx-0 rounded-xl overflow-hidden bg-gradient-to-br from-muted/50 to-muted border border-border">
               {item.thumbnail && !imageError ? (
@@ -104,7 +101,6 @@ export function LineItemRow({
             </div>
           </div>
 
-          {/* Product Details - Col 4-8 */}
           <div className="lg:col-span-6 space-y-4">
             <div className="space-y-2">
               <div className="flex items-start justify-between gap-4">
@@ -123,7 +119,6 @@ export function LineItemRow({
               </div>
             </div>
 
-            {/* Variant Selector */}
             {!isProductDeleted && (
               <div className="space-y-2">
                 <VariantSelector
@@ -149,14 +144,9 @@ export function LineItemRow({
             )}
           </div>
 
-          {/* Actions Column - Col 9-12 */}
           <div className="lg:col-span-3">
             <div className="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-stretch gap-4">
-              
-              {/* Quantity & Price Container */}
               <div className="flex-1 lg:flex-initial flex flex-row sm:flex-col lg:flex-row items-center justify-between lg:justify-start gap-4">
-                
-                {/* Quantity Stepper */}
                 <div className="flex flex-col items-center space-y-2">
                   <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quantity</label>
                   <QuantityStepper
@@ -168,7 +158,6 @@ export function LineItemRow({
                   />
                 </div>
 
-                {/* Price Display */}
                 <div className="flex flex-col items-center sm:items-start lg:items-center space-y-1 text-right">
                   <div className="text-2xl font-bold text-foreground">
                     {calculatedLineTotal.toLocaleString()} DZD
@@ -177,10 +166,8 @@ export function LineItemRow({
                     {item.unitPrice.toLocaleString()} × {item.quantity}
                   </div>
                 </div>
-
               </div>
 
-              {/* Remove Button */}
               <div className="flex items-center justify-center sm:justify-start lg:justify-center">
                 <Button
                   type="button"
@@ -198,14 +185,11 @@ export function LineItemRow({
                   )}
                 </Button>
               </div>
-              
             </div>
           </div>
-          
         </div>
       </div>
 
-      {/* Remove Confirmation Dialog */}
       <AlertDialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>

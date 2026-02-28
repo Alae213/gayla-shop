@@ -7,15 +7,13 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { LineItem, LineItemRow } from "./line-item-row";
+import { AddProductModal } from "../product-selection/add-product-modal";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { recalculateDeliveryCost, AbortError } from "@/lib/utils/delivery-recalculator";
 import { useAbortableEffect } from "@/hooks/use-abortable-effect";
 
-// Temporary: Import from old location until add-product-modal is moved
-import { AddProductModal } from "../../ui/add-product-modal";
-
-interface OrderLineItemsEditorProps {
+interface LineItemsEditorProps {
   orderId: Id<"orders">;
   initialLineItems: LineItem[];
   initialDeliveryCost: number;
@@ -31,7 +29,7 @@ function getDeliveryRelevantHash(items: LineItem[]): string {
     .join("|");
 }
 
-export function OrderLineItemsEditor({
+export function LineItemsEditor({
   orderId,
   initialLineItems,
   initialDeliveryCost,
@@ -39,7 +37,7 @@ export function OrderLineItemsEditor({
   deliveryType,
   adminName = "Admin",
   onSaveSuccess,
-}: OrderLineItemsEditorProps) {
+}: LineItemsEditorProps) {
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems);
   const [deliveryCost, setDeliveryCost] = useState(initialDeliveryCost);
   const [isRecalculating, setIsRecalculating] = useState(false);
@@ -101,9 +99,8 @@ export function OrderLineItemsEditor({
             setDeliveryCost(newCost);
           }
         } catch (error) {
-          if (error instanceof AbortError) {
-            // silently ignore
-          } else {
+          if (error instanceof AbortError) {}
+          else {
             console.error("Delivery cost recalculation failed:", error);
             toast.error("Failed to recalculate delivery cost");
           }
@@ -115,7 +112,6 @@ export function OrderLineItemsEditor({
       const timeout = setTimeout(recalc, 1000);
       return () => clearTimeout(timeout);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [lineItems, wilaya, deliveryType]
   );
 
@@ -149,9 +145,7 @@ export function OrderLineItemsEditor({
             description: "Your changes weren't saved. Click retry to try again.",
             action: {
               label: "Retry",
-              onClick: () => {
-                setLineItems(prev => [...prev]);
-              },
+              onClick: () => setLineItems(prev => [...prev]),
             },
             duration: 10000,
           });
@@ -163,7 +157,6 @@ export function OrderLineItemsEditor({
       const timeout = setTimeout(autoSave, 800);
       return () => clearTimeout(timeout);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [lineItems, deliveryCost, hasChanges]
   );
 
@@ -213,7 +206,6 @@ export function OrderLineItemsEditor({
 
   return (
     <section className="space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
@@ -255,7 +247,6 @@ export function OrderLineItemsEditor({
         </Button>
       </div>
 
-      {/* Line Items */}
       <div className="space-y-4">
         {lineItems.map((item, index) => (
           <MemoizedLineItemRow
@@ -276,7 +267,6 @@ export function OrderLineItemsEditor({
         )}
       </div>
 
-      {/* Totals */}
       <div className="space-y-2 pt-4 border-t border-border">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Subtotal</span>
