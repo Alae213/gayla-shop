@@ -17,8 +17,6 @@ interface TrackingListViewProps {
   isBlacklist?: boolean;
 }
 
-// Single source of truth for the column layout.
-// Columns: checkbox | order# | customer | product | status | total | date
 const GRID = "grid-cols-[48px_minmax(110px,1fr)_minmax(160px,1.5fr)_minmax(160px,1.5fr)_minmax(110px,1fr)_minmax(90px,1fr)_minmax(110px,1fr)]";
 
 export function TrackingListView({
@@ -33,10 +31,10 @@ export function TrackingListView({
   const isAllSelected = orderIds.length > 0 && orderIds.every(id => selectedIds.has(id));
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-tracking-card border border-[#ECECEC] shadow-tracking-card overflow-hidden">
+    <div className="flex flex-col h-full bg-card rounded-lg border border-border shadow-sm overflow-hidden">
 
       {/* Table Header */}
-      <div className={`grid ${GRID} items-center px-6 py-4 border-b border-[#ECECEC] bg-[#F7F7F7] text-[13px] font-semibold text-[#AAAAAA] uppercase tracking-wider`}>
+      <div className={`grid ${GRID} items-center px-6 py-4 border-b border-border bg-muted text-sm font-semibold text-muted-foreground uppercase tracking-wider`}>
         <div className="flex items-center justify-center">
           <TrackingCheckbox
             checked={isAllSelected}
@@ -77,8 +75,8 @@ export function TrackingListView({
                   onOrderClick(order._id);
                 }
               }}
-              className={`grid ${GRID} items-center px-6 py-4 border-b border-[#ECECEC] cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#AAAAAA] ${
-                isSelected ? "bg-[#F5F5F5]" : "bg-white hover:bg-[#F7F7F7]"
+              className={`grid ${GRID} items-center px-6 py-4 border-b border-border cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+                isSelected ? "bg-secondary" : "bg-card hover:bg-muted"
               }`}
             >
               {/* Checkbox */}
@@ -95,23 +93,23 @@ export function TrackingListView({
               </div>
 
               {/* Order # */}
-              <div className="text-[15px] font-medium text-[#3A3A3A] font-mono">
+              <div className="text-[15px] font-medium text-foreground font-mono">
                 {order.orderNumber}
               </div>
 
               {/* Customer */}
               <div className="flex flex-col min-w-0">
-                <span className="text-[15px] font-medium text-[#3A3A3A] truncate">{order.customerName}</span>
-                <span className="text-[13px] text-[#AAAAAA]">{order.customerPhone}</span>
+                <span className="text-[15px] font-medium text-foreground truncate">{order.customerName}</span>
+                <span className="text-sm text-muted-foreground">{order.customerPhone}</span>
               </div>
 
               {/* Product */}
               <div className="flex flex-col min-w-0">
-                <span className="text-[14px] font-medium text-[#3A3A3A] truncate">
-                  {order.productName || <span className="text-[#CCCCCC] italic">—</span>}
+                <span className="text-sm font-medium text-foreground truncate">
+                  {order.productName || <span className="text-muted-foreground/50 italic">—</span>}
                 </span>
                 {variantLabel && (
-                  <span className="text-[12px] text-[#AAAAAA] truncate">{variantLabel}</span>
+                  <span className="text-xs text-muted-foreground truncate">{variantLabel}</span>
                 )}
               </div>
 
@@ -121,23 +119,22 @@ export function TrackingListView({
               </div>
 
               {/* Total */}
-              <div className="text-[14px] font-medium text-[#3A3A3A]">
+              <div className="text-sm font-medium text-foreground">
                 {order.totalAmount ?? 0} DZD
               </div>
 
               {/* Date */}
-              <div className="text-[13px] text-[#AAAAAA]">
+              <div className="text-sm text-muted-foreground">
                 {formatDistanceToNow(order._creationTime, { addSuffix: true })}
               </div>
             </div>
           );
         })}
 
-        {/* FIX 18A: Context-aware empty states */}
         {orders.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div
-              className="w-16 h-16 rounded-full bg-[#F5F5F5] flex items-center justify-center mb-4 text-[#AAAAAA]"
+              className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4 text-muted-foreground"
               aria-hidden="true"
             >
               {isBlacklist
@@ -146,15 +143,15 @@ export function TrackingListView({
             </div>
             {isBlacklist ? (
               <>
-                <h3 className="text-[16px] font-semibold text-[#3A3A3A]">Blacklist is empty</h3>
-                <p className="text-[14px] text-[#AAAAAA] mt-1 max-w-xs">
+                <h3 className="text-base font-semibold text-foreground">Blacklist is empty</h3>
+                <p className="text-sm text-muted-foreground mt-1 max-w-xs">
                   Canceled and blocked orders will appear here.
                 </p>
               </>
             ) : (
               <>
-                <h3 className="text-[16px] font-semibold text-[#3A3A3A]">No orders found</h3>
-                <p className="text-[14px] text-[#AAAAAA] mt-1 max-w-xs">
+                <h3 className="text-base font-semibold text-foreground">No orders found</h3>
+                <p className="text-sm text-muted-foreground mt-1 max-w-xs">
                   Try adjusting your search or filter.
                 </p>
               </>
