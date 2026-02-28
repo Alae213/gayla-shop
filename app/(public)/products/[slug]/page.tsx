@@ -3,7 +3,7 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { notFound, useParams } from "next/navigation";
-import { OrderForm } from "@/components/products/order-form";
+import { OrderForm } from "@/components/public/products/order-form";
 import { formatPrice } from "@/lib/utils";
 import { ImageIcon } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
@@ -121,7 +121,7 @@ export default function ProductDetailPage() {
             </div>
           )}
 
-          {/* Description - now below images */}
+          {/* Description */}
           {product.description && (
             <div className="pt-4 border-t border-border">
               <h2 className="text-lg font-bold text-foreground mb-3">Description</h2>

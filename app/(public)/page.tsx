@@ -2,8 +2,8 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { ProductCard } from "@/components/products/product-card";
-import { ProductCardSkeleton } from "@/components/products/product-card-skeleton";
+import { ProductCard } from "@/components/public/products/product-card";
+import { ProductCardSkeleton } from "@/components/public/products/product-card-skeleton";
 import { useEffect } from "react";
 
 export default function HomePage() {
@@ -52,7 +52,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Products Catalog - Changed from lg:grid-cols-4 to lg:grid-cols-3 for better visual balance */}
+      {/* Products Catalog */}
       <section id="products" className="py-16">
         <div className="page-container">
           <h2 className="headline-h2 mb-2 text-system-400">Our Products</h2>
