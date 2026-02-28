@@ -17,11 +17,11 @@ export const metadata: Metadata = {
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-system-100 to-white flex items-center justify-center px-4 py-16">
+    <div className="min-h-screen bg-gradient-to-b from-muted to-background flex items-center justify-center px-4 py-16">
       <div className="max-w-2xl w-full text-center">
         {/* Large 404 */}
         <div 
-          className="text-9xl font-bold text-primary-200 mb-8 animate-fade-in"
+          className="text-9xl font-bold text-brand-100 mb-8 animate-fade-in"
           aria-hidden="true"
         >
           404
@@ -29,21 +29,21 @@ export default function NotFound() {
 
         {/* Icon */}
         <div className="flex justify-center mb-6">
-          <div className="p-4 bg-primary-100 rounded-full">
+          <div className="p-4 bg-brand-50 rounded-full">
             <FileQuestion 
-              className="w-16 h-16 text-primary-300" 
+              className="w-16 h-16 text-brand-200" 
               aria-hidden="true"
             />
           </div>
         </div>
 
         {/* Heading */}
-        <h1 className="text-4xl font-bold text-system-400 mb-4">
+        <h1 className="text-4xl font-bold text-foreground mb-4">
           Page Not Found
         </h1>
 
         {/* Description */}
-        <p className="text-lg text-system-300 mb-8 max-w-md mx-auto">
+        <p className="text-lg text-muted-foreground mb-8 max-w-md mx-auto">
           Sorry, we couldn't find the page you're looking for. 
           It may have been moved, deleted, or never existed.
         </p>
@@ -55,11 +55,11 @@ export default function NotFound() {
             className="
               inline-flex items-center justify-center gap-2 
               px-6 py-3 rounded-lg
-              bg-primary-300 text-white
-              hover:bg-primary-400 transition-colors
+              bg-brand-200 text-white
+              hover:bg-brand-300 transition-colors
               font-medium
               focus-visible:outline focus-visible:outline-2 
-              focus-visible:outline-offset-2 focus-visible:outline-primary-300
+              focus-visible:outline-offset-2 focus-visible:outline-brand-200
             "
           >
             <Home className="w-5 h-5" aria-hidden="true" />
@@ -71,11 +71,11 @@ export default function NotFound() {
             className="
               inline-flex items-center justify-center gap-2 
               px-6 py-3 rounded-lg
-              bg-white border-2 border-system-200 text-system-400
-              hover:bg-system-100 transition-colors
+              bg-card border-2 border-border text-foreground
+              hover:bg-muted transition-colors
               font-medium
               focus-visible:outline focus-visible:outline-2 
-              focus-visible:outline-offset-2 focus-visible:outline-primary-300
+              focus-visible:outline-offset-2 focus-visible:outline-brand-200
             "
           >
             <Package className="w-5 h-5" aria-hidden="true" />
@@ -84,15 +84,15 @@ export default function NotFound() {
         </div>
 
         {/* Search Suggestions */}
-        <div className="bg-white rounded-xl p-8 shadow-lg">
+        <div className="bg-card rounded-xl p-8 shadow-lg border border-border">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <Search className="w-5 h-5 text-system-300" aria-hidden="true" />
-            <h2 className="text-lg font-semibold text-system-400">
+            <Search className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+            <h2 className="text-lg font-semibold text-foreground">
               Try searching for something else
             </h2>
           </div>
 
-          <p className="text-system-300 mb-6">
+          <p className="text-muted-foreground mb-6">
             Here are some popular pages that might help:
           </p>
 
@@ -104,14 +104,14 @@ export default function NotFound() {
                   href="/"
                   className="
                     block px-4 py-3 rounded-lg
-                    text-system-400 hover:bg-primary-100 
+                    text-foreground hover:bg-brand-50 
                     transition-colors text-left
                     focus-visible:outline focus-visible:outline-2 
-                    focus-visible:outline-offset-2 focus-visible:outline-primary-300
+                    focus-visible:outline-offset-2 focus-visible:outline-brand-200
                   "
                 >
                   <span className="font-medium">Home Page</span>
-                  <span className="text-sm text-system-300 block">
+                  <span className="text-sm text-muted-foreground block">
                     Start from the beginning
                   </span>
                 </Link>
@@ -122,14 +122,14 @@ export default function NotFound() {
                   href="/products"
                   className="
                     block px-4 py-3 rounded-lg
-                    text-system-400 hover:bg-primary-100 
+                    text-foreground hover:bg-brand-50 
                     transition-colors text-left
                     focus-visible:outline focus-visible:outline-2 
-                    focus-visible:outline-offset-2 focus-visible:outline-primary-300
+                    focus-visible:outline-offset-2 focus-visible:outline-brand-200
                   "
                 >
                   <span className="font-medium">All Products</span>
-                  <span className="text-sm text-system-300 block">
+                  <span className="text-sm text-muted-foreground block">
                     Browse our full catalog
                   </span>
                 </Link>
@@ -140,14 +140,14 @@ export default function NotFound() {
                   href="/tracking"
                   className="
                     block px-4 py-3 rounded-lg
-                    text-system-400 hover:bg-primary-100 
+                    text-foreground hover:bg-brand-50 
                     transition-colors text-left
                     focus-visible:outline focus-visible:outline-2 
-                    focus-visible:outline-offset-2 focus-visible:outline-primary-300
+                    focus-visible:outline-offset-2 focus-visible:outline-brand-200
                   "
                 >
                   <span className="font-medium">Order Tracking</span>
-                  <span className="text-sm text-system-300 block">
+                  <span className="text-sm text-muted-foreground block">
                     Check your order status
                   </span>
                 </Link>
@@ -158,14 +158,14 @@ export default function NotFound() {
                   href="/admin"
                   className="
                     block px-4 py-3 rounded-lg
-                    text-system-400 hover:bg-primary-100 
+                    text-foreground hover:bg-brand-50 
                     transition-colors text-left
                     focus-visible:outline focus-visible:outline-2 
-                    focus-visible:outline-offset-2 focus-visible:outline-primary-300
+                    focus-visible:outline-offset-2 focus-visible:outline-brand-200
                   "
                 >
                   <span className="font-medium">Admin Dashboard</span>
-                  <span className="text-sm text-system-300 block">
+                  <span className="text-sm text-muted-foreground block">
                     Manage orders and inventory
                   </span>
                 </Link>
@@ -175,11 +175,11 @@ export default function NotFound() {
         </div>
 
         {/* Help Text */}
-        <p className="text-sm text-system-300 mt-8">
+        <p className="text-sm text-muted-foreground mt-8">
           If you believe this is an error, please{' '}
           <a 
             href="mailto:support@gaylashop.com"
-            className="text-primary-300 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-300 rounded"
+            className="text-brand-200 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-200 rounded"
           >
             contact support
           </a>
