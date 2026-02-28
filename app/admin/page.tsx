@@ -133,32 +133,32 @@ export default function AdminPage() {
 
   if (siteContent === undefined || products === undefined) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="flex items-center justify-center h-screen bg-background">
         <div className="text-center">
           <div className="relative">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600 mx-auto" />
-            <Sparkles className="h-6 w-6 text-indigo-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-border border-t-brand-200 mx-auto" />
+            <Sparkles className="h-6 w-6 text-brand-200 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           </div>
-          <p className="mt-6 text-gray-700 font-medium">Loading Admin Panel…</p>
+          <p className="mt-6 text-foreground font-medium">Loading Admin Panel…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen ${mode === "tracking" ? "bg-[#F5F5F5] flex flex-col" : "bg-gradient-to-br from-blue-50 via-white to-purple-50"}`}>
+    <div className={`min-h-screen ${mode === "tracking" ? "bg-muted flex flex-col" : "bg-background"}`}>
 
       {/* ══ Top Bar (Global Shell) ═════════════════════════════════════════════════ */}
-      <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm shrink-0">
+      <div className="sticky top-0 z-50 bg-card border-b border-border shadow-sm shrink-0">
         <div className="max-w-[1600px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
 
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-3">
-                <Sparkles className="h-8 w-8 text-indigo-600" />
+                <Sparkles className="h-8 w-8 text-brand-200" />
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Gayla Admin</h1>
-                  <p className="text-xs text-gray-500">Control Panel</p>
+                  <h1 className="text-2xl font-bold text-foreground">Gayla Admin</h1>
+                  <p className="text-xs text-muted-foreground">Control Panel</p>
                 </div>
               </div>
 
@@ -166,18 +166,18 @@ export default function AdminPage() {
                 type="single"
                 value={mode}
                 onValueChange={(value) => handleModeChange(value as AdminMode)}
-                className="border border-gray-200 rounded-lg p-1"
+                className="border border-border rounded-lg p-1"
               >
                 <ToggleGroupItem
                   value="build"
-                  className="data-[state=on]:bg-indigo-100 data-[state=on]:text-indigo-700 gap-2"
+                  className="data-[state=on]:bg-brand-50 data-[state=on]:text-brand-200 gap-2"
                 >
                   <Sparkles className="h-4 w-4" />
                   Build Mode
                 </ToggleGroupItem>
                 <ToggleGroupItem
                   value="tracking"
-                  className="data-[state=on]:bg-[#3A3A3A] data-[state=on]:text-white gap-2 transition-colors"
+                  className="data-[state=on]:bg-accent data-[state=on]:text-accent-foreground gap-2 transition-colors"
                 >
                   <Package className="h-4 w-4" />
                   Tracking Mode
@@ -191,13 +191,13 @@ export default function AdminPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setIsDeliverySettingsOpen(true)}
-                  className="gap-2 text-[#3A3A3A] border-[#ECECEC]"
+                  className="gap-2"
                 >
                   <Settings className="h-4 w-4" />
                   Delivery Settings
                 </Button>
               )}
-              <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2 text-[#AAAAAA] hover:text-[#3A3A3A]">
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
                 <LogOut className="h-4 w-4" />
                 Logout
               </Button>
