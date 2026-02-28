@@ -13,27 +13,16 @@ type CallOutcome = "answered" | "no answer" | "wrong number" | "refused";
 export interface TrackingOrderCardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onClick'> {
   orderNumber: string;
   customerName: string;
-  /** Product name shown on the card */
   productName?: string;
-  /** Optional variant string, e.g. "M / Red" (legacy format) */
   productVariant?: string;
-  /** Product thumbnail URL */
   thumbnail?: string;
-  /** Customer wilaya (e.g., "Batna") */
   wilaya?: string;
-  /** Delivery type (Stopdesk or Domicile) */
   deliveryType?: "Stopdesk" | "Domicile";
-  /** Quantity of first product */
   quantity?: number;
-  /** Variant label for badge (e.g., "XL") */
   variantLabel?: string;
-  /** Hex color code for color dot (e.g., "#FF5733") */
   variantColor?: string;
-  /** Number of additional products beyond first (e.g., 2 means "+2 more items") */
   moreItemsCount?: number;
-  /** Call log history (only shown in "new" column) */
   callLog?: Array<{ outcome: CallOutcome; timestamp?: number }>;
-  /** Whether to show call log indicator */
   showCallLog?: boolean;
   totalPrice: number;
   status: OrderStatus;
@@ -88,7 +77,6 @@ export const TrackingOrderCard = React.forwardRef<HTMLDivElement, TrackingOrderC
       onCardClick?.();
     };
 
-    // Build location string (e.g., "Batna | Stop desk")
     const locationText = React.useMemo(() => {
       const parts: string[] = [];
       if (wilaya) parts.push(wilaya);
@@ -110,16 +98,16 @@ export const TrackingOrderCard = React.forwardRef<HTMLDivElement, TrackingOrderC
           productName ? `, ${productName}` : ""
         } from ${customerName}, total ${totalPrice} DZD, status ${status}`}
         className={cn(
-          "group relative flex flex-col gap-4 p-5 rounded-tracking-card transition-all duration-200 cursor-pointer text-[#3A3A3A] select-none text-left",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#AAAAAA] focus-visible:ring-offset-2",
+          "group relative flex flex-col gap-4 p-5 rounded-lg transition-all duration-200 cursor-pointer text-foreground select-none text-left",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           selected
-            ? "bg-[#F0F0F0] border-2 border-[#3A3A3A] shadow-tracking-card"
-            : "bg-[#F7F7F7] border-2 border-transparent shadow-tracking-card hover:shadow-tracking-elevated hover:bg-white",
+            ? "bg-secondary border-2 border-foreground shadow-sm"
+            : "bg-muted border-2 border-transparent shadow-sm hover:shadow-md hover:bg-card",
           className
         )}
         {...props}
       >
-        {/* Header: Checkbox + Call Log (if applicable) + Status */}
+        {/* Header: Checkbox + Call Log + Status */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className={cn(
@@ -143,9 +131,9 @@ export const TrackingOrderCard = React.forwardRef<HTMLDivElement, TrackingOrderC
         {/* Customer Info */}
         <div className="flex flex-col gap-1">
           <span className="text-[15px] font-semibold font-mono leading-tight">{orderNumber}</span>
-          <span className="text-[13px] font-medium text-[#3A3A3A] leading-snug">{customerName}</span>
+          <span className="text-sm font-medium text-foreground leading-snug">{customerName}</span>
           {locationText && (
-            <span className="text-[11px] text-[#AAAAAA] uppercase tracking-wide">
+            <span className="text-xs text-muted-foreground uppercase tracking-wide">
               {locationText}
             </span>
           )}
@@ -155,7 +143,7 @@ export const TrackingOrderCard = React.forwardRef<HTMLDivElement, TrackingOrderC
         {productName && (
           <div className="flex gap-3 items-start">
             {thumbnail && !imageError && (
-              <div className="relative w-12 h-12 rounded-md overflow-hidden shrink-0 bg-[#F5F5F5] border border-[#ECECEC]">
+              <div className="relative w-12 h-12 rounded-md overflow-hidden shrink-0 bg-muted/50 border border-border">
                 <Image
                   src={thumbnail}
                   alt={productName || "Product"}
@@ -171,9 +159,9 @@ export const TrackingOrderCard = React.forwardRef<HTMLDivElement, TrackingOrderC
               </div>
             )}
             {(!thumbnail || imageError) && (
-              <div className="relative w-12 h-12 rounded-md overflow-hidden shrink-0 bg-[#F5F5F5] border border-[#ECECEC] flex items-center justify-center">
+              <div className="relative w-12 h-12 rounded-md overflow-hidden shrink-0 bg-muted/50 border border-border flex items-center justify-center">
                 <svg
-                  className="w-6 h-6 text-[#AAAAAA]"
+                  className="w-6 h-6 text-muted-foreground"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -188,7 +176,7 @@ export const TrackingOrderCard = React.forwardRef<HTMLDivElement, TrackingOrderC
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <h4 className="text-[13px] font-medium text-[#3A3A3A] truncate leading-snug mb-1">
+              <h4 className="text-sm font-medium text-foreground truncate leading-snug mb-1">
                 {productName}
               </h4>
               {/* Badges: Quantity, Variant, Color */}
@@ -196,28 +184,27 @@ export const TrackingOrderCard = React.forwardRef<HTMLDivElement, TrackingOrderC
                 {quantity && quantity > 1 && (
                   <Badge
                     variant="secondary"
-                    className="h-5 px-1.5 text-[10px] font-bold bg-[#ECECEC] text-[#3A3A3A] hover:bg-[#ECECEC]"
+                    className="h-5 px-1.5 text-[10px] font-bold"
                   >
                     ×{quantity}
                   </Badge>
                 )}
                 {variantLabel && (
                   <Badge
-                    variant="secondary"
-                    className="h-5 px-1.5 text-[10px] font-medium bg-[#F5F5F5] text-[#555555] hover:bg-[#F5F5F5] border border-[#ECECEC]"
+                    variant="outline"
+                    className="h-5 px-1.5 text-[10px] font-medium"
                   >
                     {variantLabel}
                   </Badge>
                 )}
                 {variantColor && <ColorDot color={variantColor} size={8} />}
-                {/* Legacy variant format fallback */}
                 {!variantLabel && productVariant && (
-                  <span className="text-[11px] text-[#AAAAAA]">{productVariant}</span>
+                  <span className="text-xs text-muted-foreground">{productVariant}</span>
                 )}
               </div>
               {/* Multi-product indicator */}
               {moreItemsCount && moreItemsCount > 0 && (
-                <span className="text-[11px] text-[#AAAAAA] mt-1 inline-block">
+                <span className="text-xs text-muted-foreground mt-1 inline-block">
                   +{moreItemsCount} more item{moreItemsCount !== 1 ? "s" : ""}
                 </span>
               )}
@@ -226,9 +213,9 @@ export const TrackingOrderCard = React.forwardRef<HTMLDivElement, TrackingOrderC
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between mt-1 pt-4 border-t border-[#ECECEC]">
-          <span className="text-[13px] font-bold text-[#3A3A3A]">{totalPrice.toLocaleString()} DZD</span>
-          <span className="text-[11px] text-[#AAAAAA]">{date}</span>
+        <div className="flex items-center justify-between mt-1 pt-4 border-t border-border">
+          <span className="text-sm font-bold text-foreground">{totalPrice.toLocaleString()} DZD</span>
+          <span className="text-xs text-muted-foreground">{date}</span>
         </div>
       </div>
     );
