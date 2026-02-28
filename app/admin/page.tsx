@@ -26,7 +26,7 @@ import { ProductDrawer }        from "@/components/admin/product-drawer";
 import { UnsavedChangesDialog } from "@/components/admin/unsaved-changes-dialog";
 
 // New Tracking Mode MVP Workspace
-import { TrackingWorkspace } from "@/components/admin/tracking/views/tracking-workspace";
+import { Workspace } from "@/components/admin/tracking/views/workspace";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -230,7 +230,7 @@ export default function AdminPage() {
         {/* ── TRACKING MODE (MVP Redesign) ────────────────────────────────────────── */}
         {mode === "tracking" && (
           <div className="h-[calc(100vh-80px)]"> 
-            <TrackingWorkspace />
+            <Workspace />
           </div>
         )}
       </main>
