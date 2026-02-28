@@ -21,7 +21,6 @@ export function AddProductModal({ open, onClose, onAddProduct }: AddProductModal
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
 
-  // Query only active products
   const products = useQuery(api.products.list, { status: "Active" });
 
   const filteredProducts = React.useMemo(() => {
@@ -37,7 +36,6 @@ export function AddProductModal({ open, onClose, onAddProduct }: AddProductModal
 
   const handleSelectProduct = (product: any) => {
     setSelectedProduct(product);
-    // Auto-select first enabled variant value for each group
     if (product.variantGroups && product.variantGroups.length > 0) {
       const initialVariants: Record<string, string> = {};
       product.variantGroups.forEach((group: any) => {
@@ -91,7 +89,7 @@ export function AddProductModal({ open, onClose, onAddProduct }: AddProductModal
 
         {/* Search Bar */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#AAAAAA]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Search active products..."
@@ -109,7 +107,7 @@ export function AddProductModal({ open, onClose, onAddProduct }: AddProductModal
                 <button
                   key={product._id}
                   onClick={() => handleSelectProduct(product)}
-                  className="w-full flex items-center gap-3 p-3 border border-[#ECECEC] rounded-lg hover:bg-[#F7F7F7] transition-colors text-left"
+                  className="w-full flex items-center gap-3 p-3 border border-border rounded-lg hover:bg-muted transition-colors text-left"
                 >
                   {product.images && product.images.length > 0 ? (
                     <img
@@ -118,43 +116,43 @@ export function AddProductModal({ open, onClose, onAddProduct }: AddProductModal
                       className="w-12 h-12 object-cover rounded"
                     />
                   ) : (
-                    <div className="w-12 h-12 bg-[#ECECEC] rounded flex items-center justify-center text-[#AAAAAA] text-[10px]">
+                    <div className="w-12 h-12 bg-secondary rounded flex items-center justify-center text-muted-foreground text-[10px]">
                       No image
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-[14px] text-[#3A3A3A] truncate">
+                    <h4 className="font-semibold text-sm text-foreground truncate">
                       {product.title}
                     </h4>
                     {product.category && (
-                      <p className="text-[12px] text-[#AAAAAA]">{product.category}</p>
+                      <p className="text-xs text-muted-foreground">{product.category}</p>
                     )}
                   </div>
-                  <span className="font-bold text-[14px] text-[#3A3A3A] whitespace-nowrap">
+                  <span className="font-bold text-sm text-foreground whitespace-nowrap">
                     {product.price.toLocaleString()} DZD
                   </span>
                 </button>
               ))}
 
               {filteredProducts?.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-12 text-[#AAAAAA]">
+                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <Search className="w-12 h-12 mb-3 opacity-30" />
-                  <p className="text-[14px]">
+                  <p className="text-sm">
                     {searchQuery ? "No active products match your search" : "No active products available"}
                   </p>
                 </div>
               )}
 
               {!products && (
-                <div className="flex items-center justify-center py-12 text-[#AAAAAA]">
-                  <div className="w-6 h-6 border-2 border-[#AAAAAA] border-t-transparent rounded-full animate-spin" />
+                <div className="flex items-center justify-center py-12 text-muted-foreground">
+                  <div className="w-6 h-6 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
             </div>
           ) : (
             <div className="space-y-4">
               {/* Selected Product Header */}
-              <div className="flex items-center gap-3 p-4 bg-[#F7F7F7] rounded-lg">
+              <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
                 {selectedProduct.images && selectedProduct.images.length > 0 ? (
                   <img
                     src={selectedProduct.images[0].url}
@@ -162,28 +160,28 @@ export function AddProductModal({ open, onClose, onAddProduct }: AddProductModal
                     className="w-16 h-16 object-cover rounded"
                   />
                 ) : (
-                  <div className="w-16 h-16 bg-[#ECECEC] rounded flex items-center justify-center text-[#AAAAAA] text-[11px]">
+                  <div className="w-16 h-16 bg-secondary rounded flex items-center justify-center text-muted-foreground text-[11px]">
                     No image
                   </div>
                 )}
                 <div className="flex-1">
-                  <h3 className="font-bold text-[16px] text-[#3A3A3A]">{selectedProduct.title}</h3>
-                  <p className="text-[14px] text-[#555555] font-semibold">
+                  <h3 className="font-bold text-base text-foreground">{selectedProduct.title}</h3>
+                  <p className="text-sm text-muted-foreground font-semibold">
                     {selectedProduct.price.toLocaleString()} DZD
                   </p>
                 </div>
                 <button
                   onClick={() => setSelectedProduct(null)}
-                  className="p-1.5 hover:bg-white rounded transition-colors"
+                  className="p-1.5 hover:bg-card rounded transition-colors"
                 >
-                  <X className="w-4 h-4 text-[#AAAAAA]" />
+                  <X className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
 
               {/* Variant Selection */}
               {selectedProduct.variantGroups && selectedProduct.variantGroups.length > 0 && (
                 <div className="space-y-3">
-                  <p className="text-[13px] font-semibold text-[#3A3A3A] uppercase tracking-wider">
+                  <p className="text-sm font-semibold text-foreground uppercase tracking-wider">
                     Select Options
                   </p>
                   {selectedProduct.variantGroups.map((group: any) => {
@@ -192,7 +190,7 @@ export function AddProductModal({ open, onClose, onAddProduct }: AddProductModal
 
                     return (
                       <div key={group.name}>
-                        <label className="block text-[13px] font-medium text-[#555555] mb-2">
+                        <label className="block text-sm font-medium text-muted-foreground mb-2">
                           {group.name}
                         </label>
                         <div className="flex flex-wrap gap-2">
@@ -208,10 +206,10 @@ export function AddProductModal({ open, onClose, onAddProduct }: AddProductModal
                                     [group.name.toLowerCase()]: value.label,
                                   }))
                                 }
-                                className={`px-4 py-2 rounded-lg border-2 text-[13px] font-medium transition-all ${
+                                className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
                                   isSelected
-                                    ? "border-[#3A3A3A] bg-[#3A3A3A] text-white"
-                                    : "border-[#ECECEC] bg-white text-[#3A3A3A] hover:border-[#AAAAAA]"
+                                    ? "border-foreground bg-foreground text-background"
+                                    : "border-border bg-background text-foreground hover:border-muted-foreground"
                                 }`}
                               >
                                 {isSelected && <Check className="inline w-3 h-3 mr-1" />}
@@ -230,14 +228,14 @@ export function AddProductModal({ open, onClose, onAddProduct }: AddProductModal
         </div>
 
         {/* Footer Actions */}
-        <div className="flex gap-3 pt-4 border-t border-[#ECECEC]">
+        <div className="flex gap-3 pt-4 border-t border-border">
           <Button variant="outline" onClick={handleClose} className="flex-1">
             Cancel
           </Button>
           {selectedProduct && (
             <Button
               onClick={handleAddToOrder}
-              className="flex-[2] bg-[#3A3A3A] hover:bg-[#2A2A2A]"
+              className="flex-[2] bg-foreground hover:bg-foreground/90"
             >
               <Check className="w-4 h-4 mr-2" />
               Add to Order

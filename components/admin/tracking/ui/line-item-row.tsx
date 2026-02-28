@@ -64,15 +64,14 @@ export function LineItemRow({
     });
   };
 
-  // Calculate line total when quantity changes
   const calculatedLineTotal = item.quantity * item.unitPrice;
 
   return (
     <>
       <div
         className={cn(
-          "group relative bg-white border border-[#E5E7EB] rounded-2xl p-6 transition-all duration-200 hover:border-[#D1D5DB] hover:shadow-lg",
-          isProductDeleted && "bg-gray-50 border-gray-300 opacity-75",
+          "group relative bg-card border border-border rounded-2xl p-6 transition-all duration-200 hover:border-border/80 hover:shadow-lg",
+          isProductDeleted && "bg-muted border-muted-foreground/30 opacity-75",
           (disabled || isRemoving) && "opacity-60 pointer-events-none"
         )}
       >
@@ -81,7 +80,7 @@ export function LineItemRow({
           
           {/* Product Image - Col 1-3 */}
           <div className="lg:col-span-3">
-            <div className="relative aspect-square w-full max-w-[120px] mx-auto lg:mx-0 rounded-xl overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200">
+            <div className="relative aspect-square w-full max-w-[120px] mx-auto lg:mx-0 rounded-xl overflow-hidden bg-gradient-to-br from-muted/50 to-muted border border-border">
               {item.thumbnail && !imageError ? (
                 <Image
                   src={item.thumbnail}
@@ -96,7 +95,7 @@ export function LineItemRow({
                   onError={() => setImageError(true)}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
@@ -110,13 +109,13 @@ export function LineItemRow({
             <div className="space-y-2">
               <div className="flex items-start justify-between gap-4">
                 <h3 className={cn(
-                  "text-lg font-semibold text-gray-900 leading-tight flex-1",
-                  isProductDeleted && "text-gray-500 line-through"
+                  "text-lg font-semibold text-foreground leading-tight flex-1",
+                  isProductDeleted && "text-muted-foreground line-through"
                 )}>
                   {item.productName}
                 </h3>
                 {isProductDeleted && (
-                  <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full font-medium shrink-0">
+                  <div className="flex items-center gap-1.5 text-xs text-warning bg-warning/10 px-2.5 py-1 rounded-full font-medium shrink-0">
                     <AlertTriangle className="w-3.5 h-3.5" />
                     <span>Deleted</span>
                   </div>
@@ -141,7 +140,7 @@ export function LineItemRow({
                 {Object.entries(item.variants).map(([key, value]) => (
                   <span
                     key={key}
-                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg"
+                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted border border-border rounded-lg"
                   >
                     {key}: {value}
                   </span>
@@ -159,7 +158,7 @@ export function LineItemRow({
                 
                 {/* Quantity Stepper */}
                 <div className="flex flex-col items-center space-y-2">
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</label>
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quantity</label>
                   <QuantityStepper
                     value={item.quantity}
                     onChange={handleQuantityChange}
@@ -171,10 +170,10 @@ export function LineItemRow({
 
                 {/* Price Display */}
                 <div className="flex flex-col items-center sm:items-start lg:items-center space-y-1 text-right">
-                  <div className="text-2xl font-bold text-gray-900">
+                  <div className="text-2xl font-bold text-foreground">
                     {calculatedLineTotal.toLocaleString()} DZD
                   </div>
-                  <div className="text-xs text-gray-500 font-medium">
+                  <div className="text-xs text-muted-foreground font-medium">
                     {item.unitPrice.toLocaleString()} × {item.quantity}
                   </div>
                 </div>
@@ -189,7 +188,7 @@ export function LineItemRow({
                   size="icon"
                   onClick={() => setShowRemoveDialog(true)}
                   disabled={disabled || isRemoving}
-                  className="h-10 w-10 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all duration-200 group-hover:scale-105"
+                  className="h-10 w-10 rounded-xl hover:bg-destructive/10 hover:text-destructive transition-all duration-200 group-hover:scale-105"
                   aria-label={`Remove ${item.productName}`}
                 >
                   {isRemoving ? (
@@ -222,7 +221,7 @@ export function LineItemRow({
             <AlertDialogAction
               onClick={handleRemove}
               disabled={isRemoving}
-              className="bg-rose-600 hover:bg-rose-700 text-white"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
             >
               {isRemoving ? (
                 <>
