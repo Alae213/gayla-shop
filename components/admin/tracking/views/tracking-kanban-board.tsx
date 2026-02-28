@@ -41,34 +41,28 @@ interface TrackingKanbanBoardProps {
   blacklistCount?: number;
 }
 
-// hold column is visible so wrong-number orders remain trackable,
-// but it is NOT a valid drag target — hold is set only via call log.
 const KANBAN_COLUMNS: { id: MVPStatus; title: string; accent?: string }[] = [
   { id: "new",       title: "new" },
   { id: "confirmed", title: "confirmed" },
   { id: "packaged",  title: "packaged" },
   { id: "shipped",   title: "shipped" },
-  { id: "hold",      title: "hold", accent: "text-orange-500" },
+  { id: "hold",      title: "hold", accent: "text-warning" },
 ];
 
-// Columns that can receive a drop. "hold" is intentionally excluded.
 const DRAGGABLE_TARGETS = new Set<MVPStatus>(["new", "confirmed", "packaged", "shipped"]);
 
-// Forward-only transition map. Each status lists the statuses it may move TO via drag.
-// Backward moves are rejected to prevent accidental data corruption.
 const ALLOWED_TRANSITIONS: Record<MVPStatus, MVPStatus[]> = {
   new:       ["confirmed"],
-  confirmed: ["packaged", "new"],   // allow reverting to new (e.g. customer callback)
+  confirmed: ["packaged", "new"],
   packaged:  ["shipped", "confirmed"],
-  shipped:   [],                    // shipped is terminal for drag; use action bar to revert
-  hold:      ["new"],               // only Resume as New is allowed (via action bar, not drag)
+  shipped:   [],
+  hold:      ["new"],
   canceled:  [],
   blocked:   [],
 };
 
 const VALID_COLUMNS = new Set<string>(KANBAN_COLUMNS.map(c => c.id));
 
-// Legacy variant label formatter (backward compatibility)
 function variantLabel(order: Order): string {
   const parts: string[] = [];
   if (order.selectedVariant?.size)  parts.push(order.selectedVariant.size);
@@ -76,21 +70,12 @@ function variantLabel(order: Order): string {
   return parts.join(" / ");
 }
 
-/**
- * Extract card display data from order, supporting both new lineItems format
- * and legacy single-product fields.
- */
 function extractCardData(order: Order, columnId: MVPStatus) {
-  // Multi-product orders: use first line item
   if (order.lineItems && order.lineItems.length > 0) {
     const firstItem = order.lineItems[0];
     const variants = firstItem.variants ?? {};
-    
-    // Extract first variant value for badge (e.g., "XL" from { size: "XL", color: "Red" })
     const variantValues = Object.values(variants) as string[];
     const variantLabel = variantValues[0] ?? undefined;
-    
-    // Extract color hex if available (assuming color field contains hex)
     const variantColor = variants.color ?? undefined;
     
     return {
@@ -100,14 +85,13 @@ function extractCardData(order: Order, columnId: MVPStatus) {
       variantLabel,
       variantColor,
       moreItemsCount: order.lineItems.length - 1,
-      productVariant: undefined, // Don't use legacy format
+      productVariant: undefined,
     };
   }
   
-  // Legacy single-product orders: fall back to old fields
   return {
     productName: order.productName,
-    thumbnail: undefined, // Legacy orders don't have thumbnails stored
+    thumbnail: undefined,
     quantity: order.quantity > 1 ? order.quantity : undefined,
     variantLabel: undefined,
     variantColor: undefined,
@@ -116,7 +100,6 @@ function extractCardData(order: Order, columnId: MVPStatus) {
   };
 }
 
-// Draggable card wrapper
 function SortableOrderCard({
   order,
   columnId,
@@ -236,15 +219,11 @@ export function TrackingKanbanBoard({
     const currentStatus = getColumn(order);
     if (currentStatus === targetColumnId) return;
 
-    // FIX 17A: Block drag onto the hold column — hold is set only via
-    // wrong-number call log, never by manual drag.
     if (!DRAGGABLE_TARGETS.has(targetColumnId)) {
       toast.warning(`"${targetColumnId}" cannot be set by dragging`);
       return;
     }
 
-    // FIX 17A: Enforce the allowed transition map so operators can't skip
-    // stages or make accidental backward jumps (e.g. new → shipped).
     const allowed = ALLOWED_TRANSITIONS[currentStatus] ?? [];
     if (!allowed.includes(targetColumnId)) {
       toast.warning(
@@ -281,7 +260,6 @@ export function TrackingKanbanBoard({
             const hasSelected   = columnOrderIds.some(id => selectedIds.has(id));
             const totalValue    = column.items.reduce((sum, o) => sum + (o.totalAmount ?? 0), 0);
 
-            // Hide the hold column entirely when empty
             if (column.id === "hold" && column.items.length === 0) return null;
 
             return (
@@ -314,16 +292,16 @@ export function TrackingKanbanBoard({
                         <h3
                           id={`kanban-col-${column.id}`}
                           className={`text-[15px] font-semibold lowercase ${
-                            column.accent ?? "text-[#3A3A3A]"
+                            column.accent ?? "text-foreground"
                           }`}
                         >
                           {column.title}
                         </h3>
                         <span
-                          className={`inline-flex items-center justify-center text-[12px] font-medium h-6 min-w-[24px] px-1.5 rounded-full ${
+                          className={`inline-flex items-center justify-center text-xs font-medium h-6 min-w-[24px] px-1.5 rounded-full ${
                             column.id === "hold"
-                              ? "bg-orange-100 text-orange-600"
-                              : "bg-[#ECECEC] text-[#AAAAAA]"
+                              ? "bg-warning/10 text-warning-foreground"
+                              : "bg-secondary text-muted-foreground"
                           }`}
                           aria-label={`${column.items.length} orders`}
                         >
@@ -334,7 +312,7 @@ export function TrackingKanbanBoard({
 
                     {/* Column total on hover */}
                     <div
-                      className="absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white shadow-tracking-elevated px-3 py-1.5 rounded-md text-[13px] font-medium text-[#3A3A3A] pointer-events-none z-10 whitespace-nowrap -top-10"
+                      className="absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-card shadow-md px-3 py-1.5 rounded-md text-sm font-medium text-foreground pointer-events-none z-10 whitespace-nowrap -top-10"
                       aria-hidden="true"
                     >
                       {totalValue.toLocaleString()} DZD
@@ -345,7 +323,7 @@ export function TrackingKanbanBoard({
                   <div
                     id={column.id}
                     className={`flex flex-col gap-4 overflow-y-auto h-full px-1 pb-12 rounded-xl ${
-                      column.id === "hold" ? "bg-orange-50/40" : ""
+                      column.id === "hold" ? "bg-warning/10" : ""
                     }`}
                     role="list"
                     aria-label={`${column.title} column`}
@@ -362,8 +340,8 @@ export function TrackingKanbanBoard({
                     ))}
 
                     {column.items.length === 0 && (
-                      <div className="flex items-center justify-center p-8 border-2 border-dashed border-[#ECECEC] rounded-tracking-card min-h-[120px]">
-                        <p className="text-[14px] text-[#AAAAAA]">Drop here</p>
+                      <div className="flex items-center justify-center p-8 border-2 border-dashed border-border rounded-lg min-h-[120px]">
+                        <p className="text-sm text-muted-foreground">Drop here</p>
                       </div>
                     )}
                   </div>
@@ -373,10 +351,8 @@ export function TrackingKanbanBoard({
           })}
         </div>
 
-        {/* FIX 17B: Surface blacklistCount as a board footer note so the
-            operator always knows how many orders are in the blacklist tab. */}
         {blacklistCount > 0 && (
-          <div className="flex items-center gap-2 px-2 py-2 text-[12px] text-rose-500 select-none">
+          <div className="flex items-center gap-2 px-2 py-2 text-xs text-destructive select-none">
             <Ban className="w-3.5 h-3.5 shrink-0" />
             <span>
               {blacklistCount} order{blacklistCount !== 1 ? "s" : ""} in Blacklist
@@ -385,7 +361,6 @@ export function TrackingKanbanBoard({
         )}
       </div>
 
-      {/* Drag overlay */}
       <DragOverlay>
         {activeOrder ? (
           <div className="opacity-95 rotate-2 scale-105 pointer-events-none">
