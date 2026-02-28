@@ -50,7 +50,7 @@ export function CheckoutForm() {
             <Input
               id="customerName"
               value={form.customerName}
-              onChange={(e) => setField("customerName", e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("customerName", e.target.value)}
               placeholder="Ahmed Benali"
             />
             {errors.customerName && (
@@ -67,7 +67,7 @@ export function CheckoutForm() {
               id="customerPhone"
               type="tel"
               value={form.customerPhone}
-              onChange={(e) => setField("customerPhone", e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("customerPhone", e.target.value)}
               placeholder="0555 123 456"
             />
             {errors.customerPhone && (
@@ -179,7 +179,7 @@ export function CheckoutForm() {
               <Textarea
                 id="address"
                 value={form.address}
-                onChange={(e) => setField("address", e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setField("address", e.target.value)}
                 placeholder="Street, building, apartment..."
                 rows={3}
               />

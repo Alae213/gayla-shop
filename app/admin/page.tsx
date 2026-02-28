@@ -133,23 +133,23 @@ export default function AdminPage() {
 
   if (siteContent === undefined || products === undefined) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background">
+      <div className="flex items-center justify-center h-screen bg-system-50">
         <div className="text-center">
           <div className="relative">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-border border-t-brand-200 mx-auto" />
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 border-t-brand-200 mx-auto" />
             <Sparkles className="h-6 w-6 text-brand-200 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           </div>
-          <p className="mt-6 text-foreground font-medium">Loading Admin Panel…</p>
+          <p className="mt-6 text-system-400 font-medium">Loading Admin Panel…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen ${mode === "tracking" ? "bg-muted flex flex-col" : "bg-background"}`}>
+    <div className={`min-h-screen ${mode === "tracking" ? "bg-system-100 flex flex-col" : "bg-system-50"}`}>
 
       {/* ══ Top Bar (Global Shell) ═════════════════════════════════════════════════ */}
-      <div className="sticky top-0 z-50 bg-card border-b border-border shadow-sm shrink-0">
+      <div className="sticky top-0 z-50 bg-white border-b border-system-200 shadow-sm shrink-0">
         <div className="max-w-[1600px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
 
@@ -157,8 +157,8 @@ export default function AdminPage() {
               <div className="flex items-center gap-3">
                 <Sparkles className="h-8 w-8 text-brand-200" />
                 <div>
-                  <h1 className="text-2xl font-bold text-foreground">Gayla Admin</h1>
-                  <p className="text-xs text-muted-foreground">Control Panel</p>
+                  <h1 className="text-2xl font-bold text-system-400">Gayla Admin</h1>
+                  <p className="text-xs text-system-300">Control Panel</p>
                 </div>
               </div>
 
@@ -166,7 +166,7 @@ export default function AdminPage() {
                 type="single"
                 value={mode}
                 onValueChange={(value) => handleModeChange(value as AdminMode)}
-                className="border border-border rounded-lg p-1"
+                className="border border-system-200 rounded-lg p-1"
               >
                 <ToggleGroupItem
                   value="build"

@@ -31,15 +31,15 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-system-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="bg-card rounded-2xl shadow-xl p-8 border border-border">
+        <div className="bg-white rounded-2xl shadow-xl p-8 border border-system-200">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-50 rounded-full mb-4">
               <Sparkles className="h-8 w-8 text-brand-200" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground">Gayla Admin</h1>
-            <p className="text-muted-foreground mt-2">Sign in to your account</p>
+            <h1 className="text-3xl font-bold text-system-400">Gayla Admin</h1>
+            <p className="text-system-300 mt-2">Sign in to your account</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
@@ -73,7 +73,7 @@ export default function AdminLoginPage() {
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
 
-            <div className="text-center text-sm text-muted-foreground mt-4">
+            <div className="text-center text-sm text-system-300 mt-4">
               <p>Demo credentials:</p>
               <p className="font-mono text-xs mt-1">
                 admin@gayla.dz / admin123
