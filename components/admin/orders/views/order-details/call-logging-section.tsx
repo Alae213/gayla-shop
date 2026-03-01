@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Check, PhoneCall, PhoneMissed, PhoneForwarded, PhoneOff } from "lucide-react";
+import { TrackingButton } from "../../ui/tracking-button";
 
 type CallOutcome = "answered" | "no answer" | "wrong number" | "refused";
 
@@ -16,34 +17,26 @@ const OUTCOME_META: Record<CallOutcome, {
   refused:        { label: "Refused",      icon: PhoneOff,       color: "text-rose-600" },
 };
 
-interface TrackingButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary";
-}
-
-function TrackingButton({ variant = "secondary", className = "", children, ...props }: TrackingButtonProps) {
-  const base = "inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
-  const variants = {
-    primary: "bg-[#3A3A3A] text-white hover:bg-[#222]",
-    secondary: "border border-[#ECECEC] bg-white text-[#3A3A3A] hover:bg-[#F7F7F7]",
-  };
-  return (
-    <button className={`${base} ${variants[variant]} ${className}`} {...props}>
-      {children}
-    </button>
-  );
-}
-
 interface CallLoggingSectionProps {
   showNoteInput: boolean;
   pendingOutcome: CallOutcome | null;
   callNote: string;
   isLoggingCall: boolean;
+  
   onOutcomeClick: (outcome: CallOutcome) => void;
   onCallNoteChange: (note: string) => void;
   onCancelNote: () => void;
   onLogCall: () => void;
 }
 
+/**
+ * Call Logging Section
+ * 
+ * Displays:
+ * - 4 call outcome buttons (answered, no answer, wrong number, refused)
+ * - Note input textarea (when outcome selected)
+ * - Log/Cancel buttons
+ */
 export function CallLoggingSection({
   showNoteInput,
   pendingOutcome,
@@ -57,16 +50,32 @@ export function CallLoggingSection({
   if (!showNoteInput) {
     return (
       <div className="grid grid-cols-2 gap-2">
-        <TrackingButton variant="secondary" onClick={() => onOutcomeClick("answered")} className="gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
+        <TrackingButton
+          variant="secondary"
+          onClick={() => onOutcomeClick("answered")}
+          className="gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+        >
           <PhoneCall className="w-4 h-4" /> Answered
         </TrackingButton>
-        <TrackingButton variant="secondary" onClick={() => onOutcomeClick("no answer")} className="gap-1.5 text-amber-600 border-amber-200 hover:bg-amber-50">
+        <TrackingButton
+          variant="secondary"
+          onClick={() => onOutcomeClick("no answer")}
+          className="gap-1.5 text-amber-600 border-amber-200 hover:bg-amber-50"
+        >
           <PhoneMissed className="w-4 h-4" /> No Answer
         </TrackingButton>
-        <TrackingButton variant="secondary" onClick={() => onOutcomeClick("wrong number")} className="gap-1.5 text-orange-600 border-orange-200 hover:bg-orange-50">
+        <TrackingButton
+          variant="secondary"
+          onClick={() => onOutcomeClick("wrong number")}
+          className="gap-1.5 text-orange-600 border-orange-200 hover:bg-orange-50"
+        >
           <PhoneForwarded className="w-4 h-4" /> Wrong Number
         </TrackingButton>
-        <TrackingButton variant="secondary" onClick={() => onOutcomeClick("refused")} className="gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50">
+        <TrackingButton
+          variant="secondary"
+          onClick={() => onOutcomeClick("refused")}
+          className="gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50"
+        >
           <PhoneOff className="w-4 h-4" /> Refused
         </TrackingButton>
       </div>
@@ -97,14 +106,21 @@ export function CallLoggingSection({
         />
       </div>
       <div className="flex gap-2">
-        <TrackingButton variant="secondary" onClick={onCancelNote} className="flex-1">Cancel</TrackingButton>
-        <TrackingButton variant="primary" onClick={onLogCall} disabled={isLoggingCall} className="flex-[2] gap-2 h-11">
+        <TrackingButton variant="secondary" onClick={onCancelNote} className="flex-1">
+          Cancel
+        </TrackingButton>
+        <TrackingButton
+          variant="primary"
+          onClick={onLogCall}
+          disabled={isLoggingCall}
+          className="flex-[2] gap-2 h-11"
+        >
           {isLoggingCall ? (
             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
           ) : (
-            <Check className="w-4 h-4" />
+            <Check className="w-4 h-4" aria-hidden="true" />
           )}
-          Log Call
+          Log Call Outcome
         </TrackingButton>
       </div>
     </div>

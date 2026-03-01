@@ -17,6 +17,15 @@ interface OrderDetailsHeaderProps {
   onEditFormChange: (field: string, value: string) => void;
 }
 
+/**
+ * Order Details Header
+ * 
+ * Displays:
+ * - Creation timestamp
+ * - Customer name (editable in edit mode)
+ * - Order number badge
+ * - Status pill
+ */
 export function OrderDetailsHeader({
   orderNumber,
   customerName,
@@ -32,6 +41,7 @@ export function OrderDetailsHeader({
         <Clock className="w-3.5 h-3.5" />
         {format(creationTime, "MMM d, yyyy 'at' HH:mm")}
       </div>
+      
       {isEditing ? (
         <input
           type="text"
@@ -44,11 +54,16 @@ export function OrderDetailsHeader({
       ) : (
         <div className="flex items-center gap-2 mb-1">
           <User className="w-6 h-6 text-[#AAAAAA]" />
-          <h2 className="text-[28px] font-bold text-[#3A3A3A] leading-tight">{customerName}</h2>
+          <h2 className="text-[28px] font-bold text-[#3A3A3A] leading-tight">
+            {customerName}
+          </h2>
         </div>
       )}
+      
       <div className="inline-flex items-center gap-2 bg-[#F7F7F7] px-3 py-1.5 rounded-full border border-[#ECECEC]">
-        <span className="text-[13px] font-mono font-bold text-[#3A3A3A] tracking-tight">{orderNumber}</span>
+        <span className="text-[13px] font-mono font-bold text-[#3A3A3A] tracking-tight">
+          {orderNumber}
+        </span>
         <StatusPill status={effectiveStatus} />
       </div>
     </header>
