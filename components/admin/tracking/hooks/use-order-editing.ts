@@ -5,7 +5,7 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
-import { Order } from "../views/tracking-kanban-board";
+import { Order } from "../../orders/views/kanban-board";
 
 const MAX_RETRY_ATTEMPTS = 3;
 

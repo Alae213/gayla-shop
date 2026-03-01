@@ -28,7 +28,7 @@ import {
   OrderItemsSection,
   OrderTimelinesSection,
   StatusActionBar,
-} from "./order-details";
+} from "./order-details/index";
 
 type MVPStatus = "new" | "confirmed" | "packaged" | "shipped" | "canceled" | "blocked" | "hold";
 

@@ -5,8 +5,8 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { InlineEditText }  from "@/components/admin/inline-edit-text";
-import { ImageCropDialog } from "@/components/admin/image-crop-dialog";
+import { InlineEditText }  from "@/components/admin/shared/inline-edit-text";
+import { ImageCropDialog } from "@/components/admin/shared/image-crop-dialog";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 

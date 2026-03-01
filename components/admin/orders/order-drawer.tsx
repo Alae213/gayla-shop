@@ -30,23 +30,10 @@ import {
   Info, PhoneCall, PhoneOff, Shield, FileText, CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { OrderLineItemEditor } from "@/components/admin/order-line-item-editor";
-import { OrderDeliveryEditor } from "@/components/admin/order-delivery-editor";
-import { OrderHistoryTimeline } from "@/components/admin/order-history-timeline";
-
-// ─── Types ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-
-export type OrderStatus =
-  | "Pending"
-  | "Confirmed"
-  | "Called no respond"
-  | "Called 01"
-  | "Called 02"
-  | "Cancelled"
-  | "Packaged"
-  | "Shipped"
-  | "Delivered"
-  | "Retour";
+import { OrderLineItemEditor } from "./order-line-item-editor";
+import { OrderDeliveryEditor } from "./order-delivery-editor";
+import { OrderHistoryTimeline } from "./order-history-timeline";
+import { OrderStatus, Order } from "./types";
 
 type MVPStatus = "new" | "confirmed" | "packaged" | "shipped" | "canceled" | "blocked" | "hold";
 
@@ -59,40 +46,6 @@ interface LineItem {
   variants?: Record<string, string>;
   lineTotal: number;
   thumbnail?: string;
-}
-
-export interface Order {
-  _id: Id<"orders">;
-  _creationTime: number;
-  orderNumber: string;
-  status: OrderStatus;
-  customerName: string;
-  customerPhone: string;
-  customerWilaya: string;
-  customerCommune: string;
-  customerAddress: string;
-  deliveryType: "Domicile" | "Stopdesk";
-  deliveryCost: number;
-  // Legacy single-product fields
-  productName?: string;
-  productPrice?: number;
-  productSlug?: string;
-  selectedVariant?: { size?: string; color?: string };
-  // New multi-product field
-  lineItems?: LineItem[];
-  totalAmount: number;
-  lastUpdated: number;
-  callAttempts?: number;
-  callLog?: Array<{ timestamp: number; outcome: "answered" | "no_answer"; note?: string }>;
-  statusHistory?: Array<{ status: string; timestamp: number; reason?: string }>;
-  adminNotes?: Array<{ text: string; timestamp: number }>;
-  changeLog?: Array<{ timestamp: number; adminName?: string; action: string; changes?: string }>;
-  fraudScore?: number;
-  isBanned?: boolean;
-  courierSentAt?: number;
-  courierTrackingId?: string;
-  courierError?: string;
-  retourReason?: string;
 }
 
 interface OrderDrawerProps {

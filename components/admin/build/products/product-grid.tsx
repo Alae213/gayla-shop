@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, Pencil, Trash2, ImageIcon, Package, Plus, Lightbulb } from "lucide-react";
 import Image from "next/image";
 import { Id } from "@/convex/_generated/dataModel";
-import { DeleteProductDialog } from "@/components/admin/delete-product-dialog";
+import { DeleteProductDialog } from "@/components/admin/shared/delete-product-dialog";
 
 interface Product {
   _id: Id<"products">;

@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { AddProductModal } from "../add-product-modal";
+import { AddProductModal } from "../shared/add-product-modal";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

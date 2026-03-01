@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { VariantGroupEditor, VariantGroup } from "@/components/admin/variant-group-editor";
+import { VariantGroupEditor, VariantGroup } from "@/components/admin/shared/variant-group-editor";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

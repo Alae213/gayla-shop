@@ -16,5 +16,16 @@ export interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    // Avoid hydration mismatch by returning a placeholder on server
+    return <>{children}</>;
+  }
+
   return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
 }

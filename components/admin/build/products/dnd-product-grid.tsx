@@ -29,7 +29,7 @@ import {
 import Image from "next/image";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { DeleteProductDialog } from "@/components/admin/delete-product-dialog";
+import { DeleteProductDialog } from "@/components/admin/shared/delete-product-dialog";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 

@@ -1,9 +1,5 @@
-"use client";
-
 import "./globals.css";
-import { ConvexClientProvider } from "@/providers/convex-provider";
-import { ThemeProvider } from "@/providers/theme-provider";
-import { Toaster } from "sonner";
+import { Providers } from "@/providers";
 
 export default function RootLayout({
   children,
@@ -13,23 +9,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-          storageKey="gayla-shop-theme"
-        >
-          <ConvexClientProvider>
-            {children}
-            <Toaster
-              position="top-right"
-              richColors
-              closeButton
-              duration={3000}
-            />
-          </ConvexClientProvider>
-        </ThemeProvider>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );
