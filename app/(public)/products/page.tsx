@@ -2,8 +2,9 @@
 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { ProductCard } from "@/components/products/product-card";
-import { ProductCardSkeleton } from "@/components/products/product-card-skeleton";
+// ✅ Fixed: Use correct path (components/public/products, not /components/products)
+import { ProductCard } from "@/components/public/products/product-card";
+import { ProductCardSkeleton } from "@/components/public/products/product-card-skeleton";
 import { useState, useMemo } from "react";
 import {
   Select,

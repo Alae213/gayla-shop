@@ -5,7 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { DeliverySettingsModal } from "@/components/admin/delivery-settings-modal";
+import { DeliverySettingsModal } from "@/components/admin/shared"; // ✅ Fixed: Use barrel
 import { Settings } from "lucide-react";
 import {
   ToggleGroup,
@@ -19,14 +19,13 @@ import {
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-// Legacy Build Mode Components
-import { HeroEditor }           from "@/components/admin/hero-editor";
-import { DndProductGrid }       from "@/components/admin/dnd-product-grid";
-import { ProductDrawer }        from "@/components/admin/product-drawer";
-import { UnsavedChangesDialog } from "@/components/admin/unsaved-changes-dialog";
+// ✅ Fixed: Use barrel exports from /build
+import { HeroEditor, DndProductGrid, ProductDrawer } from "@/components/admin/build";
+// ✅ Fixed: Use barrel export from /shared
+import { UnsavedChangesDialog } from "@/components/admin/shared";
 
 // New Tracking Mode MVP Workspace
-import { Workspace } from "@/components/admin/tracking/views/workspace";
+import { Workspace } from "@/components/admin/tracking/workspace"; // ✅ Fixed path
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
