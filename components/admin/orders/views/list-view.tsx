@@ -1,112 +1,153 @@
 "use client";
 
 import * as React from "react";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { format } from "date-fns";
+import { Id } from "@/convex/_generated/dataModel";
 import { Checkbox } from "../components/checkbox";
-import { StatusPill } from "../components/status-pill";
-import { Order, MVPStatus } from "./kanban-board";
+import { StatusPill, OrderStatus } from "../components/status-pill";
+import { formatDistanceToNow } from "date-fns";
+import { Order } from "./kanban-board";
+import { Ban, ListFilter } from "lucide-react";
 
 interface ListViewProps {
-  selectedStatus: MVPStatus | "all";
-  searchQuery: string;
-  selectedOrderIds: Set<string>;
-  onOrderClick: (order: Order) => void;
-  onSelectOrder: (orderId: string, selected: boolean) => void;
-  onSelectAll: (orderIds: string[], allSelected: boolean) => void;
+  orders: Order[];
+  selectedIds: Set<Id<"orders">>;
+  onToggleSelect: (id: Id<"orders">) => void;
+  onSelectAll: (ids: Id<"orders">[]) => void;
+  onOrderClick: (id: Id<"orders">) => void;
+  isBlacklist?: boolean;
 }
 
+const GRID = "grid-cols-[48px_minmax(110px,1fr)_minmax(160px,1.5fr)_minmax(160px,1.5fr)_minmax(110px,1fr)_minmax(90px,1fr)_minmax(110px,1fr)]";
+
 export function ListView({
-  selectedStatus,
-  searchQuery,
-  selectedOrderIds,
-  onOrderClick,
-  onSelectOrder,
+  orders,
+  selectedIds,
+  onToggleSelect,
   onSelectAll,
+  onOrderClick,
+  isBlacklist = false,
 }: ListViewProps) {
-  const orders = useQuery(api.orders.list) as Order[] | undefined;
-
-  const filteredOrders = React.useMemo(() => {
-    if (!orders) return [];
-    let result = orders;
-    if (selectedStatus !== "all") {
-      result = result.filter(o => o.status === selectedStatus);
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(o =>
-        o.orderNumber.toLowerCase().includes(q) ||
-        o.customerName.toLowerCase().includes(q) ||
-        (o.customerPhone ?? "").includes(q) ||
-        (o.productName ?? "").toLowerCase().includes(q)
-      );
-    }
-    return result;
-  }, [orders, selectedStatus, searchQuery]);
-
-  if (orders === undefined) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  const allSelected = filteredOrders.length > 0 && filteredOrders.every(o => selectedOrderIds.has(o._id));
+  const orderIds = orders.map(o => o._id);
+  const isAllSelected = orderIds.length > 0 && orderIds.every(id => selectedIds.has(id));
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="overflow-x-auto flex-1">
-        <table className="w-full text-sm border-collapse">
-          <thead className="sticky top-0 bg-muted z-10">
-            <tr className="border-b border-border">
-              <th className="w-10 px-4 py-3 text-left">
-                <Checkbox
-                  checked={allSelected}
-                  onCheckedChange={(checked) => onSelectAll(filteredOrders.map(o => o._id), checked)}
-                  aria-label={allSelected ? "Deselect all" : "Select all"}
-                />
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Order</th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Customer</th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Product</th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Wilaya</th>
-              <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">Total</th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground hidden sm:table-cell">Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredOrders.map(order => (
-              <tr
-                key={order._id}
-                onClick={() => onOrderClick(order)}
-                className="border-b border-border hover:bg-muted/50 cursor-pointer transition-colors"
+    <div className="flex flex-col h-full bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+      <div className={`grid ${GRID} items-center px-6 py-4 border-b border-border bg-muted text-sm font-semibold text-muted-foreground uppercase tracking-wider`}>
+        <div className="flex items-center justify-center">
+          <Checkbox
+            checked={isAllSelected}
+            onCheckedChange={() => onSelectAll(orderIds)}
+            aria-label={isAllSelected ? "Deselect all orders" : "Select all orders"}
+          />
+        </div>
+        <div>Order</div>
+        <div>Customer</div>
+        <div>Product</div>
+        <div>Status</div>
+        <div>Total</div>
+        <div>Date</div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto" role="list" aria-label={isBlacklist ? "Blacklist orders" : "Active orders"}>
+        {orders.map(order => {
+          const isSelected = selectedIds.has(order._id);
+          const displayStatus: OrderStatus =
+            (order._normalizedStatus ?? order.status ?? "new") as OrderStatus;
+
+          const variantParts: string[] = [];
+          if (order.selectedVariant?.size)  variantParts.push(order.selectedVariant.size);
+          if (order.selectedVariant?.color) variantParts.push(order.selectedVariant.color);
+          const variantLabel = variantParts.join(" / ");
+
+          return (
+            <div
+              key={order._id}
+              role="listitem"
+              tabIndex={0}
+              aria-label={`Order ${order.orderNumber} by ${order.customerName}, ${order.productName ?? "product"}, total ${order.totalAmount ?? 0} DZD, status ${displayStatus}`}
+              onClick={() => onOrderClick(order._id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onOrderClick(order._id);
+                }
+              }}
+              className={`grid ${GRID} items-center px-6 py-4 border-b border-border cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+                isSelected ? "bg-secondary" : "bg-card hover:bg-muted"
+              }`}
+            >
+              <div
+                className="flex items-center justify-center"
+                onClick={(e) => { e.stopPropagation(); onToggleSelect(order._id); }}
               >
-                <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                  <Checkbox
-                    checked={selectedOrderIds.has(order._id)}
-                    onCheckedChange={(checked) => onSelectOrder(order._id, checked)}
-                    aria-label={`Select order ${order.orderNumber}`}
-                  />
-                </td>
-                <td className="px-4 py-3 font-mono text-sm font-semibold">{order.orderNumber}</td>
-                <td className="px-4 py-3 font-medium">{order.customerName}</td>
-                <td className="px-4 py-3 text-muted-foreground hidden md:table-cell truncate max-w-[180px]">{order.productName ?? "—"}</td>
-                <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{order.customerWilaya ?? "—"}</td>
-                <td className="px-4 py-3 text-right font-bold">{(order.totalAmount ?? 0).toLocaleString()} DZD</td>
-                <td className="px-4 py-3"><StatusPill status={order.status} /></td>
-                <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">{format(order._creationTime, "MMM d")}</td>
-              </tr>
-            ))}
-            {filteredOrders.length === 0 && (
-              <tr>
-                <td colSpan={8} className="px-4 py-16 text-center text-muted-foreground">No orders found</td>
-              </tr>
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={() => onToggleSelect(order._id)}
+                  tabIndex={-1}
+                  aria-label={`Select order ${order.orderNumber}`}
+                />
+              </div>
+
+              <div className="text-[15px] font-medium text-foreground font-mono">
+                {order.orderNumber}
+              </div>
+
+              <div className="flex flex-col min-w-0">
+                <span className="text-[15px] font-medium text-foreground truncate">{order.customerName}</span>
+                <span className="text-sm text-muted-foreground">{order.customerPhone}</span>
+              </div>
+
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-medium text-foreground truncate">
+                  {order.productName || <span className="text-muted-foreground/50 italic">—</span>}
+                </span>
+                {variantLabel && (
+                  <span className="text-xs text-muted-foreground truncate">{variantLabel}</span>
+                )}
+              </div>
+
+              <div>
+                <StatusPill status={displayStatus} />
+              </div>
+
+              <div className="text-sm font-medium text-foreground">
+                {order.totalAmount ?? 0} DZD
+              </div>
+
+              <div className="text-sm text-muted-foreground">
+                {formatDistanceToNow(order._creationTime, { addSuffix: true })}
+              </div>
+            </div>
+          );
+        })}
+
+        {orders.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div
+              className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4 text-muted-foreground"
+              aria-hidden="true"
+            >
+              {isBlacklist
+                ? <Ban className="w-8 h-8" />
+                : <ListFilter className="w-8 h-8" />}
+            </div>
+            {isBlacklist ? (
+              <>
+                <h3 className="text-base font-semibold text-foreground">Blacklist is empty</h3>
+                <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                  Canceled and blocked orders will appear here.
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 className="text-base font-semibold text-foreground">No orders found</h3>
+                <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                  Try adjusting your search or filter.
+                </p>
+              </>
             )}
-          </tbody>
-        </table>
+          </div>
+        )}
       </div>
     </div>
   );
