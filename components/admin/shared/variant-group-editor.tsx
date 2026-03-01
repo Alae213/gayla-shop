@@ -125,7 +125,7 @@ export function VariantGroupEditor({
             <Label>Options</Label>
             <div className="space-y-2 mt-2">
               {group.values.map((value, optionIndex: number) => (
-                <div key={optionIndex} className="flex items-center gap-2">
+                <div key={`${group.id}-${optionIndex}`} className="flex items-center gap-2">
                   <Input
                     value={value.label}
                     onChange={(e) => handleOptionChange(groupIndex, optionIndex, e.target.value)}

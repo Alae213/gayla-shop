@@ -11,12 +11,20 @@ export default function AdminLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [adminUser, setAdminUser] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     // Skip auth check on login page
     if (pathname === "/admin/login") {
       return;
     }
+
+    // Only access localStorage after mounting
+    if (!mounted) return;
 
     const user = localStorage.getItem("adminUser");
     if (!user) {
@@ -30,7 +38,7 @@ export default function AdminLayout({
       localStorage.removeItem("adminUser");
       router.push("/admin/login");
     }
-  }, [router, pathname]);
+  }, [router, pathname, mounted]);
 
   // Don't show gating UI on login page
   if (pathname === "/admin/login") {
@@ -38,11 +46,11 @@ export default function AdminLayout({
   }
 
   // Show loading state while checking auth
-  if (!adminUser) {
+  if (!mounted || !adminUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-system-50 to-system-100">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-brand-200 mx-auto" />
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-transparent mx-auto" />
           <p className="mt-4 text-gray-600 font-medium">Verifying access...</p>
         </div>
       </div>
